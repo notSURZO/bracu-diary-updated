@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import SearchBar from './components/SearchBar';
+import Image from 'next/image';
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -19,15 +21,30 @@ export const metadata: Metadata = {
 
 export default function RootLayout({
   children,
-}: Readonly<{
+}: {
   children: React.ReactNode;
-}>) {
+}) {
   return (
     <html lang="en">
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
-        {children}
+      <body className="flex flex-col min-h-screen">
+        <header className="fixed top-0 left-0 z-50 p-4 flex items-center space-x-4 bg-white shadow-sm">
+          <Image
+            src="/BRACU DIARY.svg"
+            alt="BRACU Diary Logo"
+            width={120}
+            height={100}
+            className="object-contain"
+          />
+          <Image
+            src="/logo.svg"
+            alt="BRACU Diary Logo"
+            width={40}
+            height={40}
+            className="object-contain"
+          />
+          <SearchBar />
+        </header>
+        <main className="flex-grow pt-16">{children}</main>
       </body>
     </html>
   );
