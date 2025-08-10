@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { connectToDatabase } from '../../../../lib/mongodb';
 import User from '../../../../lib/models/User';
+import { clerkClient } from '@clerk/nextjs/server';
 
 export async function POST(request: Request) {
   try {
@@ -31,6 +32,16 @@ export async function POST(request: Request) {
 
     if (!/^\d+$/.test(student_ID.trim())) {
       return NextResponse.json({ error: 'Student ID must contain only numbers' }, { status: 400 });
+    }
+
+    // Fetch user's profile image from Clerk
+    let userImageUrl = picture_url || '';
+    try {
+      const clerkUser = await clerkClient.users.getUser(clerkId);
+      userImageUrl = clerkUser.imageUrl || '';
+      console.log('Fetched user image from Clerk:', userImageUrl);
+    } catch (clerkError) {
+      console.log('Could not fetch user image from Clerk, using default:', clerkError);
     }
 
     await connectToDatabase();
@@ -68,7 +79,7 @@ export async function POST(request: Request) {
       username: username.trim(),
       email: email.trim().toLowerCase(),
       student_ID: student_ID.trim(),
-      picture_url: picture_url || '',
+      picture_url: userImageUrl,
     });
 
     console.log('Saving user to MongoDB...');
