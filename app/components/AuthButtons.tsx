@@ -26,6 +26,32 @@ export default function AuthButtons() {
     }
   }, [isSignedIn, user]);
 
+  // Sync image when user changes their profile picture
+  useEffect(() => {
+    if (isSignedIn && user && dbUser) {
+      const syncImage = async () => {
+        try {
+          const response = await fetch('/api/users/update-image', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' }
+          });
+          
+          if (response.ok) {
+            const data = await response.json();
+            setDbUser(prev => prev ? { ...prev, picture_url: data.picture_url } : null);
+          }
+        } catch (error) {
+          console.error('Error syncing image:', error);
+        }
+      };
+
+      // Check if Clerk image is different from MongoDB image
+      if (user.imageUrl !== dbUser.picture_url) {
+        syncImage();
+      }
+    }
+  }, [user?.imageUrl, dbUser?.picture_url, isSignedIn]);
+
   const fetchUserData = async () => {
     try {
       setLoading(true);
