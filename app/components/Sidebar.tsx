@@ -17,7 +17,7 @@ export default function Sidebar() {
   const pathname = usePathname();
 
   return (
-    <aside className="bg-white w-64 h-screen shadow-lg flex flex-col">
+    <aside className="bg-white w-64 h-screen shadow-lg flex flex-col fixed left-0 top-16 z-40">
       <nav className="mt-8">
         <ul>
           {navItems.map(item => (
