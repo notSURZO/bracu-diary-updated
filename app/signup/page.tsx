@@ -124,7 +124,7 @@ export default function CustomSignUp() {
             username: formData.username.trim(),
             email: formData.email.trim(),
             student_ID: formData.studentId.trim(),
-            picture_url: completeSignUp.createdUser?.imageUrl || ''
+            picture_url: ''
           })
         });
         if (!response.ok) {
