@@ -27,7 +27,7 @@ export default function SearchBar() {
     const fetchResults = async () => {
       setIsLoading(true);
       try {
-        const response = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
+        const response = await fetch(`/api/search?q=${query}`);
         const data = await response.json();
         if (response.ok) {
           setResults(data);

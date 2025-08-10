@@ -1,21 +1,44 @@
+import { NextResponse } from 'next/server';
 import mongoose from 'mongoose';
+import { connectToDatabase } from '../../../lib/mongodb';
+import User, { IUser } from '../../../lib/models/User';
 
-const uri = process.env.MONGODB_URI || 'mongodb://localhost:27017/bracu_diary';
-let isConnected: boolean = false;
+export async function GET(request: Request) {
+  const { searchParams } = new URL(request.url);
+  const query = searchParams.get('q')?.trim();
 
-export async function connectToDatabase(): Promise<void> {
-  if (isConnected) {
-    return;
+  if (!query) {
+    return NextResponse.json({ error: 'Search query is required' }, { status: 400 });
   }
 
   try {
-    await mongoose.connect(uri, {
-      serverSelectionTimeoutMS: 5000,
-    });
-    isConnected = true;
-    console.log('Connected to MongoDB');
+    await connectToDatabase();
+    
+    const users = await User
+      .find({ name: { $regex: query, $options: 'i' } })
+      .limit(10)
+      .select('name username email student_ID picture_url')
+      .lean<{
+        _id: mongoose.Types.ObjectId;
+        name: string;
+        username: string;
+        email: string;
+        student_ID: string;
+        picture_url: string;
+      }[]>();
+
+    const results = users.map(user => ({
+      id: user._id.toString(),
+      name: user.name,
+      username: user.username,
+      email: user.email,
+      student_ID: user.student_ID,
+      picture_url: user.picture_url,
+    }));
+
+    return NextResponse.json(results);
   } catch (error) {
-    console.error('MongoDB connection error:', error);
-    throw error;
+    console.error('Search error:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
