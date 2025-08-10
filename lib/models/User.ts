@@ -15,6 +15,7 @@ export interface IUser extends Document {
   bio?: string;
   address?: string;
   department?: string;
+  enrolledCourses: string[]; // Array to store IDs of enrolled courses
 }
 
 const UserSchema: Schema = new Schema({
@@ -32,6 +33,7 @@ const UserSchema: Schema = new Schema({
   connectionRequests: [{ type: String, default: [] }],
   address: { type: String, default: '' },
   department: { type: String, default: '' },
+  enrolledCourses: { type: Array, default: [] },
   // Add more fields as needed
 });
 
