@@ -25,9 +25,9 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <ClerkProvider>
+    <ClerkProvider >
       <html lang="en" className={`${geistSans.variable} ${geistMono.variable}`} suppressHydrationWarning>
-        <body className="flex flex-col min-h-screen">
+        <body className="flex flex-col min-h-screen" suppressHydrationWarning>
           <ConditionalHeader />
           <main className="flex-grow">{children}</main>
         </body>
