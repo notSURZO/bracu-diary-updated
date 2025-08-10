@@ -1,3 +1,4 @@
+// app/api/search/route.ts
 import { NextResponse } from 'next/server';
 import mongoose from 'mongoose';
 import { connectToDatabase } from '../../../lib/mongodb';
@@ -13,11 +14,15 @@ export async function GET(request: Request) {
 
   try {
     await connectToDatabase();
-    
-    const users = await User
-      .find({ name: { $regex: query, $options: 'i' } })
+
+    const users = await User.find({
+      $or: [
+        { name: { $regex: query, $options: 'i' } },
+        { username: { $regex: query, $options: 'i' } },
+      ],
+    })
       .limit(10)
-      .select('name username email student_ID picture_url')
+      .select('name username email student_ID picture_url _id')
       .lean<{
         _id: mongoose.Types.ObjectId;
         name: string;
@@ -27,7 +32,7 @@ export async function GET(request: Request) {
         picture_url: string;
       }[]>();
 
-    const results = users.map(user => ({
+    const results = users.map((user) => ({
       id: user._id.toString(),
       name: user.name,
       username: user.username,
