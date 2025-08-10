@@ -6,7 +6,7 @@ import Sidebar from "../components/Sidebar";
 export default async function ProfilePage() {
   const clerkUser = await currentUser();
   await connectToDatabase();
-
+  
   const userDoc = await User.findOne({ email: clerkUser?.emailAddresses[0]?.emailAddress });
   const name = userDoc?.name || `${clerkUser?.firstName ?? ""} ${clerkUser?.lastName ?? ""}`.trim() || "Unknown";
   const username = userDoc?.username || "Not set";
