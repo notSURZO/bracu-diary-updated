@@ -1,3 +1,4 @@
+// lib/models/User.ts
 import mongoose, { Schema, Document } from 'mongoose';
 
 export interface IUser extends Document {
@@ -9,6 +10,7 @@ export interface IUser extends Document {
   picture_url: string;
   createdAt: Date;
   updatedAt: Date;
+  connectionRequests: string[]; // Array to store usernames of users who sent connect requests
 }
 
 const UserSchema: Schema = new Schema({
@@ -22,6 +24,7 @@ const UserSchema: Schema = new Schema({
   updatedAt: { type: Date, default: Date.now },
   bio: { type: String },
   avatarUrl: { type: String },
+  connectionRequests: [{ type: String, default: [] }],
   // Add more fields as needed
 });
 
@@ -29,6 +32,7 @@ const UserSchema: Schema = new Schema({
 UserSchema.pre('save', function(next) {
   this.updatedAt = new Date();
   next();
+  
 });
 
 export default mongoose.models.User || mongoose.model<IUser>('User', UserSchema);
