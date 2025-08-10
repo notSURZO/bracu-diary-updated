@@ -20,6 +20,9 @@ const UserSchema: Schema = new Schema({
   picture_url: { type: String, default: '' },
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now },
+  bio: { type: String },
+  avatarUrl: { type: String },
+  // Add more fields as needed
 });
 
 // Update the updatedAt field before saving
