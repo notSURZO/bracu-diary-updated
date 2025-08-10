@@ -10,7 +10,10 @@ export interface IUser extends Document {
   picture_url: string;
   createdAt: Date;
   updatedAt: Date;
-  connectionRequests: string[]; // Array to store usernames of users who sent connect requests
+  bio?: string;
+  avatarUrl?: string;
+  connectionRequests: string[]; // Array to store emails of users who sent connect requests
+  connections: string[]; // Array to store emails of accepted connections
 }
 
 const UserSchema: Schema = new Schema({
@@ -25,14 +28,13 @@ const UserSchema: Schema = new Schema({
   bio: { type: String },
   avatarUrl: { type: String },
   connectionRequests: [{ type: String, default: [] }],
-  // Add more fields as needed
+  connections: [{ type: String, default: [] }], // Added for accepted connections
 });
 
 // Update the updatedAt field before saving
-UserSchema.pre('save', function(next) {
+UserSchema.pre('save', function (next) {
   this.updatedAt = new Date();
   next();
-  
 });
 
 export default mongoose.models.User || mongoose.model<IUser>('User', UserSchema);
