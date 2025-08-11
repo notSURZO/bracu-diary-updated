@@ -7,12 +7,17 @@ export interface IUser extends Document {
   username: string;
   email: string;
   student_ID: string;
+  phone?: string;
   picture_url: string;
   createdAt: Date;
   updatedAt: Date;
   bio?: string;
-  avatarUrl?: string;
+
   connectionRequests: string[]; // Array to store emails of users who sent connect requests
+  avatarUrl?: string;
+  address?: string;
+  department?: string;
+  enrolledCourses: string[]; // Array to store IDs of enrolled courses
   connections: string[]; // Array to store emails of accepted connections
 }
 
@@ -23,11 +28,15 @@ const UserSchema: Schema = new Schema({
   email: { type: String, required: true, unique: true },
   student_ID: { type: String, required: true, unique: true },
   picture_url: { type: String, default: '' },
+  phone: { type: String, default: '' },
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now },
   bio: { type: String },
   avatarUrl: { type: String },
   connectionRequests: [{ type: String, default: [] }],
+  address: { type: String, default: '' },
+  department: { type: String, default: '' },
+  enrolledCourses: { type: Array, default: [] },
   connections: [{ type: String, default: [] }], // Added for accepted connections
 });
 
