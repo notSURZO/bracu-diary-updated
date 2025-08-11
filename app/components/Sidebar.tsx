@@ -34,7 +34,8 @@ export default function Sidebar() {
   }, []);
 
   return (
-    <aside className="bg-white w-64 h-screen shadow-lg flex flex-col">
+ 
+    <aside className="flex min-h-screen pt-16">
       <nav className="mt-16">
         <ul>
           {navItems.map(item =>

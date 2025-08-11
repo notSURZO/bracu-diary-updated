@@ -87,7 +87,7 @@ export default function ProfilePage() {
     <div className="flex min-h-screen bg-gradient-to-br from-blue-100 via-purple-100 to-pink-100">
       {/* Sidebar */}
       
-
+      <Sidebar/>
       {/* Profile Content */}
       <div className="flex-1 flex justify-center items-center">
         <div className="w-full max-w-md rounded-2xl shadow-2xl bg-gradient-to-br from-blue-300 via-purple-200 to-pink-200 p-8 flex flex-col items-center">

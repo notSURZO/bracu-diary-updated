@@ -4,7 +4,7 @@ import Sidebar from '../components/Sidebar';
 
 export default function Dashboard() {
   return (
-    <div className="flex min-h-screen pt-16">
+    <div >
       {/* Sidebar */}
       <Sidebar />
 
