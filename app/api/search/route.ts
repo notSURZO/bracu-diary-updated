@@ -1,4 +1,3 @@
-// app/api/search/route.ts
 import { NextResponse } from 'next/server';
 import mongoose from 'mongoose';
 import { connectToDatabase } from '../../../lib/mongodb';
@@ -20,9 +19,8 @@ export async function GET(request: Request) {
 
     const filter: any = {
       $or: [
-        { name: { $regex: query, $options: 'i' } },
-        { username: { $regex: query, $options: 'i' } },
-        { email: { $regex: query, $options: 'i' } }, // Allow searching by email
+        { name: { $regex: '^' + query, $options: 'i' } }, // Prefix match for name
+        { username: { $regex: '^' + query, $options: 'i' } }, // Prefix match for username
       ],
     };
 
