@@ -1,3 +1,4 @@
+// components/SearchBar.tsx
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -20,12 +21,11 @@ export default function SearchBar() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Get current user from Clerk
   const { user, isLoaded } = useUser();
-  const currentUserEmail = user?.emailAddresses?.[0]?.emailAddress || '';
+  const currentUserEmail = user?.emailAddresses?.[0]?.emailAddress?.toLowerCase() || '';
 
   useEffect(() => {
-    console.log('Clerk user:', user); // Debug: Inspect user object
+    console.log('Clerk user:', user);
     if (!query || !isLoaded || !currentUserEmail) {
       setResults([]);
       setError(null);
@@ -36,7 +36,9 @@ export default function SearchBar() {
       setIsLoading(true);
       setError(null);
       try {
-        const response = await fetch(`/api/search?q=${query}&excludeEmail=${currentUserEmail}`);
+        const response = await fetch(
+          `/api/search?q=${encodeURIComponent(query)}&excludeEmail=${encodeURIComponent(currentUserEmail)}`
+        );
         const data = await response.json();
 
         if (response.ok) {
@@ -44,7 +46,7 @@ export default function SearchBar() {
             ...user,
             id: user.id,
           }));
-
+          console.log('Search results:', formattedData); // Debug
           setResults(formattedData);
         } else {
           console.error('Search error:', data.error);
@@ -82,7 +84,6 @@ export default function SearchBar() {
     }
   };
 
-  // Function to clear search state
   const clearSearch = () => {
     setQuery('');
     setResults([]);
@@ -99,7 +100,7 @@ export default function SearchBar() {
         type="text"
         value={query}
         onChange={(e) => setQuery(e.target.value)}
-        placeholder="🔍  Search for people..."
+        placeholder="🔍 Search for people..."
         className="focus:outline-none focus:ring-2 focus:ring-blue-500 w-full p-2 border rounded"
       />
       {isLoading && <div className="search-results p-2 text-gray-500">Loading...</div>}
@@ -114,7 +115,7 @@ export default function SearchBar() {
               <Link
                 href={`/profile/${user.username || user.email}`}
                 className="flex items-center"
-                onClick={clearSearch} // Clear search state on click
+                onClick={clearSearch}
               >
                 {user.picture_url ? (
                   <Image
@@ -138,7 +139,7 @@ export default function SearchBar() {
               <button
                 onClick={() => handleConnect(user.id)}
                 className="ml-4 p-1 bg-green-500 text-white rounded text-sm hover:bg-green-600 disabled:bg-gray-400"
-                disabled={user.email === currentUserEmail}
+                disabled={user.email.toLowerCase() === currentUserEmail}
               >
                 Connect
               </button>
