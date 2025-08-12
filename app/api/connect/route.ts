@@ -1,4 +1,3 @@
-// app/api/connect/route.ts
 import { NextResponse } from 'next/server';
 import mongoose from 'mongoose';
 import User from '../../../lib/models/User';
@@ -39,16 +38,27 @@ export async function POST(request: Request) {
       );
     }
 
-    // Initialize connectionRequests array if it doesn't exist
+    // Initialize arrays if they don't exist
     if (!targetUser.connectionRequests) {
       targetUser.connectionRequests = [];
+    }
+    if (!targetUser.connections) {
+      targetUser.connections = [];
+    }
+
+    // Check if already connected
+    if (targetUser.connections.includes(currentUserEmail)) {
+      return NextResponse.json(
+        { message: 'Already connected with this user' },
+        { status: 409 }
+      );
     }
 
     // Check if connection request already exists
     if (targetUser.connectionRequests.includes(currentUserEmail)) {
       return NextResponse.json(
         { message: 'Connect request already sent' },
-        { status: 200 }
+        { status: 409 }
       );
     }
 

@@ -17,6 +17,10 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'Search query is required' }, { status: 400 });
   }
 
+  if (excludeEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(excludeEmail)) {
+    return NextResponse.json({ error: 'Invalid excludeEmail format' }, { status: 400 });
+  }
+
   try {
     await connectToDatabase();
 
@@ -28,7 +32,7 @@ export async function GET(request: Request) {
       // Stage 1: Split name into words
       {
         $addFields: {
-          nameWords: { $split: ['$name', ' '] } // Split name into array of words
+          nameWords: { $split: ['$name', ' '] }
         }
       },
       // Stage 2: Union of first word, second word, and username matches
@@ -48,7 +52,6 @@ export async function GET(request: Request) {
               $match: {
                 'nameWords.1': { $regex: '^' + escapedQuery, $options: 'i' },
                 ...(excludeEmail ? { email: { $ne: excludeEmail } } : {}),
-                // Exclude first word matches to avoid duplicates
                 'nameWords.0': { $not: { $regex: '^' + escapedQuery, $options: 'i' } }
               }
             },
@@ -59,7 +62,6 @@ export async function GET(request: Request) {
               $match: {
                 username: { $regex: '^' + escapedQuery, $options: 'i' },
                 ...(excludeEmail ? { email: { $ne: excludeEmail } } : {}),
-                // Exclude name matches to avoid duplicates
                 nameWords: {
                   $not: {
                     $elemMatch: { $regex: '^' + escapedQuery, $options: 'i' }
@@ -84,8 +86,8 @@ export async function GET(request: Request) {
       // Stage 4: Sort by matchType and name
       {
         $sort: {
-          matchType: 1, // firstWord < secondWord < username
-          name: 1 // Alphabetical within match type
+          matchType: 1,
+          name: 1
         }
       },
       // Stage 5: Limit to 10 results
@@ -100,8 +102,9 @@ export async function GET(request: Request) {
           email: 1,
           student_ID: 1,
           picture_url: 1,
-          _id: 1,
-          matchType: 1 // Include for debugging
+          connectionRequests: 1,
+          connections: 1,
+          _id: 1
         }
       }
     ];
@@ -126,7 +129,9 @@ export async function GET(request: Request) {
       username: user.username,
       email: user.email,
       student_ID: user.student_ID,
-      picture_url: user.picture_url
+      picture_url: user.picture_url,
+      connectionRequests: user.connectionRequests || [],
+      connections: user.connections || []
     }));
 
     console.log('Returning results:', results);
@@ -134,6 +139,9 @@ export async function GET(request: Request) {
     return NextResponse.json(results);
   } catch (error) {
     console.error('Search error:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Internal server error', details: error instanceof Error ? error.message : 'Unknown error' },
+      { status: 500 }
+    );
   }
 }

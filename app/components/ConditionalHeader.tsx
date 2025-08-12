@@ -117,7 +117,7 @@ export default function ConditionalHeader() {
             height={180}
             className="object-contain"
           />
-          <SearchBar />
+          <SearchBar/>
         </div>
         <div className="flex items-center space-x-4">
           <button onClick={handleOpenModal} className="relative">
