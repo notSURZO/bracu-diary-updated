@@ -117,7 +117,7 @@ export default function SearchBar() {
     if (user.connections.includes(currentUserEmail)) {
       return (
         <span className="ml-4 p-1 text-gray-500 text-sm">
-          Already connected
+          Connected
         </span>
       );
     }

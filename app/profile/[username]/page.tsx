@@ -3,11 +3,12 @@ import User from "@/lib/models/User";
 import Sidebar from "@/app/components/Sidebar";
 import { notFound } from "next/navigation";
 
-export default async function UserProfilePage({ params }: { params: { username: string } }) {
+export default async function UserProfilePage({ params }: { params: Promise<{ username: string }> }) {
+  const { username } = await params;
   await connectToDatabase();
 
   // Find user by username
-  const userDoc = await User.findOne({ username: params.username });
+  const userDoc = await User.findOne({ username });
 
   // If user not found, return 404
   if (!userDoc) {
@@ -15,7 +16,7 @@ export default async function UserProfilePage({ params }: { params: { username: 
   }
 
   const name = userDoc.name || "Unknown";
-  const username = userDoc.username || "Not set";
+  const usernameDisplay = userDoc.username || "Not set";
   const email = userDoc.email || "Not set";
   const bio = userDoc.bio || "";
   const studentId = userDoc.student_ID || "";
@@ -35,7 +36,7 @@ export default async function UserProfilePage({ params }: { params: { username: 
             className="w-28 h-28 rounded-full border-4 border-white shadow-lg mb-4 bg-white object-cover"
           />
           <h2 className="text-3xl font-bold text-blue-700 mb-1">{name}</h2>
-          <span className="text-sm text-purple-600 mb-2">@{username}</span>
+          <span className="text-sm text-purple-600 mb-2">@{usernameDisplay}</span>
           <span className="text-base text-gray-700 mb-2">{email}</span>
           <span className="text-base text-pink-700 mb-2">Student ID: {studentId}</span>
           <div className="w-full mt-4 p-4 rounded-xl bg-white bg-opacity-70 shadow-inner">
