@@ -1,3 +1,4 @@
+// components/Sidebar.tsx
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -5,7 +6,7 @@ import { useState, useRef, useEffect } from "react";
 import { FaHome, FaBook, FaUsers, FaCalendarAlt, FaChalkboardTeacher, FaCalendarCheck, FaUserCircle } from "react-icons/fa";
 
 const navItems = [
-  { name: "Home", href: "/dashboard", icon: <FaHome /> },
+  { name: "Home", href: "/", icon: <FaHome /> },
   { name: "Profile", href: "/profile", icon: <FaUserCircle /> },
   { name: "Book Shelf", href: "/bookshelf", icon: <FaBook /> },
   { name: "Committee", href: "/committee", icon: <FaUsers /> },
@@ -34,9 +35,8 @@ export default function Sidebar() {
   }, []);
 
   return (
- 
-    <aside className="flex min-h-screen pt-16">
-      <nav className="mt-16">
+    <aside className="fixed top-24 left-0 h-[calc(100vh-4rem)] w-64 bg-white shadow-sm z-40">
+      <nav className="p-4">
         <ul>
           {navItems.map(item =>
             item.name !== "Courses" ? (

@@ -7,31 +7,31 @@ import Link from 'next/link';
 export default async function Home() {
   const user = await currentUser();
 
-  // If user is signed in, redirect to dashboard
   if (user) {
-    redirect('/dashboard');
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 flex items-center justify-center">
+        <div className="text-center">
+          <h2 className="text-3xl font-bold text-gray-800 mb-4">Welcome Back!</h2>
+          <p className="text-gray-600">Content for logged-in users will be added here.</p>
+          <p className="text-gray-600 mt-2">You are currently logged in.</p>
+        </div>
+      </div>
+    );
   }
 
+  // Render the original content for non-logged-in users
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
       <div className="min-h-screen grid lg:grid-cols-2 items-center">
         {/* Left Content - Centered */}
         <div className="flex flex-col items-center justify-center px-6 lg:px-16 py-12 lg:py-0">
           {/* Logo and Title */}
-          <div className="flex items-center mb-8 space-x-4">
+          <div className="flex items-center mt-8 mb-8 space-x-4">
             <Image
-              src="/BRACU DIARY.svg"
+              src="/bracu-diary-logo.svg"
               alt="BRACU Diary Logo Text"
-              width={160}
-              height={60}
-              className="object-contain"
-              priority
-            />
-            <Image
-              src="/logo.svg"
-              alt="BRACU Diary Logo Icon"
-              width={48}
-              height={48}
+              width={270}
+              height={170}
               className="object-contain"
               priority
             />

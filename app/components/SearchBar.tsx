@@ -99,7 +99,7 @@ export default function SearchBar() {
         type="text"
         value={query}
         onChange={(e) => setQuery(e.target.value)}
-        placeholder="Search for people..."
+        placeholder="🔍  Search for people..."
         className="focus:outline-none focus:ring-2 focus:ring-blue-500 w-full p-2 border rounded"
       />
       {isLoading && <div className="search-results p-2 text-gray-500">Loading...</div>}

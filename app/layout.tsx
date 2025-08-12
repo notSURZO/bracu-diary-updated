@@ -1,3 +1,4 @@
+// app/layout.tsx
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
@@ -25,11 +26,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <ClerkProvider >
+    <ClerkProvider>
       <html lang="en" className={`${geistSans.variable} ${geistMono.variable}`} suppressHydrationWarning>
         <body className="flex flex-col min-h-screen" suppressHydrationWarning>
           <ConditionalHeader />
-          <main className="flex-grow">{children}</main>
+          <main className="flex-grow pl-64 pt-16">{children}</main>
         </body>
       </html>
     </ClerkProvider>

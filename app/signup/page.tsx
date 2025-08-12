@@ -186,21 +186,14 @@ export default function CustomSignUp() {
           {/* Logo and Title */}
           <div className="flex items-center mb-6 space-x-4">
             <Image
-              src="/BRACU DIARY.svg"
+              src="/bracu-diary-logo.svg"
               alt="BRACU Diary Logo Text"
-              width={160}
-              height={60}
+              width={270}
+              height={170}
               className="object-contain"
               priority
             />
-            <Image
-              src="/logo.svg"
-              alt="BRACU Diary Logo Icon"
-              width={48}
-              height={48}
-              className="object-contain"
-              priority
-            />
+
           </div>
           <span className="text-blue-600 font-medium text-base mb-6">Your Academic Oasis</span>
           <h2 className="text-4xl lg:text-5xl font-bold text-gray-800 mb-6 leading-tight text-center max-w-2xl">

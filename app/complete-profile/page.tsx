@@ -14,12 +14,12 @@ export default function CompleteProfile() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const handleChange = (e) => {
+  const handleChange = (e:any) => {
     setForm((f) => ({ ...f, [e.target.name]: e.target.value }));
     setError("");
   };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e:any) => {
     e.preventDefault();
     if (!isLoaded || !user) return;
     if (!form.name.trim() || !form.username.trim() || !form.student_ID.trim()) {
@@ -46,7 +46,7 @@ export default function CompleteProfile() {
         setLoading(false);
         return;
       }
-      router.push("/dashboard");
+      router.push("/");
     } catch (err) {
       setError("Something went wrong. Try again.");
       setLoading(false);

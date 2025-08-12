@@ -18,7 +18,8 @@ export default function ProfilePage() {
       setLoading(true);
       setError("");
       try {
-        const res = await fetch("/api/profile/user?email=" + encodeURIComponent(clerkUser.primaryEmailAddress?.emailAddress || ""));
+        const email = clerkUser.primaryEmailAddress?.emailAddress || "";
+        const res = await fetch("/api/profile/user?email=" + encodeURIComponent(email));
         if (!res.ok) throw new Error("Failed to fetch profile");
         const data = await res.json();
         setProfile(data.user);
@@ -46,6 +47,10 @@ export default function ProfilePage() {
 
   const handleSubmit = async (e: any) => {
     e.preventDefault();
+    if (!clerkUser) {
+      setError("User not authenticated");
+      return;
+    }
     setLoading(true);
     setError("");
     setSuccess("");

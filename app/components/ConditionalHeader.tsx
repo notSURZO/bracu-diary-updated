@@ -6,7 +6,7 @@ import SearchBar from './SearchBar';
 import Image from 'next/image';
 import AuthButtons from './AuthButtons';
 import { useState } from 'react';
-
+import Sidebar from './Sidebar';
 
 interface ConnectionRequest {
   email: string;
@@ -23,7 +23,7 @@ export default function ConditionalHeader() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Only show header if user is signed in
+  // Only show header and sidebar if user is signed in
   if (!isSignedIn || !user) {
     return null;
   }
@@ -72,7 +72,6 @@ export default function ConditionalHeader() {
       });
       const data = await response.json();
       if (response.ok) {
-        // Refresh the requests list
         fetchConnectionRequests();
         alert(data.message); // Replace with toast notification
       } else {
@@ -94,7 +93,6 @@ export default function ConditionalHeader() {
       });
       const data = await response.json();
       if (response.ok) {
-        // Refresh the requests list
         fetchConnectionRequests();
         alert(data.message); // Replace with toast notification
       } else {
@@ -108,21 +106,15 @@ export default function ConditionalHeader() {
   };
 
   return (
-    <> 
+    <>
+      {/* Header */}
       <header className="fixed top-0 left-0 right-0 z-50 p-4 flex items-center justify-between bg-white shadow-sm">
         <div className="flex items-center space-x-4">
           <Image
-            src="/BRACU DIARY.svg"
+            src="/bracu-diary-logo.svg"
             alt="BRACU Diary Logo"
-            width={120}
-            height={100}
-            className="object-contain"
-          />
-          <Image
-            src="/logo.svg"
-            alt="BRACU Diary Logo"
-            width={40}
-            height={40}
+            width={270}
+            height={180}
             className="object-contain"
           />
           <SearchBar />
@@ -130,10 +122,10 @@ export default function ConditionalHeader() {
         <div className="flex items-center space-x-4">
           <button onClick={handleOpenModal} className="relative">
             <Image
-              src="/connect-requests.svg" // Replace with your SVG image path
+              src="/connect-requests.svg"
               alt="Connection Requests"
-              width={24}
-              height={24}
+              width={35}
+              height={35}
               className="hover:opacity-80 transition"
             />
             {requests.length > 0 && (
@@ -146,6 +138,10 @@ export default function ConditionalHeader() {
         </div>
       </header>
 
+      {/* Sidebar */}
+      <Sidebar />
+
+      {/* Connection Requests Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
           <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-md">
