@@ -1,12 +1,12 @@
-// components/ConditionalHeader.tsx
 'use client';
 
+import { useState } from 'react';
 import { useUser } from '@clerk/nextjs';
 import SearchBar from './SearchBar';
 import Image from 'next/image';
 import AuthButtons from './AuthButtons';
-import { useState } from 'react';
 import Sidebar from './Sidebar';
+import { toast } from 'react-toastify';
 
 interface ConnectionRequest {
   email: string;
@@ -43,10 +43,12 @@ export default function ConditionalHeader() {
       } else {
         console.error('Error fetching connection requests:', data.error);
         setError(data.error || 'Failed to fetch connection requests');
+        toast.error(data.error || 'Failed to fetch connection requests');
       }
     } catch (error) {
       console.error('Error fetching connection requests:', error);
       setError('An error occurred while fetching connection requests');
+      toast.error('An error occurred while fetching connection requests');
     } finally {
       setIsLoading(false);
     }
@@ -72,15 +74,15 @@ export default function ConditionalHeader() {
       });
       const data = await response.json();
       if (response.ok) {
+        toast.success(data.message);
         fetchConnectionRequests();
-        alert(data.message); // Replace with toast notification
       } else {
         console.error('Error accepting connection request:', data.error);
-        alert(data.error || 'Failed to accept connection request');
+        toast.error(data.error || 'Failed to accept connection request');
       }
     } catch (error) {
       console.error('Error accepting connection request:', error);
-      alert('Failed to accept connection request');
+      toast.error('Failed to accept connection request');
     }
   };
 
@@ -93,15 +95,15 @@ export default function ConditionalHeader() {
       });
       const data = await response.json();
       if (response.ok) {
+        toast.success(data.message);
         fetchConnectionRequests();
-        alert(data.message); // Replace with toast notification
       } else {
         console.error('Error rejecting connection request:', data.error);
-        alert(data.error || 'Failed to reject connection request');
+        toast.error(data.error || 'Failed to reject connection request');
       }
     } catch (error) {
       console.error('Error rejecting connection request:', error);
-      alert('Failed to reject connection request');
+      toast.error('Failed to reject connection request');
     }
   };
 
@@ -117,7 +119,7 @@ export default function ConditionalHeader() {
             height={180}
             className="object-contain"
           />
-          <SearchBar/>
+          <SearchBar />
         </div>
         <div className="flex items-center space-x-4">
           <button onClick={handleOpenModal} className="relative">

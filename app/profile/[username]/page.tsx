@@ -2,6 +2,7 @@ import { connectToDatabase } from "@/lib/mongodb";
 import User from "@/lib/models/User";
 import Sidebar from "@/app/components/Sidebar";
 import { notFound } from "next/navigation";
+import FriendsSidebar from "@/app/components/FriendsSidebar";
 
 export default async function UserProfilePage({ params }: { params: Promise<{ username: string }> }) {
   const { username } = await params;
@@ -25,7 +26,8 @@ export default async function UserProfilePage({ params }: { params: Promise<{ us
   return (
     <div className="flex min-h-screen bg-gradient-to-br from-blue-100 via-purple-100 to-pink-100">
       {/* Sidebar */}
-      <Sidebar />
+      <FriendsSidebar/>
+
 
       {/* Profile Content */}
       <div className="flex-1 flex justify-center items-center">
