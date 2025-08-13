@@ -73,14 +73,14 @@ export default function AuthButtons() {
   if (isSignedIn) {
     return (
       <div className="flex items-center space-x-4">
-        <span className="text-sm text-gray-600">
+        <span className="text text-gray-600">
           Welcome, {dbUser ? dbUser.name.split(' ')[0] : (loading ? '...' : 'User')}!
         </span>
         <UserButton 
-          afterSignOutUrl="/"
+          
           appearance={{
             elements: {
-              avatarBox: "w-8 h-8"
+              avatarBox: "w-10 h-10"
             }
           }}
         />

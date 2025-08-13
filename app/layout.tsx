@@ -29,12 +29,16 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <ClerkProvider>
+    <ClerkProvider
+      appearance={{
+        cssLayerName: 'clerk',
+      }}
+    >
       <html lang="en" className={`${geistSans.variable} ${geistMono.variable}`} suppressHydrationWarning>
         <body className="flex flex-col min-h-screen" suppressHydrationWarning>
           <ConditionalHeader />
-          <main className="flex-grow pl-64  pt-16">{children}</main>
-          {/* <FriendsSidebar /> */}
+          <main className="flex-grow pl-64 pt-16">{children}</main>
+          <FriendsSidebar />
           <ToastContainer
             position="top-right"
             autoClose={3000}
