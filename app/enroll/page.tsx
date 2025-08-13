@@ -1,5 +1,5 @@
 "use client";
-import ManageCourses from "./ManageCourses";
+import ManageCourses from "../components/ManageCourses";
 
 export default function CoursesPage() {
   return (
