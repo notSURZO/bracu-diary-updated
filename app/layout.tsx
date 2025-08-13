@@ -6,6 +6,7 @@ import { ClerkProvider } from '@clerk/nextjs';
 import ConditionalHeader from './components/ConditionalHeader';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import FriendsSidebar from './components/FriendsSidebar';
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -28,11 +29,16 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <ClerkProvider>
+    <ClerkProvider
+      appearance={{
+        cssLayerName: 'clerk',
+      }}
+    >
       <html lang="en" className={`${geistSans.variable} ${geistMono.variable}`} suppressHydrationWarning>
         <body className="flex flex-col min-h-screen" suppressHydrationWarning>
           <ConditionalHeader />
           <main className="flex-grow pl-64 pt-16">{children}</main>
+          <FriendsSidebar />
           <ToastContainer
             position="top-right"
             autoClose={3000}
