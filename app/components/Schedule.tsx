@@ -58,19 +58,16 @@ const groupClassesByDayAndTime = (courses: DisplayCourse[]) => {
   });
 
   courses.forEach(course => {
-    // Ensure course.day is an array before iterating
-    if (Array.isArray(course.day)) {
-      course.day.forEach(day => {
-        const normalizedDay = normalizeDay(day);
-        if (grouped[normalizedDay]) {
-          const timeSlot = `${course.startTime} - ${course.endTime}`;
-          if (!grouped[normalizedDay][timeSlot]) {
-            grouped[normalizedDay][timeSlot] = [];
-          }
-          grouped[normalizedDay][timeSlot].push(course);
+    course.day.forEach(day => {
+      const normalizedDay = normalizeDay(day);
+      if (grouped[normalizedDay]) {
+        const timeSlot = `${course.startTime} - ${course.endTime}`;
+        if (!grouped[normalizedDay][timeSlot]) {
+          grouped[normalizedDay][timeSlot] = [];
         }
-      });
-    }
+        grouped[normalizedDay][timeSlot].push(course);
+      }
+    });
   });
 
   return grouped;
@@ -117,15 +114,11 @@ export default function Schedule() {
       try {
         const res = await fetch(`/api/user-courses?email=${encodeURIComponent(userEmail)}`);
         const data = await res.json();
-        // Ensure data.enrolledCourses is always an array
         if (Array.isArray(data.enrolledCourses)) {
           setEnrolledCourses(data.enrolledCourses);
-        } else {
-          setEnrolledCourses([]);
         }
       } catch (error) {
         console.error("Failed to fetch enrolled courses:", error);
-        setEnrolledCourses([]);
       } finally {
         setLoading(false);
       }
@@ -134,11 +127,9 @@ export default function Schedule() {
     fetchEnrolledCourses();
   }, [isLoaded, userEmail]);
   
-  // Use a fallback to an empty array and add a null check inside the filter
-  const safeEnrolledCourses = enrolledCourses || [];
-  const classSchedule = safeEnrolledCourses.filter(c => c && c.courseCode && !c.courseCode.endsWith('L'));
-  const labSchedule = safeEnrolledCourses.filter(c => c && c.courseCode && c.courseCode.endsWith('L'));
-  const examSchedule = safeEnrolledCourses.filter(c => c && c.courseCode && c.examDay && !c.courseCode.endsWith('L'));
+  const classSchedule = enrolledCourses.filter(c => !c.courseCode.endsWith('L'));
+  const labSchedule = enrolledCourses.filter(c => c.courseCode.endsWith('L'));
+  const examSchedule = enrolledCourses.filter(c => c.examDay && !c.courseCode.endsWith('L'));
   
   // Combine theory and lab courses for the class schedule table
   const allClasses = [...classSchedule, ...labSchedule];

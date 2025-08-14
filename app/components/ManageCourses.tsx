@@ -99,9 +99,8 @@ export default function ManageCourses() {
       const enrolled = Array.isArray(enrolledData.enrolledCourses) ? enrolledData.enrolledCourses : [];
       setSelected(enrolled);
 
-      // FIX: Add null checks to prevent crashes
       const enrolledCourseCodes = enrolled
-        .filter((course: DisplayCourse) => course && course.courseCode && !course.courseCode.endsWith('L'))
+        .filter((course: DisplayCourse) => !course.courseCode.endsWith('L'))
         .map((course: DisplayCourse) => course.courseCode);
 
       const availableCourses = allCourses.flatMap((c: Course) => 
@@ -231,8 +230,7 @@ export default function ManageCourses() {
     c.section.toLowerCase().includes(sectionSearchTerm.toLowerCase())
   );
   
-  // FIX: Add null check here to prevent crash
-  const visibleSelected = selected.filter((course: DisplayCourse) => course && course.courseCode && !course.courseCode.endsWith('L'));
+  const visibleSelected = selected.filter((course: DisplayCourse) => !course.courseCode.endsWith('L'));
 
   return (
     <div className="flex flex-col md:flex-row min-h-screen bg-gray-100 text-gray-800 font-sans">
