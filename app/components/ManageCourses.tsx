@@ -1,40 +1,128 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useUser } from '@clerk/nextjs';
+import Sidebar from "./Sidebar";
+
+// --- Interface Definitions to match the updated schema ---
+interface ClassDetails {
+  faculty: string;
+  details: string;
+  day: string[];
+  startTime: string;
+  endTime: string;
+}
+
+interface Section {
+  section: string;
+  theory: ClassDetails;
+  lab?: ClassDetails; // Lab is now optional
+}
 
 interface Course {
   _id: string;
-  name: string;
-  faculty: string;
-  section: string;
-  time: string;
-  examDay: string;
+  courseCode: string;
+  courseName: string;
+  link: string;
+  examDay?: string;
+  sections: Section[];
 }
-import Sidebar from "./Sidebar";
 
-export default function CoursesPage() {
-  const [courses, setCourses] = useState<Course[]>([]);
-  const [selected, setSelected] = useState<Course[]>([]);
+// Interface for the flattened data we'll display in the Available Courses list
+interface DisplayCourse {
+  _id: string;
+  courseCode: string;
+  courseName: string;
+  section: string;
+  faculty: string;
+  details: string;
+  day: string[];
+  startTime: string;
+  endTime: string;
+  examDay?: string;
+  hasLab: boolean;
+  link: string;
+}
+
+// Interface for the data we'll show in the details modal
+interface ModalCourseData {
+  courseCode: string;
+  courseName: string;
+  section: string;
+  theory: ClassDetails;
+  lab?: ClassDetails;
+  examDay?: string;
+}
+
+export default function ManageCourses() {
+  const [courses, setCourses] = useState<DisplayCourse[]>([]);
+  const [selected, setSelected] = useState<DisplayCourse[]>([]);
   const { user, isLoaded } = useUser();
   const userEmail = user?.emailAddresses[0]?.emailAddress || "";
+  
   const [searchTerm, setSearchTerm] = useState("");
+  const [sectionSearchTerm, setSectionSearchTerm] = useState("");
+  
   const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(true);
+  
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [modalCourse, setModalCourse] = useState<ModalCourseData | null>(null);
 
-  // Helper to sync UI with backend
+  const handleViewDetails = (courseCode: string, section: string) => {
+    const fullCourse = allCoursesCache.find(c => c.courseCode === courseCode);
+    if (!fullCourse) return;
+    const fullSection = fullCourse.sections.find(s => s.section === section);
+    if (!fullSection) return;
+
+    setModalCourse({
+      courseCode: fullCourse.courseCode,
+      courseName: fullCourse.courseName,
+      section: fullSection.section,
+      theory: fullSection.theory,
+      lab: fullSection.lab,
+      examDay: fullCourse.examDay,
+    });
+    setIsModalOpen(true);
+  };
+  
+  const [allCoursesCache, setAllCoursesCache] = useState<Course[]>([]);
+
   const fetchAndSyncCourses = async () => {
     setLoading(true);
     try {
-      // Fetch all available courses
       const allCoursesRes = await fetch("/api/courses");
       const allCourses = await allCoursesRes.json();
-      // Fetch user's enrolled courses
+      setAllCoursesCache(allCourses);
+
       const enrolledRes = await fetch(`/api/user-courses?email=${encodeURIComponent(userEmail)}`);
       const enrolledData = await enrolledRes.json();
       const enrolled = Array.isArray(enrolledData.enrolledCourses) ? enrolledData.enrolledCourses : [];
       setSelected(enrolled);
-      // Hide all sections of a course if any section is enrolled
-      setCourses(allCourses.filter((c: Course) => !enrolled.some((sc: Course) => sc.name === c.name)));
+
+      const enrolledCourseCodes = enrolled
+        .filter((course: DisplayCourse) => !course.courseCode.endsWith('L'))
+        .map((course: DisplayCourse) => course.courseCode);
+
+      const availableCourses = allCourses.flatMap((c: Course) => 
+        c.sections.map((s: Section) => ({
+          _id: c._id + s.section,
+          courseCode: c.courseCode,
+          courseName: c.courseName,
+          section: s.section,
+          faculty: s.theory.faculty,
+          details: s.theory.details,
+          day: s.theory.day,
+          startTime: s.theory.startTime,
+          endTime: s.theory.endTime,
+          examDay: c.examDay,
+          hasLab: !!s.lab,
+          link: c.link
+        }))
+      ).filter((dc: DisplayCourse) => !enrolledCourseCodes.includes(dc.courseCode));
+      
+      setCourses(availableCourses);
+    } catch (error) {
+      console.error("Failed to fetch and sync courses:", error);
     } finally {
       setLoading(false);
     }
@@ -45,183 +133,295 @@ export default function CoursesPage() {
     fetchAndSyncCourses();
   }, [isLoaded, userEmail]);
 
-  const handleSelect = (course: Course) => {
-    // Prevent enrolling another section of the same course
-    if (selected.some((c) => c.name === course.name)) return;
-    setSelected([...selected, course]);
-    // Hide all sections of this course from available
-    setCourses(courses.filter(c => c.name !== course.name));
+  const handleSelect = (course: DisplayCourse) => {
+    const fullCourse = allCoursesCache.find(c => c.courseCode === course.courseCode);
+    const fullSection = fullCourse?.sections.find(s => s.section === course.section);
+
+    if (fullSection) {
+      const newSelected: DisplayCourse[] = [{
+        _id: course._id,
+        courseCode: course.courseCode,
+        courseName: course.courseName,
+        section: fullSection.section,
+        faculty: fullSection.theory.faculty,
+        details: fullSection.theory.details,
+        day: fullSection.theory.day,
+        startTime: fullSection.theory.startTime,
+        endTime: fullSection.theory.endTime,
+        examDay: fullCourse?.examDay,
+        hasLab: !!fullSection.lab,
+        link: fullCourse?.link || '',
+      }];
+
+      if (fullSection.lab) {
+        newSelected.push({
+          _id: course._id + '-lab',
+          courseCode: course.courseCode + 'L',
+          courseName: course.courseName + ' Lab',
+          section: fullSection.section,
+          faculty: fullSection.lab.faculty,
+          details: fullSection.lab.details,
+          day: fullSection.lab.day,
+          startTime: fullSection.lab.startTime,
+          endTime: fullSection.lab.endTime,
+          examDay: fullCourse?.examDay,
+          hasLab: false,
+          link: fullCourse?.link || '',
+        });
+      }
+
+      setSelected(prevSelected => [...prevSelected, ...newSelected]);
+      setCourses(prevCourses => prevCourses.filter(c => c.courseCode !== course.courseCode));
+    }
   };
 
-  const handleRemove = (course: Course) => {
-    // Remove from selected
-    const newSelected = selected.filter(c => c._id !== course._id);
+  const handleRemove = (course: DisplayCourse) => {
+    const newSelected = selected.filter(c => 
+      c.courseCode !== course.courseCode && 
+      c.courseCode !== `${course.courseCode}L`
+    );
     setSelected(newSelected);
-    // After removal, show all sections of this course in available if not enrolled in any section
-    fetch("/api/courses")
-      .then(res => res.json())
-      .then((allCourses: Course[]) => {
-        // Only add back sections if not enrolled in any section of this course
-        if (!newSelected.some((c: Course) => c.name === course.name)) {
-          setCourses((prev: Course[]) => [
-            ...prev,
-            ...allCourses.filter((c: Course) => c.name === course.name && !prev.some((pc: Course) => pc._id === c._id))
-          ]);
-        }
-      });
+    
+    const fullCourse = allCoursesCache.find(c => c.courseCode === course.courseCode);
+    if (fullCourse) {
+      const sectionsToAddBack = fullCourse.sections.map(s => ({
+        _id: fullCourse._id + s.section,
+        courseCode: fullCourse.courseCode,
+        courseName: fullCourse.courseName,
+        section: s.section,
+        faculty: s.theory.faculty,
+        details: s.theory.details,
+        day: s.theory.day,
+        startTime: s.theory.startTime,
+        endTime: s.theory.endTime,
+        examDay: fullCourse.examDay,
+        hasLab: !!s.lab,
+        link: fullCourse.link,
+      }));
+      setCourses(prev => [...prev, ...sectionsToAddBack].sort((a,b) => a.courseCode.localeCompare(b.courseCode) || a.section.localeCompare(b.section)));
+    }
   };
 
   const handleSave = async () => {
     if (!userEmail) return;
-    // Try to update, fallback to create
+    
     const res = await fetch(`/api/user-courses?email=${encodeURIComponent(userEmail)}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email: userEmail, selectedCourses: selected }),
     });
+
     if (!res.ok) {
-      // fallback to POST if PUT fails (for first time save)
       await fetch("/api/user-courses", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: userEmail, selectedCourses: selected }),
       });
     }
-    // After saving, sync UI with backend
+
     await fetchAndSyncCourses();
     setSuccess(true);
     setTimeout(() => setSuccess(false), 2000);
   };
-
-  const filteredCourses = courses.filter(c =>
-    c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    c.section.toLowerCase().includes(searchTerm.toLowerCase())
+  
+  const filteredCourses = courses.filter((c: DisplayCourse) =>
+    (c.courseCode.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    c.courseName.toLowerCase().includes(searchTerm.toLowerCase())) &&
+    c.section.toLowerCase().includes(sectionSearchTerm.toLowerCase())
   );
+  
+  const visibleSelected = selected.filter((course: DisplayCourse) => !course.courseCode.endsWith('L'));
 
   return (
-    <div className="flex min-h-screen bg-gradient-to-br from-indigo-100 via-violet-100 to-fuchsia-100">
-      {/* Sidebar */}
+    <div className="flex flex-col md:flex-row min-h-screen bg-gray-100 text-gray-800 font-sans">
       <Sidebar />
 
-      {/* Main Content */}
-      <div className="flex-1 flex flex-col items-center justify-center py-12 px-2">
-        <div className="w-full max-w-2xl mx-auto flex flex-col gap-8 items-center">
-          {/* Main Content always rendered for instant responsiveness */}
-          <div className={loading ? "pointer-events-none blur-sm select-none relative" : "relative"}>
-            {/* Overlay while loading */}
-            {loading && (
-              <div className="absolute inset-0 flex items-center justify-center z-10">
-                <div className="bg-white/60 backdrop-blur-md rounded-2xl p-8 shadow-xl border border-indigo-200 flex flex-col items-center">
-                  <span className="text-indigo-500 font-bold text-lg">Loading courses...</span>
-                </div>
+      {/* Details Modal */}
+      {isModalOpen && modalCourse && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900 bg-opacity-50 p-4">
+          <div className="bg-white rounded-2xl p-6 md:p-8 max-w-lg w-full shadow-2xl border-4 border-blue-400">
+            <h3 className="text-2xl font-bold text-blue-700 mb-4">{modalCourse.courseCode} - {modalCourse.courseName}</h3>
+            <p className="text-lg font-semibold text-gray-700 mb-4">Section: {modalCourse.section}</p>
+            
+            <div className="bg-blue-50 rounded-xl p-4 mb-4 border border-blue-200">
+              <h4 className="text-xl font-bold text-blue-600 mb-2">Theory</h4>
+              <p><strong>Faculty:</strong> {modalCourse.theory.faculty}</p>
+              <p><strong>Details:</strong> {modalCourse.theory.details}</p>
+              <p><strong>Days:</strong> {modalCourse.theory.day.join(', ')}</p>
+              <p><strong>Time:</strong> {modalCourse.theory.startTime} - {modalCourse.theory.endTime}</p>
+            </div>
+            
+            {modalCourse.lab && (
+              <div className="bg-blue-50 rounded-xl p-4 border border-blue-200">
+                <h4 className="text-xl font-bold text-blue-600 mb-2">Lab</h4>
+                <p><strong>Faculty:</strong> {modalCourse.lab.faculty}</p>
+                <p><strong>Details:</strong> {modalCourse.lab.details}</p>
+                <p><strong>Days:</strong> {modalCourse.lab.day.join(', ')}</p>
+                <p><strong>Time:</strong> {modalCourse.lab.startTime} - {modalCourse.lab.endTime}</p>
               </div>
             )}
-            {/* Available Courses */}
-            <div className="w-full">
-              <h2 className="font-extrabold mb-2 text-indigo-800 text-2xl flex items-center gap-2 tracking-tight">
-                <span className="inline-block w-3 h-3 bg-indigo-500 rounded-full animate-pulse"></span>
-                <span className="drop-shadow">Available Courses</span>
-              </h2>
-              <input
-                type="text"
-                placeholder="🔍 Search by course or section..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full mb-4 px-4 py-2 rounded-xl border-2 border-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-400 transition text-black bg-white shadow-lg"
-              />
-              <ul className="bg-gradient-to-br from-indigo-200 via-fuchsia-100 to-pink-100 p-4 rounded-2xl w-full max-h-72 overflow-y-auto shadow-xl space-y-4 border border-indigo-100">
-                {filteredCourses.length === 0 ? (
-                  <li className="text-center text-indigo-400 font-semibold py-2 rounded-lg bg-gradient-to-r from-indigo-100 to-fuchsia-100">
-                    No courses available
-                  </li>
-                ) : (
-                  filteredCourses.map(course => (
-                    <li key={course._id} className="relative flex items-center gap-4 bg-gradient-to-br from-white via-indigo-50 to-fuchsia-50 rounded-2xl px-6 py-4 font-medium shadow-lg hover:shadow-2xl transition group border border-indigo-100">
-                      <div className="flex flex-col flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="text-lg font-extrabold text-indigo-700 group-hover:text-fuchsia-700 transition drop-shadow">{course.name}</span>
-                          <span className="text-xs font-bold text-white bg-indigo-400 px-2 py-0.5 rounded-full ml-1 shadow">Sec: {course.section}</span>
-                        </div>
-                        <div className="flex flex-wrap gap-2 text-xs font-semibold">
-                          <span className="text-indigo-600 bg-indigo-100 px-2 py-0.5 rounded">Faculty: {course.faculty}</span>
-                          <span className="text-fuchsia-600 bg-fuchsia-100 px-2 py-0.5 rounded">Time: {course.time}</span>
-                          <span className="text-pink-600 bg-pink-100 px-2 py-0.5 rounded">Exam: {course.examDay}</span>
-                        </div>
-                      </div>
-                      <button
-                        className="ml-2 px-6 py-2 bg-gradient-to-r from-green-400 to-green-600 rounded-xl text-white font-extrabold text-base shadow-lg hover:scale-110 hover:from-green-500 hover:to-green-700 transition flex items-center gap-2 border-2 border-green-200 disabled:opacity-50 disabled:cursor-not-allowed"
-                        onClick={() => handleSelect(course)}
-                        disabled={selected.some(c => c.name === course.name)}
-                      >
-                        <span className="inline-block align-middle text-lg">➕</span> Add
-                      </button>
-                    </li>
-                  ))
-                )}
-              </ul>
-            </div>
-            {/* Enrolled Courses Table */}
-            <div className="w-full mt-6">
-              <h2 className="font-extrabold mb-2 text-fuchsia-800 text-2xl flex items-center gap-2 tracking-tight">
-                <span className="inline-block w-3 h-3 bg-fuchsia-500 rounded-full animate-pulse"></span>
-                <span className="drop-shadow">Enrolled Courses</span>
-              </h2>
-              {selected.length === 0 ? (
-                <div className="text-center text-fuchsia-400 font-semibold py-6 rounded-lg bg-gradient-to-r from-fuchsia-100 to-indigo-100 shadow">
-                  No courses enrolled yet
-                </div>
-              ) : (
-                <div className="overflow-x-auto rounded-2xl shadow-2xl border-2 border-fuchsia-200 bg-gradient-to-br from-fuchsia-100 via-indigo-100 to-pink-100">
-                  <table className="min-w-full divide-y divide-fuchsia-200">
-                    <thead className="bg-gradient-to-r from-fuchsia-200 via-indigo-100 to-pink-100">
-                      <tr>
-                        <th className="px-4 py-2 text-left text-xs font-extrabold text-fuchsia-700 uppercase tracking-wider">Course</th>
-                        <th className="px-4 py-2 text-left text-xs font-extrabold text-fuchsia-700 uppercase tracking-wider">Faculty</th>
-                        <th className="px-4 py-2 text-left text-xs font-extrabold text-fuchsia-700 uppercase tracking-wider">Section</th>
-                        <th className="px-4 py-2 text-left text-xs font-extrabold text-fuchsia-700 uppercase tracking-wider">Time</th>
-                        <th className="px-4 py-2 text-left text-xs font-extrabold text-fuchsia-700 uppercase tracking-wider">Exam</th>
-                        <th className="px-4 py-2"></th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-gradient-to-br from-white via-fuchsia-50 to-indigo-50 divide-y divide-fuchsia-100">
-                      {selected.map(course => (
-                        <tr key={course._id} className="hover:bg-fuchsia-100/60 transition">
-                          <td className="px-4 py-2 font-bold text-indigo-700">{course.name}</td>
-                          <td className="px-4 py-2 text-indigo-600 font-semibold">{course.faculty}</td>
-                          <td className="px-4 py-2 text-indigo-600 font-semibold">{course.section}</td>
-                          <td className="px-4 py-2 text-indigo-600 font-semibold">{course.time}</td>
-                          <td className="px-4 py-2 text-indigo-600 font-semibold">{course.examDay}</td>
-                          <td className="px-4 py-2">
-                            <button
-                              className="px-3 py-1 bg-gradient-to-r from-red-400 to-red-600 rounded-md text-white font-bold hover:scale-110 hover:from-red-500 hover:to-red-700 transition shadow flex items-center gap-1"
-                              onClick={() => handleRemove(course)}
-                            >
-                              <span className="inline-block align-middle">🗑️</span>Remove
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
-            {/* Centered Save Button under cards */}
-            <div className="w-full flex justify-center mt-10">
+            
+            <div className="text-center mt-6">
               <button
-                className="px-8 py-3 bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white rounded-lg font-extrabold shadow-lg hover:scale-105 transition text-lg tracking-wide"
-                onClick={handleSave}
+                onClick={() => setIsModalOpen(false)}
+                className="px-6 py-2 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition duration-300 shadow"
               >
-                <span className="inline-block align-middle mr-2">💾</span>Save My Courses
+                Close
               </button>
             </div>
-            {/* Success message */}
-            {success && (
-              <div className="mt-6 px-6 py-3 bg-green-100 border border-green-400 text-green-700 rounded-lg text-center font-semibold shadow animate-bounce">
-                Courses saved successfully!
+          </div>
+        </div>
+      )}
+
+      <div className="flex-1 flex flex-col md:flex-row justify-center p-6 md:p-12 gap-8">
+        <div className="w-full md:w-1/2 flex flex-col gap-6">
+          <div className="w-full">
+            <h2 className="font-bold text-blue-800 text-2xl mb-4 border-b-2 border-blue-300 pb-2 flex items-center gap-2">
+              <span className="inline-block w-2 h-2 bg-blue-500 rounded-full animate-pulse"></span>
+              Available Courses
+            </h2>
+            
+            <div className="flex gap-2 mb-4">
+              <input
+                type="text"
+                placeholder="🔍 Search course code or name..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-1/2 px-4 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-400 text-gray-900 bg-white shadow-sm"
+              />
+              <input
+                type="text"
+                placeholder="🔢 Filter by section..."
+                value={sectionSearchTerm}
+                onChange={(e) => setSectionSearchTerm(e.target.value)}
+                className="w-1/2 px-4 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-400 text-gray-900 bg-white shadow-sm"
+              />
+            </div>
+            
+            <div className="bg-white p-4 rounded-xl w-full max-h-[60vh] overflow-y-auto shadow-md space-y-4 border border-gray-200">
+              {loading ? (
+                 <div className="flex items-center justify-center p-8">
+                 <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-500"></div>
+                 <span className="ml-4 text-blue-500 font-semibold">Loading courses...</span>
+               </div>
+              ) : filteredCourses.length === 0 ? (
+                <div className="text-center text-gray-400 font-semibold py-6 rounded-lg">
+                  No courses available
+                </div>
+              ) : (
+                filteredCourses.map(course => (
+                  <div key={course._id} className="flex flex-col md:flex-row items-center justify-between gap-4 bg-gray-50 rounded-lg px-4 py-3 font-medium shadow-sm hover:shadow-lg transition-all duration-300 border border-gray-200">
+                    <div className="flex flex-col flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-lg font-bold text-blue-700">{course.courseCode}</span>
+                        <span className="text-xs font-semibold text-blue-600 bg-blue-100 px-2 py-0.5 rounded-full">Sec: {course.section}</span>
+                      </div>
+                      <span className="text-sm font-medium text-gray-600">{course.courseName}</span>
+                      <div className="flex flex-wrap gap-2 text-xs font-semibold mt-2">
+                        <span className="text-gray-600 bg-gray-200 px-2 py-0.5 rounded">Faculty: {course.faculty}</span>
+                        <span className="text-gray-600 bg-gray-200 px-2 py-0.5 rounded">
+                          Days: {Array.isArray(course.day) ? course.day.join(', ') : course.day}
+                        </span>
+                        <span className="text-gray-600 bg-gray-200 px-2 py-0.5 rounded">
+                          Time: {course.startTime} - {course.endTime}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex gap-2 mt-4 md:mt-0">
+                      <button
+                        className="p-2 bg-blue-500 rounded-full text-white shadow-md hover:bg-blue-600 transition-all duration-300"
+                        onClick={() => handleViewDetails(course.courseCode, course.section)}
+                        title="View Details"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
+                          <path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/>
+                        </svg>
+                      </button>
+                      <button
+                        className="p-2 bg-green-500 rounded-full text-white shadow-md hover:bg-green-600 transition-all duration-300"
+                        onClick={() => handleSelect(course)}
+                        title="Add to Enrolled"
+                      >
+                        <span className="inline-block align-middle text-lg">➕</span>
+                      </button>
+                      <a 
+                        href={course.link} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="p-2 bg-blue-500 rounded-full text-white shadow-md hover:bg-blue-600 transition-all duration-300"
+                        title="View Course Details"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
+                           <path d="M19 12h-2c0-2.76-2.24-5-5-5s-5 2.24-5 5H5c0-4.42 3.58-8 8-8s8 3.58 8 8zM5 14h2c0 2.76 2.24 5 5 5s5-2.24 5-5h2c0 4.42-3.58 8-8 8s-8-3.58-8-8z"/>
+                        </svg>
+                      </a>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+        
+        <div className="w-full md:w-1/2 flex flex-col gap-6">
+          <div className="w-full">
+            <h2 className="font-bold text-blue-800 text-2xl mb-4 border-b-2 border-blue-300 pb-2 flex items-center gap-2">
+              <span className="inline-block w-2 h-2 bg-blue-500 rounded-full animate-pulse"></span>
+              Enrolled Courses
+            </h2>
+            {visibleSelected.length === 0 ? (
+              <div className="text-center text-gray-400 font-semibold py-6 rounded-lg bg-white shadow-sm border border-gray-200">
+                No courses enrolled yet
+              </div>
+            ) : (
+              <div className="bg-white p-4 rounded-xl w-full max-h-[60vh] overflow-y-auto shadow-md space-y-4 border border-gray-200">
+                {visibleSelected.map(course => (
+                  <div key={course._id} className="flex flex-col md:flex-row items-center justify-between gap-4 bg-gray-50 rounded-lg px-4 py-3 font-medium shadow-sm hover:shadow-lg transition-all duration-300 border border-gray-200">
+                    <div className="flex flex-col flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-lg font-bold text-blue-700">{course.courseCode}</span>
+                        <span className="text-xs font-semibold text-blue-600 bg-blue-100 px-2 py-0.5 rounded-full">Sec: {course.section}</span>
+                      </div>
+                      <span className="text-sm font-medium text-gray-600">{course.courseName}</span>
+                      <div className="flex flex-wrap gap-2 text-xs font-semibold mt-2">
+                        <span className="text-gray-600 bg-gray-200 px-2 py-0.5 rounded">Faculty: {course.faculty}</span>
+                        <span className="text-gray-600 bg-gray-200 px-2 py-0.5 rounded">
+                          Days: {Array.isArray(course.day) ? course.day.join(', ') : course.day}
+                        </span>
+                        <span className="text-gray-600 bg-gray-200 px-2 py-0.5 rounded">
+                          Time: {course.startTime} - {course.endTime}
+                        </span>
+                        <span className="text-gray-600 bg-gray-200 px-2 py-0.5 rounded">
+                          Exam: {course.examDay}
+                        </span>
+                      </div>
+                    </div>
+                    <button
+                      className="px-3 py-1 bg-red-500 rounded-md text-white font-semibold hover:bg-red-600 transition-all duration-300 shadow-sm flex items-center gap-1"
+                      onClick={() => handleRemove(course)}
+                    >
+                      <span className="inline-block align-middle">🗑️</span>Remove
+                    </button>
+                  </div>
+                ))}
               </div>
             )}
           </div>
+          
+          <div className="w-full flex justify-center mt-6 md:mt-10">
+            <button
+              className="px-8 py-3 bg-blue-600 text-white rounded-lg font-bold shadow-lg hover:bg-blue-700 transition-all duration-300 text-lg tracking-wide"
+              onClick={handleSave}
+            >
+              <span className="inline-block align-middle mr-2">💾</span>Save My Courses
+            </button>
+          </div>
+
+          {success && (
+            <div className="mt-6 px-6 py-3 bg-green-100 border border-green-400 text-green-700 rounded-lg text-center font-semibold shadow animate-pulse">
+              Courses saved successfully!
+            </div>
+          )}
         </div>
       </div>
     </div>
