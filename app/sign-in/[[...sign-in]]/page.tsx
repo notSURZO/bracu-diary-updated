@@ -1,29 +1,8 @@
+"use client";
+import { SignIn } from '@clerk/nextjs'
 import Image from "next/image";
-import { currentUser } from '@clerk/nextjs/server';
-import { redirect } from 'next/navigation';
-import { SignInButton } from '@clerk/nextjs';
-import Link from 'next/link';
-import FriendsSidebar from "./components/FriendsSidebar";
 
-export default async function Home() {
-  const user = await currentUser();
-
-  if (user) {
-    return (
-      
-      <div className="min-h-screen bg-gradient-to-br pr-54 from-slate-50 via-blue-50 to-indigo-100 flex items-center justify-center">
-        {/* <FriendsSidebar /> */}
-
-        <div className="text-center">
-          <h2 className="text-3xl font-bold text-gray-800 mb-4">Welcome Back!</h2>
-          <p className="text-gray-600">Content for logged-in users will be added here.</p>
-          <p className="text-gray-600 mt-2">You are currently logged in.</p>
-        </div>
-      </div>
-    );
-  }
-
-  // Render the original content for non-logged-in users
+export default function SignInPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
       <div className="min-h-screen grid lg:grid-cols-2 items-center">
@@ -95,45 +74,9 @@ export default async function Home() {
           </div>
         </div>
 
-        {/* Right Side - Auth Form */}
-        <div className="flex items-center justify-center px-6 lg:px-16 py-12 lg:py-0">
-          <div className="bg-white/95 backdrop-blur-md rounded-2xl shadow-2xl border border-white/30 p-8 w-full max-w-sm">
-            <div className="mb-8">
-              <h2 className="text-2xl font-bold text-gray-800 mb-3">Welcome Back</h2>
-              <p className="text-gray-600 text-sm leading-relaxed">Sign in to continue your academic journey</p>
-            </div>
-
-            <div className="space-y-4">
-              <SignInButton mode="modal">
-                <button className="w-full px-6 py-3.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-lg font-semibold text-base transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-[1.02]">
-                  Sign In
-                </button>
-              </SignInButton>
-
-              <div className="relative my-6">
-                <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-gray-200"></div>
-                </div>
-                <div className="relative flex justify-center text-sm">
-                  <span className="px-4 bg-white text-gray-500 font-medium">or</span>
-                </div>
-              </div>
-
-              <Link href="/sign-up">
-                <button className="w-full px-6 py-3.5 border-2 border-gray-200 text-gray-700 hover:border-blue-300 hover:text-blue-600 hover:bg-blue-50/50 rounded-lg font-semibold text-base transition-all duration-300 transform hover:scale-[1.02]">
-                  Create Account
-                </button>
-              </Link>
-            </div>
-
-            <p className="text-sm text-gray-500 mt-8 text-center">
-              New to BracU Diary?{' '}
-              <Link href="/sign-up" className="text-blue-600 hover:text-blue-700 cursor-pointer font-semibold transition-colors">
-                Get started for free
-              </Link>
-            </p>
-          </div>
-        </div>
+        <SignIn/>
+          
+        
       </div>
     </div>
   );

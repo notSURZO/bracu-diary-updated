@@ -101,7 +101,7 @@ export default function CoursesPage() {
   return (
     <div className="flex min-h-screen bg-gradient-to-br from-indigo-100 via-violet-100 to-fuchsia-100">
       {/* Sidebar */}
-      <Sidebar />
+      {/* <Sidebar /> */}
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col items-center justify-center py-12 px-2">
