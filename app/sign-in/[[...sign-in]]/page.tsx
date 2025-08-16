@@ -74,7 +74,10 @@ export default function SignInPage() {
           </div>
         </div>
 
-        <SignIn/>
+        <SignIn 
+          forceRedirectUrl="/"
+          signUpUrl="/sign-up"
+        />
           
         
       </div>

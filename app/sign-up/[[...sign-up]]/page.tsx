@@ -132,7 +132,7 @@ export default function CustomSignUp() {
           throw new Error(data.error || 'Failed to save user data');
         }
         await setActive({ session: completeSignUp.createdSessionId });
-        router.push('/dashboard');
+        router.push('/');
       } else {
         throw new Error('Email verification incomplete');
       }
