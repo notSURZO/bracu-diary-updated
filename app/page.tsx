@@ -15,5 +15,8 @@ export default async function Home() {
         </div>
       </div>
     );
-  } 
+  } else {
+    // Redirect to the sign-in page if the user is not logged in
+    redirect('/sign-in');
+  }
 }
