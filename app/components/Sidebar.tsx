@@ -37,7 +37,8 @@ const navItems = [
     icon: Icons.FaRegFolder,
     subItems: [
       { name: 'Enroll', href: '/enroll', icon: Icons.FaPlus },
-      { name: 'Course Reviews', href: '/courses/reviews', icon: Icons.FaRegFileAlt },
+  // Link to the courses list page for dynamic selection
+  { name: 'Course Reviews', href: '/courses', icon: Icons.FaRegFileAlt },
     ],
   },
   {

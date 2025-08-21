@@ -6,7 +6,7 @@ import { ClerkProvider } from '@clerk/nextjs';
 import ConditionalHeader from './components/ConditionalHeader';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
-import FriendsSidebarGate from './components/FriendsSidebarGate';
+
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -30,6 +30,7 @@ export default function RootLayout({
 }) {
   return (
     <ClerkProvider
+      afterSignOutUrl = "/sign-in"
       appearance={{
         cssLayerName: 'clerk',
       }}
@@ -40,7 +41,7 @@ export default function RootLayout({
           {/* Spacer to offset the fixed header height so content never hides behind it */}
           <div className="h-24" aria-hidden />
           <main className="flex-grow pl-64">{children}</main>
-          <FriendsSidebarGate />
+          
           <ToastContainer
             position="top-right"
             autoClose={3000}
