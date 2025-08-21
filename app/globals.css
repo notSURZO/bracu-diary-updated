@@ -54,6 +54,10 @@ ul {
   border: 1px solid #d1d5db;
 }
 
+body.with-right-sidebar main {
+  padding-right: 16rem; /* matches FriendsSidebar width (w-64) */
+}
+
 .search-results {
   position: absolute;
   top: 100%;

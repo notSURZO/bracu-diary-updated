@@ -26,7 +26,6 @@ function FriendsSidebar() {
   const [friends, setFriends] = useState<Friend[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const pathname = usePathname();
 
   useEffect(() => {
     if (!isLoaded || !currentUserEmail) {
@@ -43,7 +42,7 @@ function FriendsSidebar() {
       }
 
       try {
-        const response = await fetch('/api/my-connections');
+        const response = await fetch('/api/my-connections', { credentials: 'include' });
         const data = await response.json();
 
         if (response.ok) {
@@ -63,7 +62,7 @@ function FriendsSidebar() {
     fetchFriends();
   }, [currentUserEmail, isLoaded]);
 
-  if (!isLoaded || !currentUserEmail || shouldHide) {
+  if (!isLoaded || !currentUserEmail) {
     return null;
   }
 
@@ -77,11 +76,12 @@ function FriendsSidebar() {
       {friends.length > 0 && (
         <ul className="space-y-2">
           {friends.map((friend) => {
-            const isActive = pathname === `/profile/${friend.username || friend.email}`;
+            const target = `/connections/${friend.clerkId}/resources`;
+            const isActive = pathname.startsWith(target);
             return (
               <li key={friend.id}>
                 <Link
-                  href={`/profile/${friend.username || friend.email}`}
+                  href={target}
                   className={`flex items-center p-2 rounded transition-colors relative ${
                     isActive
                       ? 'bg-blue-100 text-blue-700 font-semibold'
@@ -101,8 +101,14 @@ function FriendsSidebar() {
                       <span className="text-gray-500">{friend.name?.[0] || '?'}</span>
                     </div>
                   )}
-                  <div>
+                  <div className="flex items-center gap-2">
                     <span className="font-medium">{friend.name}</span>
+                    <span
+                      title={`${friend.sharedResourceCount} shared folders`}
+                      className="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-600"
+                    >
+                      {friend.sharedResourceCount}
+                    </span>
                   </div>
                   {isActive && (
                     <span className="absolute left-0 bottom-0 w-full h-0.5 bg-blue-700"></span>
