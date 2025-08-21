@@ -46,7 +46,7 @@ const navItems = [
     icon: Icons.FaRegCopy,
     subItems: [
       { name: 'Public Resources', href: '/public-resources', icon: Icons.FaGlobe },
-      { name: 'Private Resources', href: '/resources/private', icon: Icons.FaLock },
+      { name: 'Private Resources', href: '/private-resources', icon: Icons.FaLock },
     ],
   },
   { name: 'Manage Deadlines', href: '/deadlines', icon: Icons.FaRegClock },

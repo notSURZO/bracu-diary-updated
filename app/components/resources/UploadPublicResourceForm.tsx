@@ -9,10 +9,11 @@ interface Props {
   courseCode: string;
   defaultCourseName?: string;
   directoryId?: string;
+  isPrivate?: boolean;
   onSuccess?: () => void;
 }
 
-export default function UploadPublicResourceForm({ courseCode, defaultCourseName, directoryId, onSuccess }: Readonly<Props>) {
+export default function UploadPublicResourceForm({ courseCode, defaultCourseName, directoryId, isPrivate = false, onSuccess }: Readonly<Props>) {
   const router = useRouter();
   const { userId } = useAuth();
   const [title, setTitle] = useState("");
@@ -77,7 +78,7 @@ export default function UploadPublicResourceForm({ courseCode, defaultCourseName
         payload.kind = 'file';
         payload.file = { url: fileUrl, bytes: fileMeta?.bytes, mime: fileMeta?.mime, originalName: fileMeta?.originalName };
       }
-      const res = await fetch("/api/public-resources", {
+      const res = await fetch(`/api/${isPrivate ? 'private' : 'public'}-resources`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -109,7 +110,7 @@ export default function UploadPublicResourceForm({ courseCode, defaultCourseName
               ownerUserId: userId || undefined,
               createdAt: new Date().toISOString(),
             };
-        window.dispatchEvent(new CustomEvent('resource:created', { detail: { item: optimisticItem } }));
+        window.dispatchEvent(new CustomEvent(`${isPrivate ? 'private-' : ''}resource:created`, { detail: { item: optimisticItem } }));
       } catch {}
 
       toast.success("Resource uploaded");
@@ -117,9 +118,9 @@ export default function UploadPublicResourceForm({ courseCode, defaultCourseName
       setDescription("");
       setFileUrl("");
       setFileMeta(undefined);
-      // notify parent (modal) then refresh to fetch new items
+      // notify parent (modal) and also refresh route so non-listener pages update instantly
       try { onSuccess?.(); } catch {}
-      // No refresh necessary due to optimistic insert
+      try { router.refresh(); } catch {}
     } catch (err: any) {
       toast.error(err.message || "Something went wrong");
     } finally {

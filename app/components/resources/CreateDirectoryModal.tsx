@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
-export default function CreateDirectoryModal() {
+export default function CreateDirectoryModal({ isPrivate = false }: { isPrivate?: boolean }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [courseCode, setCourseCode] = useState("");
@@ -14,7 +14,8 @@ export default function CreateDirectoryModal() {
     if (!courseCode || !title) return;
     try {
       setSubmitting(true);
-      const res = await fetch("/api/resource-directories", {
+      const endpoint = isPrivate ? "/api/private-resource-directories" : "/api/resource-directories";
+      const res = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ courseCode, title }),

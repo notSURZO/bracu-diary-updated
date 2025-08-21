@@ -25,8 +25,12 @@ export async function GET(req: NextRequest) {
       ];
     }
 
-    let sort: Record<string, 1 | -1> = { createdAt: -1 };
+    // Default: Course Code A–Z when empty
+    let sort: Record<string, 1 | -1> = { courseCode: 1, title: 1 };
     switch (sortParam) {
+      case 'newest':
+        sort = { createdAt: -1 };
+        break;
       case 'oldest':
         sort = { createdAt: 1 };
         break;
@@ -42,7 +46,7 @@ export async function GET(req: NextRequest) {
       case 'title_desc':
         sort = { title: -1 };
         break;
-      // default: newest
+      // default handled above
     }
 
     const [items, total] = await Promise.all([

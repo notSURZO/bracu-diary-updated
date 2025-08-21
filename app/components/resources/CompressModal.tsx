@@ -12,9 +12,10 @@ interface Props {
   courseCode: string;
   defaultCourseName?: string;
   directoryId?: string;
+  isPrivate?: boolean;
 }
 
-export default function CompressModal({ triggerLabel = "Compress", courseCode, defaultCourseName, directoryId }: Props) {
+export default function CompressModal({ triggerLabel = "Compress", courseCode, defaultCourseName, directoryId, isPrivate = false }: Props) {
   const router = useRouter();
   const { userId } = useAuth();
   const [open, setOpen] = useState(false);
@@ -320,7 +321,7 @@ export default function CompressModal({ triggerLabel = "Compress", courseCode, d
         kind: 'file',
         file: { url: publicFileUrl as string, bytes: artifactBlob.size, mime: artifactMime, originalName: artifactName },
       };
-      const res = await fetch('/api/public-resources', {
+      const res = await fetch(`/api/${isPrivate ? 'private' : 'public'}-resources`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
@@ -345,7 +346,7 @@ export default function CompressModal({ triggerLabel = "Compress", courseCode, d
           upvoters: [],
           downvoters: [],
         };
-        window.dispatchEvent(new CustomEvent('resource:created', { detail: { item } }));
+        window.dispatchEvent(new CustomEvent(`${isPrivate ? 'private-' : ''}resource:created`, { detail: { item } }));
       } catch {}
 
       toast.success('Uploaded & published');
@@ -440,7 +441,7 @@ export default function CompressModal({ triggerLabel = "Compress", courseCode, d
         kind: 'file',
         file: { url: publicUrl, bytes: undefined, mime: 'application/zip', originalName: title || undefined },
       };
-      const res = await fetch('/api/public-resources', {
+      const res = await fetch(`/api/${isPrivate ? 'private' : 'public'}-resources`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
@@ -449,11 +450,26 @@ export default function CompressModal({ triggerLabel = "Compress", courseCode, d
         const j = await res.json().catch(() => ({}));
         throw new Error(j.error || 'Create resource failed');
       }
+      const { id } = await res.json();
+
+      // Optimistic broadcast so grids update instantly
+      try {
+        const item = {
+          _id: id as string,
+          title: (title || 'Compressed file').trim(),
+          description,
+          kind: 'file' as const,
+          file: { url: publicUrl, bytes: undefined, originalName: title || undefined },
+          ownerUserId: userId || undefined,
+          createdAt: new Date().toISOString(),
+          ownerDisplayName: 'You',
+        };
+        window.dispatchEvent(new CustomEvent(`${isPrivate ? 'private-' : ''}resource:created`, { detail: { item } }));
+      } catch {}
+
       toast.success('Resource created');
       setOpen(false);
       resetAll();
-      // Refresh the current route so the new resource appears
-      router.refresh();
     } catch (e: any) {
       console.error(e);
       toast.error(e.message || 'Failed to create resource');

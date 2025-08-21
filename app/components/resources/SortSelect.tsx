@@ -3,12 +3,13 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCallback } from "react";
 
 const options: Array<{ value: string; label: string }> = [
-  { value: "", label: "Newest" },
-  { value: "oldest", label: "Oldest" },
-  { value: "code_asc", label: "Course Code A–Z" },
+  // Empty value is the default; we want Course Code A–Z by default
+  { value: "", label: "Course Code A–Z" },
   { value: "code_desc", label: "Course Code Z–A" },
   { value: "title_asc", label: "Title A–Z" },
   { value: "title_desc", label: "Title Z–A" },
+  { value: "newest", label: "Newest" },
+  { value: "oldest", label: "Oldest" },
 ];
 
 export default function SortSelect() {
@@ -40,7 +41,7 @@ export default function SortSelect() {
         aria-label="Sort folders"
       >
         {options.map((opt) => (
-          <option key={opt.value || "newest"} value={opt.value}>
+          <option key={opt.value || "default"} value={opt.value}>
             {opt.label}
           </option>
         ))}

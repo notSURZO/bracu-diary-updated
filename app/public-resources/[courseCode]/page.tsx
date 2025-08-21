@@ -17,7 +17,7 @@ async function getResources(courseCode: string, searchParams: { q?: string; page
   const hdrs = await headers();
   const host = hdrs.get("x-forwarded-host") || hdrs.get("host") || "localhost:3000";
   const proto = hdrs.get("x-forwarded-proto") || (host.includes("localhost") ? "http" : "https");
-  const url = `${proto}://${host}/api/public-resources/${encodeURIComponent(courseCode)}${query ? `?${query}` : ''}`;
+  const url = `${proto}://${host}/api/public-resources/by-course/${encodeURIComponent(courseCode)}${query ? `?${query}` : ''}`;
   const res = await fetch(url, { next: { tags: ["public-resources", `public-resources:${courseCode}`], revalidate: 60 } });
   if (!res.ok) {
     return { items: [], page: 1, limit: 12, total: 0 } as any;
@@ -25,13 +25,15 @@ async function getResources(courseCode: string, searchParams: { q?: string; page
   return res.json();
 }
 
-export default async function CoursePublicResourcesPage({ params, searchParams }: Readonly<{ params: { courseCode: string }; searchParams: { q?: string; page?: string; limit?: string } }>) {
-  const courseCode = decodeURIComponent(params.courseCode).toUpperCase();
-  const data = await getResources(courseCode, searchParams);
+export default async function CoursePublicResourcesPage({ params, searchParams }: Readonly<{ params: Promise<{ courseCode: string }>; searchParams: Promise<{ q?: string; page?: string; limit?: string }> }>) {
+  const { courseCode: raw } = await params;
+  const sp = await searchParams;
+  const courseCode = decodeURIComponent(raw).toUpperCase();
+  const data = await getResources(courseCode, sp);
   const items: Array<{ _id: string; title: string; description?: string; file: any; ownerUserId: string }> = data.items || [];
 
   // Client-side prefix filter for instant updates
-  const q = (searchParams.q || "").trim().toLowerCase();
+  const q = (sp.q || "").trim().toLowerCase();
   const filtered = q
     ? items.filter((it) => {
         const t = (it.title || "").toLowerCase();

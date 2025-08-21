@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/db';
 import CourseResource from '@/lib/models/CourseResource';
 
-// GET ?q=&page=&limit= -> list public resources for a course; filter by q on title/description
+// GET /api/public-resources/by-course/:courseCode?q=&page=&limit=
 export async function GET(req: NextRequest, { params }: { params: { courseCode: string } }) {
   try {
     await connectToDatabase();
@@ -30,7 +30,7 @@ export async function GET(req: NextRequest, { params }: { params: { courseCode: 
 
     return NextResponse.json({ items, page, limit, total });
   } catch (error) {
-    console.error('public-resources/[courseCode] GET error:', error);
+    console.error('public-resources/by-course/[courseCode] GET error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

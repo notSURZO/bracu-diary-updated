@@ -7,9 +7,10 @@ interface Props {
   courseCode: string;
   defaultCourseName?: string;
   directoryId?: string;
+  isPrivate?: boolean;
 }
 
-export default function UploadModal({ triggerLabel = "Upload", courseCode, defaultCourseName, directoryId }: Props) {
+export default function UploadModal({ triggerLabel = "Upload", courseCode, defaultCourseName, directoryId, isPrivate = false }: Props) {
   const [open, setOpen] = useState(false);
   const triggerRef = useRef<HTMLButtonElement | null>(null);
   const dialogRef = useRef<HTMLDivElement | null>(null);
@@ -108,6 +109,7 @@ export default function UploadModal({ triggerLabel = "Upload", courseCode, defau
                   courseCode={courseCode}
                   defaultCourseName={defaultCourseName}
                   directoryId={directoryId}
+                  isPrivate={isPrivate}
                   onSuccess={() => setOpen(false)}
                 />
               </div>

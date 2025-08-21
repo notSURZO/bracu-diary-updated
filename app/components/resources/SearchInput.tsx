@@ -11,10 +11,16 @@ export default function SearchInput({ placeholder }: Props) {
   const router = useRouter();
   const pathname = usePathname();
   const [value, setValue] = useState(searchParams.get("q") || "");
+  const [isFocused, setIsFocused] = useState(false);
 
+  // Keep input in sync with URL when not focused to avoid wiping typing
   useEffect(() => {
-    setValue(searchParams.get("q") || "");
-  }, [searchParams]);
+    if (isFocused) return;
+    const q = searchParams.get("q") || "";
+    setValue(q);
+    // Broadcast to listeners so grids update when URL changes externally
+    try { window.dispatchEvent(new CustomEvent('resource-search:q', { detail: { q } })); } catch {}
+  }, [searchParams, isFocused]);
 
   const updateQuery = useCallback(
     (next: string) => {
@@ -23,22 +29,23 @@ export default function SearchInput({ placeholder }: Props) {
       else params.delete("q");
       params.delete("page");
       // Use replace for live updates to avoid polluting browser history
-      router.replace(`${pathname}?${params.toString()}`);
+      const qs = params.toString();
+      router.replace(qs ? `${pathname}?${qs}` : pathname);
     },
     [router, pathname, searchParams]
   );
 
-  // Debounced live search: update URL as user types
+  // Debounced live search: broadcast to listeners without routing (avoids remounts)
   useEffect(() => {
     const trimmed = value.trim();
     const current = searchParams.get("q") || "";
-    // Avoid unnecessary navigations
-    if (trimmed === current) return;
+    // No-op if value matches current URL and we're not focused
+    if (!isFocused && trimmed === current) return;
     const id = setTimeout(() => {
-      updateQuery(trimmed);
+      try { window.dispatchEvent(new CustomEvent('resource-search:q', { detail: { q: trimmed } })); } catch {}
     }, 250);
     return () => clearTimeout(id);
-  }, [value, updateQuery, searchParams]);
+  }, [value, searchParams, isFocused]);
 
   return (
     <div className="w-full max-w-xl relative">
@@ -61,10 +68,11 @@ export default function SearchInput({ placeholder }: Props) {
         aria-label="Search"
         value={value}
         onChange={(e) => setValue(e.target.value)}
+        onFocus={() => setIsFocused(true)}
         onKeyDown={(e) => {
           if (e.key === "Enter") updateQuery(value.trim());
         }}
-        onBlur={() => updateQuery(value.trim())}
+        onBlur={() => { setIsFocused(false); updateQuery(value.trim()); }}
       />
     </div>
   );

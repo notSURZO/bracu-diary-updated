@@ -4,6 +4,7 @@ import VoteButtons from "@/app/components/resources/VoteButtons";
 import CopyLinkButton from "@/app/components/resources/CopyLinkButton";
 import { FaYoutube, FaFilePdf, FaFileWord, FaFileAlt, FaLink, FaFileArchive } from "react-icons/fa";
 import { useState, useCallback, useEffect, useRef } from "react";
+import { useSearchParams } from "next/navigation";
 import { FiTrash2 } from "react-icons/fi";
 import { toast } from "react-toastify";
 import { useAuth } from "@clerk/nextjs";
@@ -55,8 +56,10 @@ function colorForType(t: ReturnType<typeof getFileType>): string {
 }
 
 export default function FolderGridClient({ items: initialItems }: { readonly items: ResourceItem[] }) {
+  const searchParams = useSearchParams();
   const { userId } = useAuth();
   const [items, setItems] = useState(() => initialItems.map(i => ({ ...i })));
+  const [query, setQuery] = useState<string>(() => (searchParams.get('q') || ''));
   const [confirmingId, setConfirmingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const deletedIdsRef = useRef<Set<string>>(new Set());
@@ -164,9 +167,35 @@ export default function FolderGridClient({ items: initialItems }: { readonly ite
     }
   }, [sortItems]);
 
+  // Keep local query in sync with URL changes (e.g., on blur/Enter or back/forward)
+  useEffect(() => {
+    setQuery(searchParams.get('q') || '');
+  }, [searchParams]);
+
+  // Listen to live typing events from SearchInput for instant filtering without routing
+  useEffect(() => {
+    function onQ(e: Event) {
+      const q = (e as CustomEvent).detail?.q as string | undefined;
+      if (typeof q === 'string') setQuery(q);
+    }
+    window.addEventListener('resource-search:q', onQ as EventListener);
+    return () => window.removeEventListener('resource-search:q', onQ as EventListener);
+  }, []);
+
+  // Client-side prefix search based on current query for instant filtering
+  const q = (query || '').trim().toLowerCase();
+  const tokens = q ? q.split(/\s+/).filter(Boolean) : [];
+  const visible = tokens.length ? items.filter((it) => {
+    const title = (it.title || '').toLowerCase();
+    const desc = (it.description || '').toLowerCase();
+    const fname = (it.file?.originalName || '').toLowerCase();
+    // prefix match: any field startsWith each token (AND across tokens)
+    return tokens.every(t => title.startsWith(t) || desc.startsWith(t) || fname.startsWith(t));
+  }) : items;
+
   return (
     <div className="mb-8 grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-3">
-      {items.map((r) => {
+      {visible.map((r) => {
         const urlForType = r.kind === 'youtube' ? (r.youtube?.url || '') : (r.file?.url || '');
         const type = r.kind === 'youtube' ? 'VIDEO' : getFileType(urlForType);
         const color = colorForType(type);

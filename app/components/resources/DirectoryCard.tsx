@@ -4,9 +4,10 @@ interface Props {
   _id: string;
   courseCode: string;
   title: string;
+  isPrivate?: boolean;
 }
 
-export default function DirectoryCard({ _id, courseCode, title }: Props) {
+export default function DirectoryCard({ _id, courseCode, title, isPrivate = false }: Props) {
   return (
     <div className="group flex h-full flex-col justify-between rounded-xl border border-gray-200 bg-white p-4 shadow-sm transition-shadow hover:shadow-md">
       <div className="flex items-start justify-between gap-3">
@@ -22,7 +23,13 @@ export default function DirectoryCard({ _id, courseCode, title }: Props) {
               {title}
             </div>
             <div className="mt-1 inline-flex items-center gap-2">
-              <span className="inline-flex items-center rounded-md border border-green-200 bg-green-50 px-2 py-0.5 text-xs font-medium text-green-700">Public</span>
+              <span className={`inline-flex items-center rounded-md border px-2 py-0.5 text-xs font-medium ${
+                isPrivate 
+                  ? 'border-purple-200 bg-purple-50 text-purple-700' 
+                  : 'border-green-200 bg-green-50 text-green-700'
+              }`}>
+                {isPrivate ? 'Private' : 'Public'}
+              </span>
             </div>
           </div>
         </div>
@@ -30,7 +37,7 @@ export default function DirectoryCard({ _id, courseCode, title }: Props) {
 
       <div className="mt-4">
         <Link
-          href={`/public-resources/folders/${_id}`}
+          href={`/${isPrivate ? 'private' : 'public'}-resources/folders/${_id}`}
           aria-label={`View resources for ${title}`}
           className="inline-flex w-full items-center justify-center h-9 rounded-md border border-transparent bg-blue-600 px-3 text-sm font-medium text-white shadow-sm transition-colors hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
         >
