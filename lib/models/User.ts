@@ -17,8 +17,37 @@ export interface IUser extends Document {
   avatarUrl?: string;
   address?: string;
   department?: string;
-  enrolledCourses: string[]; // Array to store IDs of enrolled courses
+  enrolledCourses: Array<{
+    _id: string; // Modified course ID (with section/lab suffix)
+    originalCourseId: string; // Original MongoDB ObjectId
+    courseCode: string;
+    courseName: string;
+    section: string;
+    faculty: string;
+    details: string;
+    day: string[];
+    startTime: string;
+    endTime: string;
+    examDay?: string;
+    hasLab: boolean;
+    link: string;
+  }>; // Array to store enrolled courses with both modified and original IDs
   connections: string[]; // Array to store emails of accepted connections
+  deadlines?: Array<{
+    id: string;
+    title: string;
+    details: string;
+    submissionLink?: string;
+    lastDate: Date;
+    courseId: string; // Modified course ID (with section/lab suffix)
+    originalCourseId: string; // Original MongoDB ObjectId
+    courseCode: string;
+    courseName: string;
+    section: string;
+    type: 'theory' | 'lab';
+    createdBy: string;
+    createdAt: Date;
+  }>;
 }
 
 const UserSchema: Schema = new Schema({
@@ -36,8 +65,37 @@ const UserSchema: Schema = new Schema({
   connectionRequests: [{ type: String, default: [] }],
   address: { type: String, default: '' },
   department: { type: String, default: '' },
-  enrolledCourses: { type: Array, default: [] },
+  enrolledCourses: [{
+    _id: { type: String, required: true },
+    originalCourseId: { type: String, required: true },
+    courseCode: { type: String, required: true },
+    courseName: { type: String, required: true },
+    section: { type: String, required: true },
+    faculty: { type: String, required: true },
+    details: { type: String, required: true },
+    day: { type: [String], required: true },
+    startTime: { type: String, required: true },
+    endTime: { type: String, required: true },
+    examDay: { type: String, required: false },
+    hasLab: { type: Boolean, required: true },
+    link: { type: String, required: true }
+  }],
   connections: [{ type: String, default: [] }], // Added for accepted connections
+  deadlines: [{
+    id: { type: String, required: true },
+    title: { type: String, required: true },
+    details: { type: String, required: true },
+    submissionLink: { type: String, default: '' },
+    lastDate: { type: Date, required: true },
+    courseId: { type: String, required: true }, // Modified course ID (with section/lab suffix)
+    originalCourseId: { type: String, required: true }, // Original MongoDB ObjectId
+    courseCode: { type: String, required: true },
+    courseName: { type: String, required: true },
+    section: { type: String, required: true },
+    type: { type: String, enum: ['theory', 'lab'], required: true },
+    createdBy: { type: String, required: true },
+    createdAt: { type: Date, default: Date.now }
+  }]
 });
 
 // Update the updatedAt field before saving

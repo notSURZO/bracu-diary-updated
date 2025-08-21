@@ -1,5 +1,36 @@
 import mongoose from "mongoose";
 
+const DeadlineSchema = new mongoose.Schema({
+  id: {
+    type: String,
+    required: true
+  },
+  title: {
+    type: String,
+    required: true
+  },
+  details: {
+    type: String,
+    required: true
+  },
+  submissionLink: {
+    type: String,
+    default: ''
+  },
+  lastDate: {
+    type: Date,
+    required: true
+  },
+  createdBy: {
+    type: String,
+    required: true
+  },
+  createdAt: {
+    type: Date,
+    default: Date.now
+  }
+});
+
 const ClassDetailsSchema = new mongoose.Schema({
   faculty: {
     type: String,
@@ -21,6 +52,10 @@ const ClassDetailsSchema = new mongoose.Schema({
     type: String,
     required: true
   },
+  deadlines: {
+    type: [DeadlineSchema],
+    default: []
+  }
 });
 
 const SectionSchema = new mongoose.Schema({

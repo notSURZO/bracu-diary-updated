@@ -1,4 +1,4 @@
-"use client";
+// "use client";
 import { useEffect, useState } from "react";
 import { useUser } from '@clerk/nextjs';
 import Sidebar from "./Sidebar";
@@ -29,7 +29,8 @@ interface Course {
 
 // Interface for the flattened data we'll display in the Available Courses list
 interface DisplayCourse {
-  _id: string;
+  _id: string; // The client-side unique ID
+  originalCourseId: string; // The original MongoDB ObjectId
   courseCode: string;
   courseName: string;
   section: string;
@@ -106,6 +107,7 @@ export default function ManageCourses() {
       const availableCourses = allCourses.flatMap((c: Course) => 
         c.sections.map((s: Section) => ({
           _id: c._id + s.section,
+          originalCourseId: c._id, // Add originalCourseId
           courseCode: c.courseCode,
           courseName: c.courseName,
           section: s.section,
@@ -140,6 +142,7 @@ export default function ManageCourses() {
     if (fullSection) {
       const newSelected: DisplayCourse[] = [{
         _id: course._id,
+        originalCourseId: fullCourse?._id || '', // Include the original ID
         courseCode: course.courseCode,
         courseName: course.courseName,
         section: fullSection.section,
@@ -156,6 +159,7 @@ export default function ManageCourses() {
       if (fullSection.lab) {
         newSelected.push({
           _id: course._id + '-lab',
+          originalCourseId: fullCourse?._id || '', // Include the original ID for the lab
           courseCode: course.courseCode + 'L',
           courseName: course.courseName + ' Lab',
           section: fullSection.section,
@@ -186,6 +190,7 @@ export default function ManageCourses() {
     if (fullCourse) {
       const sectionsToAddBack = fullCourse.sections.map(s => ({
         _id: fullCourse._id + s.section,
+        originalCourseId: fullCourse._id, // Add originalCourseId
         courseCode: fullCourse.courseCode,
         courseName: fullCourse.courseName,
         section: s.section,
@@ -208,14 +213,14 @@ export default function ManageCourses() {
     const res = await fetch(`/api/user-courses?email=${encodeURIComponent(userEmail)}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email: userEmail, selectedCourses: selected }),
+      body: JSON.stringify({ email: userEmail, selectedCourses: selected }), // 'selected' now contains originalCourseId
     });
 
     if (!res.ok) {
       await fetch("/api/user-courses", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: userEmail, selectedCourses: selected }),
+        body: JSON.stringify({ email: userEmail, selectedCourses: selected }), // 'selected' now contains originalCourseId
       });
     }
 
