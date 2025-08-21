@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useUser } from '@clerk/nextjs';
@@ -23,6 +23,7 @@ export default function SearchBar() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isConnecting, setIsConnecting] = useState<string | null>(null);
+  const searchContainerRef = useRef<HTMLDivElement>(null);
 
   const { user, isLoaded } = useUser();
   const currentUserEmail = user?.emailAddresses?.[0]?.emailAddress?.toLowerCase() || '';
@@ -70,6 +71,20 @@ export default function SearchBar() {
     const debounce = setTimeout(fetchResults, 300);
     return () => clearTimeout(debounce);
   }, [query, currentUserEmail, isLoaded]);
+
+  // Handle clicks outside the search container
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (searchContainerRef.current && !searchContainerRef.current.contains(event.target as Node)) {
+        clearSearch(); // Call clearSearch to reset query, results, and error
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
 
   const handleConnect = async (targetUserId: string) => {
     setIsConnecting(targetUserId);
@@ -140,14 +155,25 @@ export default function SearchBar() {
   };
 
   return (
-    <div className="search-container relative max-w-lg">
-      <input
-        type="text"
-        value={query}
-        onChange={(e) => setQuery(e.target.value)}
-        placeholder="🔍 Search for people..."
-        className="focus:outline-none focus:ring-2 focus:ring-blue-500 w-full p-2 border rounded"
-      />
+    <div className="search-container relative max-w-lg" ref={searchContainerRef}>
+      <div className="relative">
+        <input
+          type="text"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="🔍 Search for people..."
+          className="focus:outline-none focus:ring-2 focus:ring-blue-500 w-full p-2 pr-8 border rounded"
+        />
+        {query && (
+          <button
+            onClick={clearSearch}
+            className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
+            aria-label="Clear search"
+          >
+            ✕
+          </button>
+        )}
+      </div>
       {isLoading && <div className="search-results p-2 text-gray-500 max-w-lg">Loading...</div>}
       {error && <div className="search-results p-2 text-red-500 max-w-lg">{error}</div>}
       {results.length === 0 && query && !isLoading && !error && (
