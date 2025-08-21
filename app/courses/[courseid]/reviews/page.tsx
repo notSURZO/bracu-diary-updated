@@ -9,8 +9,7 @@ import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import debounce from 'lodash/debounce';
 
-// ... (IReview, UserProfile, Course, StarRating, ReviewForm, and ReviewItem components remain exactly the same)
-// No changes needed for the components below this line
+
 interface IReview {
   _id: string;
   courseId: string;

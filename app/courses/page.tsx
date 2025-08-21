@@ -16,7 +16,7 @@ export default function CoursesListPage() {
   const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const [filter, setFilter] = useState<string>("");
+  const [filter, setFilter] = useState<string>("highest"); // Default sort highest rated
   const router = useRouter();
 
   useEffect(() => {
