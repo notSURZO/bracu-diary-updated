@@ -29,9 +29,9 @@ async function getDirectories(searchParams: { q?: string; page?: string; limit?:
   return res.json();
 }
 
-export default async function PublicResourcesPage({ searchParams }: { searchParams: { q?: string; page?: string; limit?: string; sort?: string } }) {
+export default async function PublicResourcesPage({ searchParams }: { readonly searchParams: { q?: string; page?: string; limit?: string; sort?: string } }) {
   const data = await getDirectories(searchParams);
-  const items: Array<{ _id: string; courseCode: string; title: string }> = data.items || [];
+  const items: Array<{ _id: string; courseCode: string; title: string; visibility: 'private' | 'connections' | 'public'; ownerUserId: string; updatedAt: string; }> = data.items || [];
 
   return (
     <div className="px-4 py-6 max-w-7xl mx-auto">
@@ -57,7 +57,15 @@ export default async function PublicResourcesPage({ searchParams }: { searchPara
       ) : (
         <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {items.map((d) => (
-            <DirectoryCard key={d._id} _id={d._id} courseCode={d.courseCode} title={d.title} />
+            <DirectoryCard
+              key={d._id}
+              _id={d._id}
+              courseCode={d.courseCode}
+              title={d.title}
+              visibility={d.visibility}
+              ownerUserId={d.ownerUserId}
+              updatedAt={d.updatedAt}
+            />
           ))}
         </div>
       )}

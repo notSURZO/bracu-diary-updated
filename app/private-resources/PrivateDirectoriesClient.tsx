@@ -8,6 +8,9 @@ export type PrivateDirectory = {
   _id: string;
   courseCode: string;
   title: string;
+  visibility: 'private' | 'connections' | 'public';
+  ownerUserId: string;
+  updatedAt: string; // or Date
 };
 
 export default function PrivateDirectoriesClient({ items }: { readonly items: PrivateDirectory[] }) {
@@ -51,7 +54,15 @@ export default function PrivateDirectoriesClient({ items }: { readonly items: Pr
   return (
     <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
       {visible.map((d) => (
-        <DirectoryCard key={d._id} _id={d._id} courseCode={d.courseCode} title={d.title} isPrivate={true} />
+        <DirectoryCard
+          key={d._id}
+          _id={d._id}
+          courseCode={d.courseCode}
+          title={d.title}
+          visibility={d.visibility}
+          ownerUserId={d.ownerUserId}
+          updatedAt={d.updatedAt}
+        />
       ))}
     </div>
   );

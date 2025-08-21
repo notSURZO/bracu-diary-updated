@@ -1,3 +1,4 @@
+import { getConnectionIds } from '@/lib/connections';
 import { NextRequest, NextResponse } from 'next/server';
 import { revalidateTag } from 'next/cache';
 import { getAuth } from '@clerk/nextjs/server';
@@ -19,17 +20,33 @@ export async function GET(req: NextRequest) {
     const sort = (searchParams.get('sort') || '').trim();
     const skip = (page - 1) * limit;
 
-    // Build filter for private resources (only user's own resources)
-    const filter: any = { 
-      visibility: 'private',
-      ownerUserId: userId
+    // Build filter for private resources (user's own + connections')
+    const connectionIds = await getConnectionIds(userId);
+    const baseFilter = {
+      $or: [
+        { ownerUserId: userId, visibility: { $ne: 'public' } }, // Only own directories that are not public
+        {
+          ownerUserId: { $in: connectionIds }, // Connections' directories
+          visibility: 'connections',
+        },
+      ],
     };
 
+    let filter: any;
     if (q) {
-      filter.$or = [
-        { courseCode: { $regex: q, $options: 'i' } },
-        { title: { $regex: q, $options: 'i' } }
-      ];
+      filter = {
+        $and: [
+          baseFilter,
+          {
+            $or: [
+              { courseCode: { $regex: q, $options: 'i' } },
+              { title: { $regex: q, $options: 'i' } },
+            ],
+          },
+        ],
+      };
+    } else {
+      filter = baseFilter;
     }
 
     // Default sort: Course Code A–Z (aligns with UI default)
@@ -66,13 +83,14 @@ export async function GET(req: NextRequest) {
     const totalCount = await CourseResourceDirectory.countDocuments(filter);
 
     return NextResponse.json({
-      items: items.map(item => ({
+      items: items.map((item: any) => ({
         _id: item._id.toString(),
         courseCode: item.courseCode,
         title: item.title,
         visibility: item.visibility,
         ownerUserId: item.ownerUserId,
-        createdAt: item.createdAt
+        createdAt: item.createdAt,
+        updatedAt: item.updatedAt
       })),
       page,
       limit,
@@ -94,7 +112,7 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { courseCode, title } = body;
+    const { courseCode, title, visibility } = body;
 
     const courseCodeTrimmed = (courseCode || '').trim().toUpperCase();
     const titleTrimmed = (title || '').trim();
@@ -102,19 +120,36 @@ export async function POST(req: NextRequest) {
     if (!courseCodeTrimmed || !titleTrimmed) {
       return NextResponse.json({ error: 'Course code and title are required' }, { status: 400 });
     }
+    if (!/^[A-Z]{3}\d{3}$/i.test(courseCodeTrimmed)) {
+      return NextResponse.json({ error: 'Course code must look like CSE220' }, { status: 400 });
+    }
+    if (titleTrimmed.length < 2) {
+      return NextResponse.json({ error: 'Title is too short' }, { status: 400 });
+    }
 
-    const directory = await CourseResourceDirectory.create({
-      courseCode: courseCodeTrimmed,
-      title: titleTrimmed,
-      visibility: 'private',
-      ownerUserId: userId,
-    });
+    const validVisibilities = ['private', 'connections'];
+    const newVisibility = validVisibilities.includes(visibility) ? visibility : 'private';
+
+    let directory;
+    try {
+      directory = await CourseResourceDirectory.create({
+        courseCode: courseCodeTrimmed,
+        title: titleTrimmed,
+        visibility: newVisibility,
+        ownerUserId: userId,
+      });
+    } catch (e: any) {
+      const msg = e?.message || 'Database error creating directory';
+      return NextResponse.json({ error: msg }, { status: 500 });
+    }
 
     // Revalidate private resources listing cache so the new folder appears immediately
     try {
       revalidateTag('private-resources');
     } catch (e) {
-      // no-op: revalidation is best-effort
+      // Revalidation is best-effort, so we don't want to fail the request if it fails.
+      // We can log it for monitoring purposes.
+      console.warn('Failed to revalidate tag private-resources:', e);
     }
 
     return NextResponse.json({
@@ -128,6 +163,7 @@ export async function POST(req: NextRequest) {
     }, { status: 201 });
   } catch (error) {
     console.error('private-resource-directories POST error:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    const msg = (error as any)?.message || 'Internal server error';
+    return NextResponse.json({ error: msg }, { status: 500 });
   }
 }

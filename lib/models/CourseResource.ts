@@ -1,6 +1,6 @@
 import mongoose, { Schema, Model, Document } from 'mongoose';
 
-export type Visibility = 'public' | 'private';
+export type Visibility = 'private' | 'connections' | 'public';
 
 export interface ICourseResource extends Document {
   courseCode: string;
@@ -22,7 +22,9 @@ export interface ICourseResource extends Document {
     videoId: string;
   };
   ownerUserId: string; // Clerk user id
-  visibility: Visibility; // default 'public' for this feature
+  visibility: Visibility;
+  inheritVisibility: boolean; // Inherit from directory, if present
+  sharedUserIds?: string[]; // For explicit sharing
   upvoters?: string[]; // Clerk user ids
   downvoters?: string[]; // Clerk user ids
   createdAt: Date;
@@ -55,7 +57,9 @@ const CourseResourceSchema = new Schema<ICourseResource>(
       videoId: { type: String },
     },
     ownerUserId: { type: String, required: true },
-    visibility: { type: String, enum: ['public', 'private'], default: 'public', index: true },
+    visibility: { type: String, enum: ['private', 'connections', 'public'], default: 'private', index: true },
+    inheritVisibility: { type: Boolean, default: true },
+    sharedUserIds: { type: [String], default: [], index: true },
     upvoters: { type: [String], default: [] },
     downvoters: { type: [String], default: [] },
   },

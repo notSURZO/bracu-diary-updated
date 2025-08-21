@@ -66,7 +66,7 @@ function extractYouTubeId(inputUrl: string): string | null {
       if (u.pathname === '/watch') {
         return u.searchParams.get('v');
       }
-      const m = u.pathname.match(/\/shorts\/([^/]+)/);
+      const m = /\/shorts\/([^/]+)/.exec(u.pathname);
       if (m) return m[1];
     }
     return null;
@@ -93,9 +93,30 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
-    const kindVal = (kind === 'youtube' || kind === 'file') ? kind : (youtube?.url ? 'youtube' : 'file');
-    let fileBlock: any | undefined;
-    let youtubeBlock: any | undefined;
+    interface FileBlock {
+      url: string;
+      mime?: string;
+      bytes?: number;
+      provider?: string;
+      publicId?: string;
+      originalName?: string;
+    }
+
+    interface YoutubeBlock {
+      url: string;
+      videoId?: string;
+    }
+
+    let kindVal: 'youtube' | 'file';
+    if (kind === 'youtube' || kind === 'file') {
+      kindVal = kind;
+    } else {
+      kindVal = youtube?.url ? 'youtube' : 'file';
+    }
+
+    let fileBlock: FileBlock | undefined;
+    let youtubeBlock: YoutubeBlock | undefined;
+
     if (kindVal === 'file') {
       if (!file?.url) return NextResponse.json({ error: 'File url required' }, { status: 400 });
       fileBlock = {
@@ -108,10 +129,8 @@ export async function POST(req: NextRequest) {
       };
     } else {
       const yUrl = String(youtube?.url || '');
-      // Extract a standard video id when available (watch, youtu.be, shorts). For playlists or other
-      // YouTube URLs, accept the URL and store without a videoId.
       const vid = extractYouTubeId(yUrl);
-      youtubeBlock = { url: yUrl, videoId: vid || undefined } as any;
+      youtubeBlock = { url: yUrl, videoId: vid || undefined };
     }
 
     // Sanitize minimal fields

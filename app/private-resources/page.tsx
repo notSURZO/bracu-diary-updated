@@ -1,4 +1,3 @@
-import DirectoryCard from "@/app/components/resources/DirectoryCard";
 import SearchInput from "@/app/components/resources/SearchInput";
 import CreateDirectoryModal from "@/app/components/resources/CreateDirectoryModal";
 import SortSelect from "../components/resources/SortSelect";
@@ -28,14 +27,14 @@ async function getDirectories(searchParams: { q?: string; page?: string; limit?:
     next: { tags: ["private-resources"], revalidate: 60 },
   });
   if (!res.ok) {
-    return { items: [] as Array<{ _id: string; courseCode: string; title: string }>, page: 1, limit: 12 };
+    return { items: [] as Array<{ _id: string; courseCode: string; title: string; visibility: 'private' | 'connections' | 'public'; ownerUserId: string; updatedAt: string }>, page: 1, limit: 12 };
   }
   return res.json();
 }
 
-export default async function PrivateResourcesPage({ searchParams }: { searchParams: { q?: string; page?: string; limit?: string; sort?: string } }) {
+export default async function PrivateResourcesPage({ searchParams }: { readonly searchParams: { q?: string; page?: string; limit?: string; sort?: string } }) {
   const data = await getDirectories(searchParams);
-  const items: Array<{ _id: string; courseCode: string; title: string }> = data.items || [];
+  const items: Array<{ _id: string; courseCode: string; title: string; visibility: 'private' | 'connections' | 'public'; ownerUserId: string; updatedAt: string }> = data.items || [];
 
   return (
     <div className="px-4 py-6 max-w-7xl mx-auto">
@@ -54,7 +53,7 @@ export default async function PrivateResourcesPage({ searchParams }: { searchPar
         </div>
       </div>
 
-      <PrivateDirectoriesClient items={items as any} />
+      <PrivateDirectoriesClient items={items} />
     </div>
   );
 }
