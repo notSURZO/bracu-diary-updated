@@ -205,7 +205,7 @@ export default function FolderGridClient({ items: initialItems }: { readonly ite
         const down = typeof r.downCount === 'number' ? r.downCount : (r.downvoters?.length || 0);
         const initialUserVote: "up" | "down" | null = userId ? (r.upvoters?.includes(userId) ? 'up' : (r.downvoters?.includes(userId) ? 'down' : null)) : null;
         return (
-          <div key={r._id} className="group relative rounded-2xl border border-gray-200 bg-white p-7 shadow-sm transition hover:shadow-md min-h-[190px]">
+          <div key={r._id} className="group relative rounded-2xl border border-gray-200 bg-white p-6 sm:p-7 shadow-sm transition hover:shadow-md hover:border-blue-200 hover:-translate-y-0.5 min-h-[190px]">
             {/* Owner actions: top-right trash icon with confirm popover */}
             {userId && r.ownerUserId === userId && (
               <div className="absolute right-3 top-3 z-10">
@@ -247,8 +247,8 @@ export default function FolderGridClient({ items: initialItems }: { readonly ite
                 ) : null}
               </div>
               <span
-                className="ml-2 inline-flex h-7 items-center gap-1.5 rounded-md px-2.5 text-xs font-medium text-white"
-                style={{ backgroundColor: color }}
+                className="ml-2 inline-flex h-7 items-center gap-1.5 rounded-md px-2.5 text-xs font-medium border bg-white"
+                style={{ color, borderColor: color }}
               >
                 {type === 'VIDEO' ? <FaYoutube className="h-4 w-4 opacity-90" /> : type === 'PDF' ? <FaFilePdf className="h-4 w-4 opacity-90" /> : type === 'DOCX' ? <FaFileWord className="h-4 w-4 opacity-90" /> : type === 'ZIP' ? <FaFileArchive className="h-4 w-4 opacity-90" /> : type === 'TEXT' ? <FaFileAlt className="h-4 w-4 opacity-90" /> : <FaLink className="h-4 w-4 opacity-90" />}
                 {type === 'VIDEO' ? 'YOUTUBE' : type === 'DRIVE' ? 'DRIVE' : type}
@@ -265,7 +265,7 @@ export default function FolderGridClient({ items: initialItems }: { readonly ite
               </div>
             </div>
             {/* Footer row: votes left, actions right */}
-            <div className="mt-4 flex items-center justify-between gap-3">
+            <div className="mt-5 pt-4 border-t border-gray-100 flex items-center justify-between gap-3">
               <div className="flex items-center">
                 <VoteButtons
                   resourceId={r._id}
@@ -281,7 +281,7 @@ export default function FolderGridClient({ items: initialItems }: { readonly ite
                     href={r.youtube?.url || '#'}
                     target="_blank"
                     rel="noreferrer"
-                    className="inline-flex h-9 items-center justify-center rounded-md border border-gray-200 bg-white px-3.5 text-sm font-medium text-gray-700 hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                    className="inline-flex h-9 items-center justify-center rounded-md border border-gray-300 bg-white px-3.5 text-sm font-medium text-gray-800 hover:bg-gray-50 hover:border-blue-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
                   >
                     <span className="hidden xs:inline">Watch</span>
                     <span className="xs:hidden inline">Watch</span>
@@ -291,7 +291,7 @@ export default function FolderGridClient({ items: initialItems }: { readonly ite
                     href={`/api/view?url=${encodeURIComponent(r.file?.url || '')}`}
                     target="_blank"
                     rel="noreferrer"
-                    className="inline-flex h-9 items-center justify-center rounded-md border border-gray-200 bg-white px-3.5 text-sm font-medium text-gray-700 hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                    className="inline-flex h-9 items-center justify-center rounded-md border border-gray-300 bg-white px-3.5 text-sm font-medium text-gray-800 hover:bg-gray-50 hover:border-blue-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
                   >
                     <span>View</span>
                   </a>

@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import UploadPublicResourceForm from "@/app/components/resources/UploadPublicResourceForm";
+import { Modal, ModalContent, ModalHeader, ModalBody } from "@nextui-org/react";
 
 interface Props {
   triggerLabel?: string;
@@ -79,32 +80,18 @@ export default function UploadModal({ triggerLabel = "Upload", courseCode, defau
       <button
         ref={triggerRef}
         onClick={() => setOpen(true)}
-        className="inline-flex h-10 items-center justify-center rounded-md border border-transparent bg-blue-600 px-4 text-sm font-medium text-white shadow-sm transition-colors hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+        className="inline-flex h-10 items-center justify-center rounded-md bg-blue-600 px-4 text-sm font-medium text-white shadow-sm transition-colors hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
         aria-haspopup="dialog"
         aria-expanded={open}
       >
         {triggerLabel}
       </button>
-      {open && (
-        <div className="fixed inset-0 z-[60]" role="dialog" aria-modal="true" aria-labelledby="upload-modal-title">
-          <div
-            className="absolute inset-0 bg-black/40"
-            aria-hidden
-            onClick={() => setOpen(false)}
-          />
-          <div className="absolute inset-0 grid place-items-center p-4">
-            <div ref={dialogRef} className="w-full max-w-2xl rounded-lg bg-white shadow-xl outline-none">
-              <div className="flex items-center justify-between border-b px-4 py-3">
-                <h3 id="upload-modal-title" className="text-base font-semibold text-gray-900">Upload a Resource</h3>
-                <button
-                  aria-label="Close"
-                  onClick={() => setOpen(false)}
-                  className="rounded p-1 text-gray-500 hover:bg-gray-100 hover:text-gray-700"
-                >
-                  ✕
-                </button>
-              </div>
-              <div className="p-4">
+      <Modal isOpen={open} onOpenChange={setOpen} backdrop="opaque">
+        <ModalContent>
+          {onClose => (
+            <>
+              <ModalHeader id="upload-modal-title">Upload a Resource</ModalHeader>
+              <ModalBody>
                 <UploadPublicResourceForm
                   courseCode={courseCode}
                   defaultCourseName={defaultCourseName}
@@ -112,11 +99,11 @@ export default function UploadModal({ triggerLabel = "Upload", courseCode, defau
                   isPrivate={isPrivate}
                   onSuccess={() => setOpen(false)}
                 />
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+              </ModalBody>
+            </>
+          )}
+        </ModalContent>
+      </Modal>
     </>
   );
 }

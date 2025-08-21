@@ -6,6 +6,7 @@ import { useAuth } from "@clerk/nextjs";
 import JSZip from "jszip";
 import { toast } from "react-toastify";
 import { getSupabaseClient } from "@/lib/storage/supabaseClient";
+import { Modal, ModalContent, ModalHeader, ModalBody } from "@nextui-org/react";
 
 interface Props {
   triggerLabel?: string;
@@ -50,56 +51,7 @@ export default function CompressModal({ triggerLabel = "Compress", courseCode, d
     return `${n.toFixed(n >= 100 ? 0 : n >= 10 ? 1 : 2)} ${units[i]}`;
   };
 
-  // Focus trap and ESC handling
-  useEffect(() => {
-    if (!open) return;
-    const dialog = dialogRef.current;
-    if (!dialog) return;
-
-    const focusableSelectors = [
-      'a[href]',
-      'button:not([disabled])',
-      'textarea:not([disabled])',
-      'input:not([disabled])',
-      'select:not([disabled])',
-      '[tabindex]:not([tabindex="-1"])',
-    ].join(',');
-
-    const focusFirst = () => {
-      const first = dialog.querySelector<HTMLElement>(focusableSelectors);
-      first?.focus();
-    };
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        e.preventDefault();
-        setOpen(false);
-        return;
-      }
-
-      if (e.key === 'Tab') {
-        const focusables = Array.from(dialog.querySelectorAll<HTMLElement>(focusableSelectors)).filter(el => el.offsetParent !== null);
-        if (focusables.length === 0) return;
-        const first = focusables[0];
-        const last = focusables[focusables.length - 1];
-        const active = document.activeElement as HTMLElement | null;
-        if (e.shiftKey) {
-          if (active === first || !dialog.contains(active)) {
-            e.preventDefault();
-            last.focus();
-          }
-        } else {
-          if (active === last) {
-            e.preventDefault();
-            first.focus();
-          }
-        }
-      }
-    };
-
-    setTimeout(focusFirst, 0);
-    document.addEventListener('keydown', onKeyDown);
-    return () => document.removeEventListener('keydown', onKeyDown);
-  }, [open]);
+  // NextUI Modal handles focus trapping and ESC.
 
   // Return focus to trigger on close
   useEffect(() => {
@@ -481,24 +433,21 @@ export default function CompressModal({ triggerLabel = "Compress", courseCode, d
       <button
         ref={triggerRef}
         onClick={() => setOpen(true)}
-        className="inline-flex h-10 items-center justify-center rounded-md border border-blue-200 bg-white px-4 text-sm font-medium text-blue-700 shadow-sm transition-colors hover:bg-blue-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+        className="inline-flex h-10 items-center justify-center rounded-md bg-blue-600 px-4 text-sm font-medium text-white shadow-sm transition-colors hover:bg-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
         aria-haspopup="dialog"
         aria-expanded={open}
         title="Compress files before upload"
       >
         {triggerLabel}
       </button>
-      {open && (
-        <div className="fixed inset-0 z-[60]" role="dialog" aria-modal="true" aria-labelledby="compress-modal-title">
-          <div className="absolute inset-0 bg-black/40" aria-hidden onClick={() => { setOpen(false); resetAll(); }} />
-          <div className="absolute inset-0 grid place-items-center p-4">
-            <div ref={dialogRef} className="w-full max-w-xl rounded-lg bg-white shadow-xl outline-none">
-              <div className="flex items-center justify-between border-b px-4 py-3">
-                <h3 id="compress-modal-title" className="text-base font-semibold text-gray-900">Compress a File</h3>
-                <button aria-label="Close" onClick={() => { setOpen(false); resetAll(); }} className="rounded p-1 text-gray-500 hover:bg-gray-100 hover:text-gray-700">✕</button>
-              </div>
-              <div className="p-4">
-                <div className="space-y-4">
+      <Modal isOpen={open} onOpenChange={(v) => { setOpen(v); if (!v) resetAll(); }} backdrop="opaque">
+        <ModalContent>
+          {onClose => (
+            <>
+              <ModalHeader id="compress-modal-title">Compress a File</ModalHeader>
+              <ModalBody>
+                <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+                  <div className="space-y-4">
                   <div>
                     <label htmlFor="compress-file-input" className="mb-1 block text-xs text-gray-600">Select File (PDF, DOC/DOCX, TXT)</label>
                     <input
@@ -601,35 +550,37 @@ export default function CompressModal({ triggerLabel = "Compress", courseCode, d
                       {compressing ? 'Preparing…' : uploading ? 'Publishing…' : 'Upload & Publish'}
                     </button>
                   </div>
-                </div>
-
-                <form className="mt-6 border-t pt-4">
-                  <h4 className="mb-2 text-sm font-semibold text-gray-900">Details</h4>
-                  <div className="grid gap-3 md:grid-cols-2">
-                    <div className="md:col-span-1">
-                      <label htmlFor="ccode" className="mb-1 block text-xs text-gray-600">Course Code</label>
-                      <input id="ccode" value={courseCode} readOnly className="w-full rounded-md border border-gray-300 bg-gray-50 px-3 py-2 text-sm" />
-                    </div>
-                    <div className="md:col-span-1">
-                      <label htmlFor="cname" className="mb-1 block text-xs text-gray-600">Course Name</label>
-                      <input id="cname" value={defaultCourseName || ''} readOnly className="w-full rounded-md border border-gray-300 bg-gray-50 px-3 py-2 text-sm" />
-                    </div>
-                    <div className="md:col-span-2">
-                      <label htmlFor="ziptitle" className="mb-1 block text-xs text-gray-600">Title</label>
-                      <input id="ziptitle" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="My resource title" className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm" required />
-                    </div>
-                    <div className="md:col-span-2">
-                      <label htmlFor="zipdesc" className="mb-1 block text-xs text-gray-600">Description (optional)</label>
-                      <textarea id="zipdesc" value={description} onChange={(e) => setDescription(e.target.value)} rows={3} className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm" placeholder="Add a short description" />
-                    </div>
+                  {/* close inner content stack */}
                   </div>
-                  <div className="mt-3 text-[11px] text-gray-500">Use the "Upload & Publish" button above to finish.</div>
-                </form>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+
+                  <form className="mt-6 border-t pt-4">
+                    <h4 className="mb-2 text-sm font-semibold text-gray-900">Details</h4>
+                    <div className="grid gap-3 md:grid-cols-2">
+                      <div className="md:col-span-1">
+                        <label htmlFor="ccode" className="mb-1 block text-xs text-gray-600">Course Code</label>
+                        <input id="ccode" value={courseCode} readOnly className="w-full rounded-md border border-gray-300 bg-gray-50 px-3 py-2 text-sm" />
+                      </div>
+                      <div className="md:col-span-1">
+                        <label htmlFor="cname" className="mb-1 block text-xs text-gray-600">Course Name</label>
+                        <input id="cname" value={defaultCourseName || ''} readOnly className="w-full rounded-md border border-gray-300 bg-gray-50 px-3 py-2 text-sm" />
+                      </div>
+                      <div className="md:col-span-2">
+                        <label htmlFor="ziptitle" className="mb-1 block text-xs text-gray-600">Title</label>
+                        <input id="ziptitle" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="My resource title" className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm" required />
+                      </div>
+                      <div className="md:col-span-2">
+                        <label htmlFor="zipdesc" className="mb-1 block text-xs text-gray-600">Description (optional)</label>
+                        <textarea id="zipdesc" value={description} onChange={(e) => setDescription(e.target.value)} rows={3} className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm" placeholder="Add a short description" />
+                      </div>
+                    </div>
+                    <div className="mt-3 text-[11px] text-gray-500">Use the "Upload & Publish" button above to finish.</div>
+                  </form>
+                </div>
+              </ModalBody>
+            </>
+          )}
+        </ModalContent>
+      </Modal>
     </>
   );
 }

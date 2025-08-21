@@ -161,9 +161,21 @@ export default function UploadPublicResourceForm({ courseCode, defaultCourseName
           />
         </div>
         <div className="md:col-span-2">
-          <div className="mb-2 inline-flex rounded-md border border-gray-200 p-0.5 text-xs">
-            <button type="button" onClick={() => setSource("link")} className={`px-3 py-1 rounded ${source === 'link' ? 'bg-blue-600 text-white' : 'text-gray-700 hover:bg-gray-100'}`}>Link</button>
-            <button type="button" onClick={() => setSource("file")} className={`px-3 py-1 rounded ${source === 'file' ? 'bg-blue-600 text-white' : 'text-gray-700 hover:bg-gray-100'}`}>File</button>
+          <div className="mb-2 inline-flex rounded-md border border-gray-200 bg-white p-0.5 text-xs">
+            <button
+              type="button"
+              onClick={() => setSource('link')}
+              className={`px-3 py-1 rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${source === 'link' ? 'bg-blue-600 text-white shadow-sm' : 'text-gray-700 hover:bg-gray-100'}`}
+            >
+              Link
+            </button>
+            <button
+              type="button"
+              onClick={() => setSource('file')}
+              className={`px-3 py-1 rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${source === 'file' ? 'bg-blue-600 text-white shadow-sm' : 'text-gray-700 hover:bg-gray-100'}`}
+            >
+              File
+            </button>
           </div>
           {source === 'link' ? (
             <div key="link-mode">
@@ -255,9 +267,9 @@ export default function UploadPublicResourceForm({ courseCode, defaultCourseName
         <button
           type="submit"
           disabled={submitting}
-          className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-60"
+          className="inline-flex items-center justify-center rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-blue-700 disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
         >
-          {submitting ? "Uploading..." : "Upload"}
+          {submitting ? 'Uploading...' : 'Upload'}
         </button>
       </div>
     </form>

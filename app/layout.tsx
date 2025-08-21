@@ -6,6 +6,7 @@ import ConditionalHeader from './components/ConditionalHeader';
 import { ToastContainer } from 'react-toastify';
 import FriendsSidebarGate from './components/FriendsSidebarGate';
 import 'react-toastify/dist/ReactToastify.css';
+import Providers from './providers';
 
 
 const geistSans = Geist({
@@ -37,23 +38,25 @@ export default function RootLayout({
     >
       <html lang="en" className={`${geistSans.variable} ${geistMono.variable}`} suppressHydrationWarning>
         <body className="flex flex-col min-h-screen" suppressHydrationWarning>
-          <ConditionalHeader />
-          {/* Spacer to offset the fixed header height so content never hides behind it */}
-          <div className="h-24" aria-hidden />
-          <main className="flex-grow pl-64">{children}</main>
-          <FriendsSidebarGate />
-          <ToastContainer
-            position="top-right"
-            autoClose={3000}
-            hideProgressBar={false}
-            newestOnTop={false}
-            closeOnClick
-            rtl={false}
-            pauseOnFocusLoss
-            draggable
-            pauseOnHover
-            theme="light"
-          />
+          <Providers>
+            <ConditionalHeader />
+            {/* Spacer to offset the fixed header height so content never hides behind it */}
+            <div className="h-24" aria-hidden />
+            <main className="flex-grow px-4 md:px-6 lg:px-8 lg:pl-64">{children}</main>
+            <FriendsSidebarGate />
+            <ToastContainer
+              position="top-right"
+              autoClose={3000}
+              hideProgressBar={false}
+              newestOnTop={false}
+              closeOnClick
+              rtl={false}
+              pauseOnFocusLoss
+              draggable
+              pauseOnHover
+              theme="light"
+            />
+          </Providers>
         </body>
       </html>
     </ClerkProvider>
