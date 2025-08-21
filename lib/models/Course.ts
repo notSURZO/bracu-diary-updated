@@ -28,6 +28,12 @@ const DeadlineSchema = new mongoose.Schema({
   createdAt: {
     type: Date,
     default: Date.now
+  },
+  agrees: { 
+    type: [String], default: [] 
+  },
+  disagrees: { 
+    type: [String], default: [] 
   }
 });
 

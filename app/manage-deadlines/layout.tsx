@@ -34,7 +34,6 @@ export default function ManageDeadlinesLayout({ children }: { children: React.Re
   }, [user]);
 
   useEffect(() => {
-    // Extract courseId from URL if available
     const pathParts = pathname.split('/');
     const courseIdFromPath = pathParts[pathParts.length - 1];
     if (courseIdFromPath && courseIdFromPath !== 'manage-deadlines') {
@@ -48,13 +47,11 @@ export default function ManageDeadlinesLayout({ children }: { children: React.Re
       const data = await response.json();
       
       if (data.enrolledCourses && data.enrolledCourses.length > 0) {
-        // API now returns full course objects, no need to fetch additional details
         const validCourses = data.enrolledCourses.filter((course: Course) => 
-          !course.courseCode.endsWith('L') // Filter out lab courses from main list
+          !course.courseCode.endsWith('L')
         );
         setCourses(validCourses);
         
-        // Auto-select first course if none selected
         if (!selectedCourse && validCourses.length > 0) {
           handleCourseSelect(validCourses[0]._id);
         }
@@ -70,7 +67,8 @@ export default function ManageDeadlinesLayout({ children }: { children: React.Re
 
   const handleCourseSelect = (courseId: string) => {
     setSelectedCourse(courseId);
-    router.push(`/manage-deadlines/${courseId}`);
+    // No longer redirecting to course-specific page
+    // The root page now handles all course content
   };
 
   if (loading) {
@@ -84,7 +82,7 @@ export default function ManageDeadlinesLayout({ children }: { children: React.Re
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-4">Manage Deadlines</h1>
+        <h1 className="text-3xl font-bold text-gray-900 mb-6">Manage Deadlines</h1>
         
         {courses.length === 0 ? (
           <div className="text-center py-12">
@@ -97,26 +95,32 @@ export default function ManageDeadlinesLayout({ children }: { children: React.Re
             </button>
           </div>
         ) : (
-          <div className="border-b border-gray-200">
-            <nav className="-mb-px flex space-x-8">
-              {courses.map((course) => (
-                <button
-                  key={course._id}
-                  onClick={() => handleCourseSelect(course._id)}
-                  className={`whitespace-nowrap py-2 px-1 border-b-2 font-medium text-sm ${
-                    selectedCourse === course._id
-                      ? 'border-blue-500 text-blue-600'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                  }`}
-                >
-                  {course.courseCode} - {course.courseName}
-                </button>
-              ))}
-            </nav>
-          </div>
+          <>
+            {/* The course navigation is now wrapped in a div with overflow-x-auto */}
+            <div className="border-b border-gray-200 overflow-x-auto">
+              <nav className="-mb-px flex space-x-8" aria-label="Courses">
+                {courses.map((course) => (
+                  <button
+                    key={course._id}
+                    onClick={() => handleCourseSelect(course._id)}
+                    className={`whitespace-nowrap py-4 px-3 border-b-2 font-medium text-sm ${
+                      selectedCourse === course._id
+                        ? 'border-blue-500 text-blue-600'
+                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    }`}
+                  >
+                    {course.courseCode} - {course.courseName}
+                  </button>
+                ))}
+              </nav>
+            </div>
+            
+            {/* The main content now has a top margin for padding */}
+            <main className="mt-6">
+              {children}
+            </main>
+          </>
         )}
-        
-        {children}
       </div>
     </div>
   );

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useParams } from 'next/navigation';
 import { useUser } from '@clerk/nextjs';
 import { format } from 'date-fns';
@@ -31,22 +31,16 @@ export default function ManageDeadlinesPage() {
   const { courseId } = useParams();
   const { user } = useUser();
   const [deadlines, setDeadlines] = useState<Deadline[]>([]);
-  
-  // Debug: Log the courseId to see what we're getting
-  useEffect(() => {
-    console.log('courseId from useParams():', courseId);
-    console.log('Type of courseId:', typeof courseId);
-    if (Array.isArray(courseId)) {
-      console.log('courseId is an array:', courseId);
-    }
-  }, [courseId]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<'all' | 'theory' | 'lab'>('all');
   const [showModal, setShowModal] = useState(false);
   const [course, setCourse] = useState<Course | null>(null);
   const [selectedSection, setSelectedSection] = useState<string>('');
   const [hasLab, setHasLab] = useState(false);
-  
+
+  // Ref for the modal
+  const modalRef = useRef<HTMLDivElement>(null);
+
   // Form state
   const [formData, setFormData] = useState({
     type: 'theory' as 'theory' | 'lab',
@@ -69,14 +63,30 @@ export default function ManageDeadlinesPage() {
     }
   }, [courseId, user, selectedSection, filter]);
 
+    // Effect to handle clicks outside the modal
+    useEffect(() => {
+        function handleClickOutside(event: MouseEvent) {
+            if (modalRef.current && !modalRef.current.contains(event.target as Node)) {
+                setShowModal(false);
+            }
+        }
+
+        if (showModal) {
+            document.addEventListener('mousedown', handleClickOutside);
+        } else {
+            document.removeEventListener('mousedown', handleClickOutside);
+        }
+
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+        };
+    }, [showModal]);
+
   const fetchCourseDetails = async () => {
     try {
       const response = await fetch(`/api/courses/${courseId}`);
       const data = await response.json();
-      console.log('eta holo data',data);
-
       
-      // Handle empty or invalid response
       if (!data || !data.sections) {
         console.error('Invalid course data received:', data);
         setCourse({ _id: '', courseCode: '', courseName: '', sections: [] });
@@ -86,18 +96,15 @@ export default function ManageDeadlinesPage() {
       
       setCourse(data);
       
-      // Check if course has lab sections with defensive programming
       const hasAnyLab = Array.isArray(data.sections) && 
                        data.sections.some((s: any) => s && s.lab);
       setHasLab(Boolean(hasAnyLab));
       
-      // Set default section safely
       if (Array.isArray(data.sections) && data.sections.length > 0) {
         setSelectedSection(data.sections[0]?.section || '');
       }
     } catch (error) {
       console.error('Error fetching course details:', error);
-      // Set empty course on error
       setCourse({ _id: '', courseCode: '', courseName: '', sections: [] });
       setHasLab(false);
     }
@@ -105,7 +112,6 @@ export default function ManageDeadlinesPage() {
 
   const fetchDeadlines = async () => {
     try {
-      // Only fetch deadlines if we have a valid section
       if (!selectedSection) {
         setDeadlines([]);
         setLoading(false);
@@ -128,7 +134,6 @@ export default function ManageDeadlinesPage() {
 const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Ensure course data is available before proceeding
     if (!course) {
       console.error("Course details not loaded. Cannot post deadline.");
       return;
@@ -143,9 +148,8 @@ const handleSubmit = async (e: React.FormEvent) => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          // Send the original course ID along with the modified one
           courseId,
-          originalCourseId: course._id, // This is the crucial line to add
+          originalCourseId: course._id,
           section: selectedSection,
           type: formData.type,
           title: formData.title,
@@ -167,7 +171,6 @@ const handleSubmit = async (e: React.FormEvent) => {
         });
         fetchDeadlines();
       } else {
-        // Log the error response from the server for debugging
         const errorData = await response.json();
         console.error('Failed to post deadline:', errorData.error);
       }
@@ -175,6 +178,7 @@ const handleSubmit = async (e: React.FormEvent) => {
       console.error('Error posting deadline:', error);
     }
   };
+
   const formatDateTime = (dateString: string) => {
     const date = new Date(dateString);
     return {
@@ -197,10 +201,9 @@ const handleSubmit = async (e: React.FormEvent) => {
         <div className="px-4 py-5 sm:p-6">
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-xl font-semibold text-gray-900">
-              Upcoming Deadlines
+              Upcoming Deadlines {selectedSection && `- Section ${selectedSection}`}
             </h2>
             <div className="flex items-center space-x-4">
-              {/* Filter dropdown */}
               <select
                 value={filter}
                 onChange={(e) => setFilter(e.target.value as 'all' | 'theory' | 'lab')}
@@ -211,24 +214,6 @@ const handleSubmit = async (e: React.FormEvent) => {
                 {hasLab && <option value="lab">Lab</option>}
               </select>
               
-              {/* Section selector */}
-              <select
-                value={selectedSection}
-                onChange={(e) => setSelectedSection(e.target.value)}
-                className="block w-32 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                disabled={!course?.sections || course.sections.length === 0}
-              >
-                {course?.sections && Array.isArray(course.sections) && course.sections.length > 0 ? (
-                  course.sections.map((section) => (
-                    <option key={section.section} value={section.section}>
-                      Section {section.section}
-                    </option>
-                  ))
-                ) : (
-                  <option value="">No sections</option>
-                )}
-              </select>
-              
               <button
                 onClick={() => setShowModal(true)}
                 className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
@@ -236,6 +221,29 @@ const handleSubmit = async (e: React.FormEvent) => {
                 Add Deadline
               </button>
             </div>
+          </div>
+            
+          {/* Section Tabs */}
+          <div className="border-b border-gray-200 mb-4">
+              <nav className="-mb-px flex space-x-8" aria-label="Sections">
+                  {course?.sections && Array.isArray(course.sections) && course.sections.length > 0 ? (
+                      course.sections.map((section) => (
+                          <button
+                              key={section.section}
+                              onClick={() => setSelectedSection(section.section)}
+                              className={`${
+                                  selectedSection === section.section
+                                      ? 'border-blue-500 text-blue-600'
+                                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                              } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`}
+                          >
+                              Section {section.section}
+                          </button>
+                      ))
+                  ) : (
+                      <p className="text-sm text-gray-500">No sections available for this course.</p>
+                  )}
+              </nav>
           </div>
 
           {deadlines.length === 0 ? (
@@ -303,8 +311,8 @@ const handleSubmit = async (e: React.FormEvent) => {
 
       {/* Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-          <div className="relative top-20 mx-auto p-5 border w-full max-w-md shadow-lg rounded-md bg-white">
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 backdrop-blur-sm overflow-y-auto h-full w-full z-50">
+          <div ref={modalRef} className="relative top-20 mx-auto p-5 border w-full max-w-md shadow-lg rounded-md bg-white">
             <div className="mt-3">
               <div className="flex justify-between items-center mb-4">
                 <h3 className="text-lg font-medium text-gray-900">Add New Deadline</h3>
