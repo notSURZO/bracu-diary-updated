@@ -2,7 +2,8 @@
 
 import Image from 'next/image';
 import { useState } from 'react';
-import { useSignUp } from '@clerk/nextjs';
+import { useAuth, useSignUp } from '@clerk/nextjs';
+
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
@@ -18,6 +19,8 @@ interface FormData {
 
 export default function CustomSignUp() {
   const { isLoaded, signUp, setActive } = useSignUp();
+  const { isSignedIn } = useAuth();
+
   const router = useRouter();
   const [formData, setFormData] = useState<FormData>({
     firstName: '',
@@ -68,7 +71,14 @@ export default function CustomSignUp() {
       setError(validationError);
       return;
     }
-    if (!isLoaded) return;
+    if (isSignedIn) {
+      setError('You are already signed in. Please sign out before creating a new account.');
+      return;
+    }
+    if (!isLoaded) {
+      setError('Auth is not ready yet. Please wait a moment and try again.');
+      return;
+    }
     setLoading(true);
     setError('');
     try {
@@ -76,6 +86,8 @@ export default function CustomSignUp() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          firstName: formData.firstName.trim(),
+          lastName: formData.lastName.trim(),
           username: formData.username.trim(),
           studentId: formData.studentId.trim(),
           email: formData.email.trim()
@@ -85,14 +97,58 @@ export default function CustomSignUp() {
         const checkData = await checkResponse.json();
         throw new Error(checkData.error || 'Validation failed');
       }
-      await signUp.create({
+      const result = await signUp.create({
         emailAddress: formData.email.trim(),
         password: formData.password,
       });
-      await signUp.prepareEmailAddressVerification({ strategy: 'email_code' });
+
+      // Ensure sign-up attempt exists before proceeding
+      if (!result) {
+        throw new Error('Sign up attempt could not be created. Please try again.');
+      }
+
+      // If email verification is disabled, Clerk may complete immediately
+      if ((result as any).status === 'complete') {
+        // Create user in our DB
+        const response = await fetch('/api/users/create', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            clerkId: (result as any).createdUserId,
+            name: `${formData.firstName.trim()} ${formData.lastName.trim()}`.trim(),
+            username: formData.username.trim(),
+            studentId: formData.studentId.trim(),
+            email: formData.email.trim()
+          })
+        });
+        if (!response.ok) {
+          const data = await response.json().catch(() => ({}));
+          throw new Error(data.error || 'Failed to create user profile.');
+        }
+        await setActive({ session: (result as any).createdSessionId });
+        router.push('/');
+        return;
+      }
+
+      // Otherwise, prepare email verification (for environments where it's enabled)
+      try {
+        await signUp.reload();
+      } catch {}
+      try {
+        await signUp.prepareEmailAddressVerification({ strategy: 'email_code' });
+      } catch (prepErr: any) {
+        const msg = (prepErr?.errors?.[0]?.message || prepErr?.message || '').toLowerCase();
+        if (msg.includes('no sign up attempt')) {
+          await signUp.reload();
+          await signUp.prepareEmailAddressVerification({ strategy: 'email_code' });
+        } else {
+          throw prepErr;
+        }
+      }
       setStep(2);
     } catch (error: any) {
       console.error('Signup error:', error);
+
       if (error.errors && error.errors.length > 0) {
         const clerkError = error.errors[0];
         setError(clerkError.message || 'Signup failed. Please try again.');
@@ -282,8 +338,7 @@ export default function CustomSignUp() {
                 <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-2">Confirm Password *</label>
                 <input type="password" id="confirmPassword" name="confirmPassword" value={formData.confirmPassword} onChange={handleInputChange} placeholder="Confirm your password" className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors text-sm" required minLength={8} />
               </div>
-              {/* CAPTCHA Widget - Required for Clerk bot protection */}
-              <div id="clerk-captcha" className="empty:hidden"></div>
+              {/* Captcha placeholder removed since bot protection is disabled */}
               {error && (<div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg text-sm">{error}</div>)}
               <button type="submit" disabled={loading} className="w-full px-6 py-3.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 disabled:from-gray-400 disabled:to-gray-500 text-white rounded-lg font-semibold text-base transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-[1.02] disabled:transform-none">{loading ? (<div className="flex items-center justify-center"><div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>Creating Account...</div>) : ('Create Account')}</button>
             </form>

@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useUser } from '@clerk/nextjs';
 import Link from 'next/link';
 import Image from 'next/image';
+import { usePathname } from 'next/navigation';
 
 interface Friend {
   id: string;
@@ -15,10 +16,20 @@ interface Friend {
 
 export default function FriendsSidebar() {
   const { user, isLoaded } = useUser();
+  const pathname = usePathname() || '/';
   const currentUserEmail = user?.emailAddresses?.[0]?.emailAddress?.toLowerCase() || '';
   const [friends, setFriends] = useState<Friend[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const HIDE_PREFIXES = [
+    '/public-resources',
+    '/private-resources',
+    '/manage-resources',
+    '/resources',
+    '/my-resources',
+  ];
+  const shouldHide = HIDE_PREFIXES.some((p) => pathname.startsWith(p));
 
   useEffect(() => {
     if (!isLoaded || !currentUserEmail) {
@@ -48,7 +59,7 @@ export default function FriendsSidebar() {
     fetchFriends();
   }, [currentUserEmail, isLoaded]);
 
-  if (!isLoaded || !currentUserEmail) {
+  if (!isLoaded || !currentUserEmail || shouldHide) {
     return null;
   }
 

@@ -45,7 +45,7 @@ const navItems = [
     href: '#',
     icon: Icons.FaRegCopy,
     subItems: [
-      { name: 'Public Resources', href: '/resources/public', icon: Icons.FaGlobe },
+      { name: 'Public Resources', href: '/public-resources', icon: Icons.FaGlobe },
       { name: 'Private Resources', href: '/resources/private', icon: Icons.FaLock },
     ],
   },

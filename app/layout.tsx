@@ -37,7 +37,9 @@ export default function RootLayout({
       <html lang="en" className={`${geistSans.variable} ${geistMono.variable}`} suppressHydrationWarning>
         <body className="flex flex-col min-h-screen" suppressHydrationWarning>
           <ConditionalHeader />
-          <main className="flex-grow pl-64 pt-16">{children}</main>
+          {/* Spacer to offset the fixed header height so content never hides behind it */}
+          <div className="h-24" aria-hidden />
+          <main className="flex-grow pl-64">{children}</main>
           <FriendsSidebar />
           <ToastContainer
             position="top-right"

@@ -11,12 +11,17 @@
   },
   "dependencies": {
     "@clerk/nextjs": "^6.30.0",
+    "@supabase/supabase-js": "^2.55.0",
+    "dis": "^0.3.7",
+    "jszip": "^3.10.1",
+    "pdf-lib": "^1.17.1",
     "mongodb": "^6.18.0",
     "mongoose": "^8.17.1",
     "next": "15.4.6",
     "react": "19.1.0",
     "react-dom": "19.1.0",
-    "react-icons": "^5.5.0"
+    "react-icons": "^5.5.0",
+    "react-toastify": "^11.0.5"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
