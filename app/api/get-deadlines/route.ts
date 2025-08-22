@@ -1,4 +1,3 @@
-// get-deadlines/route.tsx
 import { NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/mongodb';
 import Course from '@/lib/models/Course';
@@ -7,10 +6,10 @@ import { auth } from '@clerk/nextjs/server';
 
 export async function GET(req: Request) {
   try {
-    const {userId} = await auth();
-    // if (!userId) {
-    //   return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    // }
+    const { userId } = await auth();
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
 
     await connectToDatabase();
     
@@ -64,28 +63,14 @@ export async function GET(req: Request) {
       labDeadlines: sectionData.lab?.deadlines?.length || 0
     });
 
-    // Debug individual deadline objects
-    deadlines.forEach((deadline: any, index: number) => {
-      console.log(`Deadline ${index} before processing:`, {
-        id: deadline.id,
-        _id: deadline._id,
-        title: deadline.title,
-        details: deadline.details,
-        type: deadline.type,
-        hasDoc: !!deadline._doc,
-        keys: Object.keys(deadline)
-      });
-    });
+    const userDeadlines = currentUser.deadlines || [];
 
-    // Normalize and enrich deadlines
     const enrichedDeadlines = await Promise.all(deadlines.map(async (deadline: any) => {
-      // Extract the actual document data from Mongoose
-      // Mongoose documents can have the actual data in _doc or at the root level
       const actualDeadline = deadline._doc || deadline;
       
-      // Use the deadline's own createdByName and createdByStudentId if they exist
-      // Only fall back to User model if they're missing
       const creator = await User.findOne({ clerkId: actualDeadline.createdBy });
+      
+      const userDeadline = userDeadlines.find((ud: any) => ud.id === actualDeadline.id);
       
       const enrichedDeadline = {
         id: actualDeadline.id || actualDeadline._id || Date.now().toString(),
@@ -99,7 +84,8 @@ export async function GET(req: Request) {
         createdByStudentId: actualDeadline.createdByStudentId || creator?.student_ID || 'Unknown',
         agrees: actualDeadline.agrees || [], 
         disagrees: actualDeadline.disagrees || [],
-        type: actualDeadline.type || 'theory'
+        type: actualDeadline.type || 'theory',
+        completed: userDeadline ? userDeadline.completed : false
       };
       
       console.log('Original deadline raw:', deadline);
@@ -109,8 +95,12 @@ export async function GET(req: Request) {
       return enrichedDeadline;
     }));
 
-    // Sort by deadline date
-    enrichedDeadlines.sort((a: any, b: any) => new Date(a.lastDate).getTime() - new Date(b.lastDate).getTime());
+    enrichedDeadlines.sort((a: any, b: any) => {
+      if (a.completed === b.completed) {
+        return new Date(a.lastDate).getTime() - new Date(b.lastDate).getTime();
+      }
+      return a.completed ? 1 : -1;
+    });
 
     return NextResponse.json({ deadlines: enrichedDeadlines }, { status: 200 });
   } catch (error) {

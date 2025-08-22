@@ -1,4 +1,3 @@
-// app/manage-deadlines/[courseId]/page.tsx
 'use client';
 
 import { useEffect, useState, useRef, useCallback } from 'react';
@@ -20,6 +19,7 @@ interface Deadline {
   type?: 'theory' | 'lab';
   agrees: string[];
   disagrees: string[];
+  completed: boolean;
 }
 
 interface Course {
@@ -55,7 +55,8 @@ export default function ManageDeadlinesPage() {
     details: '',
     submissionLink: '',
     lastDate: '',
-    time: ''
+    time: '',
+    completed: false
   });
 
   useEffect(() => {
@@ -70,7 +71,6 @@ export default function ManageDeadlinesPage() {
     }
   }, [courseId, user, selectedSection, filter]);
 
-  // Effect to handle clicks outside the Add Deadline modal only
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (modalRef.current && !modalRef.current.contains(event.target as Node)) {
@@ -89,7 +89,6 @@ export default function ManageDeadlinesPage() {
     };
   }, [showModal]);
 
-  // Effect to handle escape key for modals
   const handleEscapeKey = useCallback((event: KeyboardEvent) => {
     if (event.key === 'Escape') {
       if (showModal) {
@@ -151,21 +150,9 @@ export default function ManageDeadlinesPage() {
       );
       const data = await response.json();
       
-      // Log clean deadline data for debugging
-      if (data.deadlines && data.deadlines.length > 0) {
-        console.log('Clean deadline data:', data.deadlines.map((d: any) => ({
-          id: d.id,
-          title: d.title,
-          details: d.details,
-          type: d.type,
-          lastDate: d.lastDate,
-          createdByName: d.createdByName,
-          createdByStudentId: d.createdByStudentId
-        })));
-      }
-      
       setDeadlines(data.deadlines || []);
     } catch (error) {
+      console.error('Error fetching deadlines:', error);
       setDeadlines([]);
     } finally {
       setLoading(false);
@@ -198,20 +185,23 @@ export default function ManageDeadlinesPage() {
           lastDate: lastDateTime.toISOString(),
           agrees: [],
           disagrees: [],
-          createdBy: user.id
+          createdBy: user.id,
+          createdByName: user.fullName || 'Unknown',
+          createdByStudentId: user.publicMetadata.student_ID || 'Unknown'
         }),
       });
 
       if (response.ok) {
         setShowModal(false);
-        setSelectedDeadline(null); // Close details modal when adding new deadline
+        setSelectedDeadline(null);
         setFormData({
           type: 'theory',
           title: '',
           details: '',
           submissionLink: '',
           lastDate: '',
-          time: ''
+          time: '',
+          completed: false
         });
         fetchDeadlines();
       } else {
@@ -220,6 +210,33 @@ export default function ManageDeadlinesPage() {
       }
     } catch (error) {
       console.error('Error posting deadline:', error);
+    }
+  };
+
+  const handleToggleComplete = async (deadline: Deadline) => {
+    if (!user) return;
+
+    try {
+      const response = await fetch('/api/update-deadline', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          deadlineId: deadline._id || deadline.id,
+          userId: user.id,
+          completed: !deadline.completed
+        }),
+      });
+
+      if (response.ok) {
+        fetchDeadlines();
+      } else {
+        const errorData = await response.json();
+        console.error('Failed to update deadline:', errorData.error);
+      }
+    } catch (error) {
+      console.error('Error updating deadline:', error);
     }
   };
 
@@ -329,7 +346,7 @@ export default function ManageDeadlinesPage() {
                 value={filter}
                 onChange={(e) => {
                   setFilter(e.target.value as 'all' | 'theory' | 'lab');
-                  setSelectedDeadline(null); // Close details modal when changing filters
+                  setSelectedDeadline(null);
                 }}
                 className="block w-32 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
               >
@@ -355,7 +372,7 @@ export default function ManageDeadlinesPage() {
                               key={`section-${section.section}`}
                               onClick={() => {
                                 setSelectedSection(section.section);
-                                setSelectedDeadline(null); // Close details modal when changing sections
+                                setSelectedDeadline(null);
                               }}
                               className={`${
                                   selectedSection === section.section
@@ -399,7 +416,10 @@ export default function ManageDeadlinesPage() {
                 const hasVotedAgree = user && (deadline.agrees ?? []).includes(user.id);
                 const hasVotedDisagree = user && (deadline.disagrees ?? []).includes(user.id);
                 return (
-                  <div key={deadline._id || deadline.id} className="border rounded-lg p-4 hover:shadow-md transition-shadow relative">
+                  <div 
+                    key={deadline._id || deadline.id} 
+                    className={`border rounded-lg p-4 hover:shadow-md transition-shadow relative ${deadline.completed ? 'bg-green-50' : 'bg-white'}`}
+                  >
                     <div className="flex justify-between items-start">
                       <div className="flex-1">
                         <div className="flex items-center space-x-2">
@@ -414,6 +434,15 @@ export default function ManageDeadlinesPage() {
                         </div>
                         <p className="mt-1 text-sm text-gray-600">{truncateText(deadline.details || 'No details provided')}</p>
                         <div className="mt-2 flex items-center space-x-4">
+                          <label className="flex items-center space-x-2">
+                            <input
+                              type="checkbox"
+                              checked={deadline.completed}
+                              onChange={() => handleToggleComplete(deadline)}
+                              className="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300 rounded"
+                            />
+                            <span className="text-sm text-gray-600">Completed</span>
+                          </label>
                           <button
                             onClick={() => toggleDetails(deadline)}
                             className="px-3 py-1 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 text-sm"
@@ -442,7 +471,6 @@ export default function ManageDeadlinesPage() {
                               Disagree ({deadline.disagrees.length})
                             </button>
                           </div>
-                          {/* Delete button - only show for deadlines created by current user */}
                           {user && deadline.createdBy === user.id && (
                             <button
                               onClick={() => confirmDelete(deadline)}
@@ -487,7 +515,6 @@ export default function ManageDeadlinesPage() {
         </div>
       </div>
 
-      {/* Add Deadline Modal */}
       {showModal && (
         <div className="fixed inset-0 bg-gray-600 bg-opacity-50 backdrop-blur-sm overflow-y-auto h-full w-full z-50">
           <div ref={modalRef} className="relative top-20 mx-auto p-5 border w-full max-w-md shadow-lg rounded-md bg-white">
@@ -572,6 +599,18 @@ export default function ManageDeadlinesPage() {
                   </div>
                 </div>
 
+                <div>
+                  <label className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      checked={formData.completed}
+                      onChange={(e) => setFormData({...formData, completed: e.target.checked})}
+                      className="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300 rounded"
+                    />
+                    <span className="text-sm text-gray-600">Mark as Completed</span>
+                  </label>
+                </div>
+
                 <div className="flex justify-end space-x-3">
                   <button
                     type="button"
@@ -593,7 +632,6 @@ export default function ManageDeadlinesPage() {
         </div>
       )}
 
-      {/* Delete Confirmation Modal */}
       {showDeleteModal && deleteDeadline && (
         <div className="fixed inset-0 bg-gray-600 bg-opacity-50 backdrop-blur-sm overflow-y-auto h-full w-full z-50 flex justify-center items-center">
           <div className="relative p-5 border w-full max-w-md shadow-lg rounded-md bg-white">

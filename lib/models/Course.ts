@@ -43,10 +43,12 @@ const DeadlineSchema = new mongoose.Schema({
     required: false
   },
   agrees: { 
-    type: [String], default: [] 
+    type: [String], 
+    default: [] 
   },
   disagrees: { 
-    type: [String], default: [] 
+    type: [String], 
+    default: [] 
   }
 });
 
@@ -92,7 +94,6 @@ const SectionSchema = new mongoose.Schema({
   },
 });
 
-// The main Course schema. Each document represents a full course with all its sections.
 const CourseSchema = new mongoose.Schema({
   courseCode: {
     type: String,

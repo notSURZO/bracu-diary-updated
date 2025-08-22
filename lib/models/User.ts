@@ -1,4 +1,3 @@
-// lib/models/User.ts
 import mongoose, { Schema, Document } from 'mongoose';
 
 export interface IUser extends Document {
@@ -12,14 +11,13 @@ export interface IUser extends Document {
   createdAt: Date;
   updatedAt: Date;
   bio?: string;
-
-  connectionRequests: string[]; // Array to store emails of users who sent connect requests
+  connectionRequests: string[];
   avatarUrl?: string;
   address?: string;
   department?: string;
   enrolledCourses: Array<{
-    _id: string; // Modified course ID (with section/lab suffix)
-    originalCourseId: string; // Original MongoDB ObjectId
+    _id: string;
+    originalCourseId: string;
     courseCode: string;
     courseName: string;
     section: string;
@@ -31,16 +29,16 @@ export interface IUser extends Document {
     examDay?: string;
     hasLab: boolean;
     link: string;
-  }>; // Array to store enrolled courses with both modified and original IDs
-  connections: string[]; // Array to store emails of accepted connections
+  }>;
+  connections: string[];
   deadlines?: Array<{
     id: string;
     title: string;
     details: string;
     submissionLink?: string;
     lastDate: Date;
-    courseId: string; // Modified course ID (with section/lab suffix)
-    originalCourseId: string; // Original MongoDB ObjectId
+    courseId: string;
+    originalCourseId: string;
     courseCode: string;
     courseName: string;
     section: string;
@@ -49,6 +47,7 @@ export interface IUser extends Document {
     createdByName: string;
     createdByStudentId: string;
     createdAt: Date;
+    completed: boolean;
   }>;
 }
 
@@ -63,8 +62,8 @@ const UserSchema: Schema = new Schema({
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now },
   bio: { type: String },
-  avatarUrl: { type: String },
   connectionRequests: [{ type: String, default: [] }],
+  avatarUrl: { type: String },
   address: { type: String, default: '' },
   department: { type: String, default: '' },
   enrolledCourses: [{
@@ -82,15 +81,15 @@ const UserSchema: Schema = new Schema({
     hasLab: { type: Boolean, required: true },
     link: { type: String, required: true }
   }],
-  connections: [{ type: String, default: [] }], // Added for accepted connections
+  connections: [{ type: String, default: [] }],
   deadlines: [{
     id: { type: String, required: true },
     title: { type: String, required: true },
     details: { type: String, required: true },
     submissionLink: { type: String, default: '' },
     lastDate: { type: Date, required: true },
-    courseId: { type: String, required: true }, // Modified course ID (with section/lab suffix)
-    originalCourseId: { type: String, required: true }, // Original MongoDB ObjectId
+    courseId: { type: String, required: true },
+    originalCourseId: { type: String, required: true },
     courseCode: { type: String, required: true },
     courseName: { type: String, required: true },
     section: { type: String, required: true },
@@ -98,11 +97,11 @@ const UserSchema: Schema = new Schema({
     createdBy: { type: String, required: true },
     createdByName: { type: String, required: true },
     createdByStudentId: { type: String, required: true },
-    createdAt: { type: Date, default: Date.now }
+    createdAt: { type: Date, default: Date.now },
+    completed: { type: Boolean, default: false }
   }]
 });
 
-// Update the updatedAt field before saving
 UserSchema.pre('save', function (next) {
   this.updatedAt = new Date();
   next();
