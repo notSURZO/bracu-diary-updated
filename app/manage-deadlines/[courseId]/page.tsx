@@ -155,7 +155,7 @@ export default function ManageDeadlinesPage() {
 
   const fetchCourseDetails = async () => {
     try {
-      const response = await fetch(`/api/courses/${courseId}`);
+      const response = await fetch(`/api/courses-surzo/${courseId}`);
       const data = await response.json();
       
       if (!data || !data.sections) {
