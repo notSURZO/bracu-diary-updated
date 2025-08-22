@@ -89,7 +89,7 @@ export default function ManageCourses() {
   const fetchAndSyncCourses = async () => {
     setLoading(true);
     try {
-      const allCoursesRes = await fetch("/api/courses");
+      const allCoursesRes = await fetch("/api/courses-raiyan");
       const allCoursesData = await allCoursesRes.json();
       setAllCoursesCache(allCoursesData);
 
