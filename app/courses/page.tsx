@@ -24,13 +24,13 @@ export default function CoursesListPage() {
       setLoading(true);
       try {
         // Fetch courses with rating and review count
-        const res = await fetch("/api/courses");
+        const res = await fetch("/api/courses-dewan");
         const data = await res.json();
         // For each course, fetch its reviews summary
         const coursesWithStats = await Promise.all(
           data.map(async (course: Course) => {
             try {
-              const statsRes = await fetch(`/api/courses/${course._id}`);
+              const statsRes = await fetch(`/api/courses-dewan/${course._id}`);
               if (!statsRes.ok) return { ...course, averageRating: 0, reviewCount: 0 };
               const stats = await statsRes.json();
               return {
