@@ -1,7 +1,7 @@
 // app/manage-deadlines/[courseId]/page.tsx
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import { useUser } from '@clerk/nextjs';
 import { format } from 'date-fns';
@@ -44,6 +44,8 @@ export default function ManageDeadlinesPage() {
   const [selectedSection, setSelectedSection] = useState<string>('');
   const [hasLab, setHasLab] = useState(false);
   const [selectedDeadline, setSelectedDeadline] = useState<Deadline | null>(null);
+  const [deleteDeadline, setDeleteDeadline] = useState<Deadline | null>(null);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
 
   const modalRef = useRef<HTMLDivElement>(null);
 
@@ -88,23 +90,27 @@ export default function ManageDeadlinesPage() {
   }, [showModal]);
 
   // Effect to handle escape key for modals
-  useEffect(() => {
-    function handleEscapeKey(event: KeyboardEvent) {
-      if (event.key === 'Escape') {
-        if (showModal) {
-          setShowModal(false);
-        }
-        if (selectedDeadline) {
-          setSelectedDeadline(null);
-        }
+  const handleEscapeKey = useCallback((event: KeyboardEvent) => {
+    if (event.key === 'Escape') {
+      if (showModal) {
+        setShowModal(false);
+      }
+      if (selectedDeadline) {
+        setSelectedDeadline(null);
+      }
+      if (showDeleteModal) {
+        setShowDeleteModal(false);
+        setDeleteDeadline(null);
       }
     }
+  }, [showModal, selectedDeadline, showDeleteModal]);
 
+  useEffect(() => {
     document.addEventListener('keydown', handleEscapeKey);
     return () => {
       document.removeEventListener('keydown', handleEscapeKey);
     };
-  }, [showModal, selectedDeadline]);
+  }, [handleEscapeKey]);
 
   const fetchCourseDetails = async () => {
     try {
@@ -244,6 +250,35 @@ export default function ManageDeadlinesPage() {
     } catch (error) {
       console.error('Error updating vote:', error);
     }
+  };
+
+  const handleDeleteDeadline = async (deadline: Deadline) => {
+    if (!user || !course) return;
+
+    try {
+      const response = await fetch(
+        `/api/delete-deadline?deadlineId=${deadline._id || deadline.id}&courseId=${course._id}&section=${selectedSection}&type=${deadline.type || 'theory'}`,
+        {
+          method: 'DELETE',
+        }
+      );
+
+      if (response.ok) {
+        setShowDeleteModal(false);
+        setDeleteDeadline(null);
+        fetchDeadlines();
+      } else {
+        const errorData = await response.json();
+        console.error('Failed to delete deadline:', errorData.error);
+      }
+    } catch (error) {
+      console.error('Error deleting deadline:', error);
+    }
+  };
+
+  const confirmDelete = (deadline: Deadline) => {
+    setDeleteDeadline(deadline);
+    setShowDeleteModal(true);
   };
 
   const formatDateTime = (dateString: string) => {
@@ -407,6 +442,15 @@ export default function ManageDeadlinesPage() {
                               Disagree ({deadline.disagrees.length})
                             </button>
                           </div>
+                          {/* Delete button - only show for deadlines created by current user */}
+                          {user && deadline.createdBy === user.id && (
+                            <button
+                              onClick={() => confirmDelete(deadline)}
+                              className="px-3 py-1 bg-red-100 text-red-700 rounded-md hover:bg-red-200 text-sm font-medium"
+                            >
+                              Delete
+                            </button>
+                          )}
                         </div>
                       </div>
                       <div className="text-right">
@@ -544,6 +588,58 @@ export default function ManageDeadlinesPage() {
                   </button>
                 </div>
               </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteModal && deleteDeadline && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 backdrop-blur-sm overflow-y-auto h-full w-full z-50 flex justify-center items-center">
+          <div className="relative p-5 border w-full max-w-md shadow-lg rounded-md bg-white">
+            <div className="mt-3">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-medium text-gray-900">Delete Deadline</h3>
+                <button
+                  onClick={() => {
+                    setShowDeleteModal(false);
+                    setDeleteDeadline(null);
+                  }}
+                  className="text-gray-400 hover:text-gray-500"
+                >
+                  <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+              
+              <div className="mb-6">
+                <p className="text-sm text-gray-600">
+                  Are you sure you want to delete the deadline "<span className="font-medium text-gray-900">{deleteDeadline.title}</span>"?
+                </p>
+                <p className="text-sm text-gray-500 mt-2">
+                  This action cannot be undone.
+                </p>
+              </div>
+
+              <div className="flex justify-end space-x-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowDeleteModal(false);
+                    setDeleteDeadline(null);
+                  }}
+                  className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => handleDeleteDeadline(deleteDeadline)}
+                  className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 text-sm font-medium"
+                >
+                  Delete
+                </button>
+              </div>
             </div>
           </div>
         </div>

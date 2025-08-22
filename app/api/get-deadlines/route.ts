@@ -94,6 +94,7 @@ export async function GET(req: Request) {
         submissionLink: actualDeadline.submissionLink || '',
         lastDate: actualDeadline.lastDate instanceof Date ? actualDeadline.lastDate.toISOString() : actualDeadline.lastDate || new Date().toISOString(),
         createdAt: actualDeadline.createdAt instanceof Date ? actualDeadline.createdAt.toISOString() : actualDeadline.createdAt || new Date().toISOString(),
+        createdBy: actualDeadline.createdBy || '',
         createdByName: actualDeadline.createdByName || creator?.name || 'Unknown',
         createdByStudentId: actualDeadline.createdByStudentId || creator?.student_ID || 'Unknown',
         agrees: actualDeadline.agrees || [], 
