@@ -1,14 +1,13 @@
-// app/api/courses/[courseid]/route.ts
 import { NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/mongodb';
 import Course from '@/lib/models/Course';
 import mongoose from 'mongoose';
 
-export async function GET(request: Request, context: { params: { courseid: string } }) {
+export async function GET(request: Request, { params }: { params: Promise<{ courseid: string }> }) {
   try {
-    // The context object contains the params
-    const { params } = await context;
-    let courseId = params.courseid;
+    // Await the params to get the actual courseid
+    const { courseid } = await params;
+    let courseId = courseid;
 
     if (!courseId) {
       return NextResponse.json({ message: 'Course ID is required' }, { status: 400 });

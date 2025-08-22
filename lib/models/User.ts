@@ -46,6 +46,8 @@ export interface IUser extends Document {
     section: string;
     type: 'theory' | 'lab';
     createdBy: string;
+    createdByName: string;
+    createdByStudentId: string;
     createdAt: Date;
   }>;
 }
@@ -94,6 +96,8 @@ const UserSchema: Schema = new Schema({
     section: { type: String, required: true },
     type: { type: String, enum: ['theory', 'lab'], required: true },
     createdBy: { type: String, required: true },
+    createdByName: { type: String, required: true },
+    createdByStudentId: { type: String, required: true },
     createdAt: { type: Date, default: Date.now }
   }]
 });

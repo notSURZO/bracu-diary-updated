@@ -1,3 +1,4 @@
+// app/manage-deadlines/[courseId]/page.tsx
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
@@ -6,14 +7,19 @@ import { useUser } from '@clerk/nextjs';
 import { format } from 'date-fns';
 
 interface Deadline {
+  _id: string;
   id: string;
   title: string;
   details: string;
   submissionLink?: string;
   lastDate: string;
   createdBy: string;
+  createdByName?: string;
+  createdByStudentId?: string;
   createdAt: string;
   type?: 'theory' | 'lab';
+  agrees: string[];
+  disagrees: string[];
 }
 
 interface Course {
@@ -37,11 +43,10 @@ export default function ManageDeadlinesPage() {
   const [course, setCourse] = useState<Course | null>(null);
   const [selectedSection, setSelectedSection] = useState<string>('');
   const [hasLab, setHasLab] = useState(false);
+  const [selectedDeadline, setSelectedDeadline] = useState<Deadline | null>(null);
 
-  // Ref for the modal
   const modalRef = useRef<HTMLDivElement>(null);
 
-  // Form state
   const [formData, setFormData] = useState({
     type: 'theory' as 'theory' | 'lab',
     title: '',
@@ -63,24 +68,43 @@ export default function ManageDeadlinesPage() {
     }
   }, [courseId, user, selectedSection, filter]);
 
-    // Effect to handle clicks outside the modal
-    useEffect(() => {
-        function handleClickOutside(event: MouseEvent) {
-            if (modalRef.current && !modalRef.current.contains(event.target as Node)) {
-                setShowModal(false);
-            }
-        }
+  // Effect to handle clicks outside the Add Deadline modal only
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (modalRef.current && !modalRef.current.contains(event.target as Node)) {
+        setShowModal(false);
+      }
+    }
 
+    if (showModal) {
+      document.addEventListener('mousedown', handleClickOutside);
+    } else {
+      document.removeEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showModal]);
+
+  // Effect to handle escape key for modals
+  useEffect(() => {
+    function handleEscapeKey(event: KeyboardEvent) {
+      if (event.key === 'Escape') {
         if (showModal) {
-            document.addEventListener('mousedown', handleClickOutside);
-        } else {
-            document.removeEventListener('mousedown', handleClickOutside);
+          setShowModal(false);
         }
+        if (selectedDeadline) {
+          setSelectedDeadline(null);
+        }
+      }
+    }
 
-        return () => {
-            document.removeEventListener('mousedown', handleClickOutside);
-        };
-    }, [showModal]);
+    document.addEventListener('keydown', handleEscapeKey);
+    return () => {
+      document.removeEventListener('keydown', handleEscapeKey);
+    };
+  }, [showModal, selectedDeadline]);
 
   const fetchCourseDetails = async () => {
     try {
@@ -88,7 +112,6 @@ export default function ManageDeadlinesPage() {
       const data = await response.json();
       
       if (!data || !data.sections) {
-        console.error('Invalid course data received:', data);
         setCourse({ _id: '', courseCode: '', courseName: '', sections: [] });
         setHasLab(false);
         return;
@@ -104,7 +127,6 @@ export default function ManageDeadlinesPage() {
         setSelectedSection(data.sections[0]?.section || '');
       }
     } catch (error) {
-      console.error('Error fetching course details:', error);
       setCourse({ _id: '', courseCode: '', courseName: '', sections: [] });
       setHasLab(false);
     }
@@ -122,20 +144,32 @@ export default function ManageDeadlinesPage() {
         `/api/get-deadlines?courseId=${courseId}&section=${selectedSection}&type=${filter}`
       );
       const data = await response.json();
+      
+      // Log clean deadline data for debugging
+      if (data.deadlines && data.deadlines.length > 0) {
+        console.log('Clean deadline data:', data.deadlines.map((d: any) => ({
+          id: d.id,
+          title: d.title,
+          details: d.details,
+          type: d.type,
+          lastDate: d.lastDate,
+          createdByName: d.createdByName,
+          createdByStudentId: d.createdByStudentId
+        })));
+      }
+      
       setDeadlines(data.deadlines || []);
     } catch (error) {
-      console.error('Error fetching deadlines:', error);
       setDeadlines([]);
     } finally {
       setLoading(false);
     }
   };
 
-const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!course) {
-      console.error("Course details not loaded. Cannot post deadline.");
+    if (!course || !user) {
       return;
     }
     
@@ -155,12 +189,16 @@ const handleSubmit = async (e: React.FormEvent) => {
           title: formData.title,
           details: formData.details,
           submissionLink: formData.submissionLink,
-          lastDate: lastDateTime.toISOString()
+          lastDate: lastDateTime.toISOString(),
+          agrees: [],
+          disagrees: [],
+          createdBy: user.id
         }),
       });
 
       if (response.ok) {
         setShowModal(false);
+        setSelectedDeadline(null); // Close details modal when adding new deadline
         setFormData({
           type: 'theory',
           title: '',
@@ -179,12 +217,60 @@ const handleSubmit = async (e: React.FormEvent) => {
     }
   };
 
+  const handleAgreeDisagree = async (deadlineId: string, voteType: 'agree' | 'disagree') => {
+    if (!user || !course) return;
+
+    try {
+      const response = await fetch('/api/vote-deadline', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          deadlineId: deadlineId,
+          originalCourseId: course._id,
+          section: selectedSection,
+          userId: user.id,
+          voteType
+        }),
+      });
+
+      if (response.ok) {
+        fetchDeadlines();
+      } else {
+        const errorData = await response.json();
+        console.error('Failed to update vote:', errorData.error);
+      }
+    } catch (error) {
+      console.error('Error updating vote:', error);
+    }
+  };
+
   const formatDateTime = (dateString: string) => {
+    if (!dateString || typeof dateString !== 'string') {
+      return { date: 'Unknown', time: 'Unknown' };
+    }
+
     const date = new Date(dateString);
+    if (isNaN(date.getTime())) {
+      return { date: 'Unknown', time: 'Unknown' };
+    }
+
     return {
       date: format(date, 'MMM dd, yyyy'),
       time: format(date, 'hh:mm a')
     };
+  };
+
+  const truncateText = (text: string, maxLength: number = 50) => {
+    const safeText = text || ''; 
+    if (safeText.length <= maxLength) return safeText;
+    return safeText.substring(0, maxLength) + '...';
+  };
+
+  const toggleDetails = (deadline: Deadline) => {
+    const deadlineId = deadline._id || deadline.id;
+    setSelectedDeadline(selectedDeadline && (selectedDeadline._id === deadlineId || selectedDeadline.id === deadlineId) ? null : deadline);
   };
 
   if (loading) {
@@ -206,7 +292,10 @@ const handleSubmit = async (e: React.FormEvent) => {
             <div className="flex items-center space-x-4">
               <select
                 value={filter}
-                onChange={(e) => setFilter(e.target.value as 'all' | 'theory' | 'lab')}
+                onChange={(e) => {
+                  setFilter(e.target.value as 'all' | 'theory' | 'lab');
+                  setSelectedDeadline(null); // Close details modal when changing filters
+                }}
                 className="block w-32 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
               >
                 <option value="all">All</option>
@@ -223,14 +312,16 @@ const handleSubmit = async (e: React.FormEvent) => {
             </div>
           </div>
             
-          {/* Section Tabs */}
           <div className="border-b border-gray-200 mb-4">
               <nav className="-mb-px flex space-x-8" aria-label="Sections">
                   {course?.sections && Array.isArray(course.sections) && course.sections.length > 0 ? (
                       course.sections.map((section) => (
                           <button
-                              key={section.section}
-                              onClick={() => setSelectedSection(section.section)}
+                              key={`section-${section.section}`}
+                              onClick={() => {
+                                setSelectedSection(section.section);
+                                setSelectedDeadline(null); // Close details modal when changing sections
+                              }}
                               className={`${
                                   selectedSection === section.section
                                       ? 'border-blue-500 text-blue-600'
@@ -270,21 +361,74 @@ const handleSubmit = async (e: React.FormEvent) => {
             <div className="space-y-4">
               {deadlines.map((deadline) => {
                 const { date, time } = formatDateTime(deadline.lastDate);
+                const hasVotedAgree = user && (deadline.agrees ?? []).includes(user.id);
+                const hasVotedDisagree = user && (deadline.disagrees ?? []).includes(user.id);
                 return (
-                  <div key={deadline.id} className="border rounded-lg p-4 hover:shadow-md transition-shadow">
+                  <div key={deadline._id || deadline.id} className="border rounded-lg p-4 hover:shadow-md transition-shadow relative">
                     <div className="flex justify-between items-start">
                       <div className="flex-1">
                         <div className="flex items-center space-x-2">
-                          <h3 className="text-lg font-medium text-gray-900">{deadline.title}</h3>
+                          <h3 className="text-lg font-medium text-gray-900">{deadline.title || 'Untitled Deadline'}</h3>
                           <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                             deadline.type === 'theory' 
                               ? 'bg-blue-100 text-blue-800' 
                               : 'bg-green-100 text-green-800'
                           }`}>
-                            {deadline.type === 'theory' ? 'Theory' : 'Lab'}
+                            {deadline.type === 'theory' ? 'Theory' : (deadline.type === 'lab' ? 'Lab' : 'Unknown')}
                           </span>
                         </div>
-                        <p className="mt-1 text-sm text-gray-600">{deadline.details}</p>
+                        <p className="mt-1 text-sm text-gray-600">{truncateText(deadline.details || 'No details provided')}</p>
+                        <div className="mt-2 flex items-center space-x-4">
+                          <button
+                            onClick={() => toggleDetails(deadline)}
+                            className="px-3 py-1 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 text-sm"
+                          >
+                            {selectedDeadline && (selectedDeadline._id === (deadline._id || deadline.id) || selectedDeadline.id === (deadline._id || deadline.id)) ? 'Hide Details' : 'Details'}
+                          </button>
+                          <div className="flex items-center space-x-2">
+                            <button
+                              onClick={() => handleAgreeDisagree(deadline._id || deadline.id, 'agree')}
+                              className={`px-3 py-1 rounded-md text-sm font-medium ${
+                                hasVotedAgree
+                                  ? 'bg-green-600 text-white'
+                                  : 'bg-green-100 text-green-800 hover:bg-green-200'
+                              }`}
+                            >
+                              Agree ({deadline.agrees.length})
+                            </button>
+                            <button
+                              onClick={() => handleAgreeDisagree(deadline._id || deadline.id, 'disagree')}
+                              className={`px-3 py-1 rounded-md text-sm font-medium ${
+                                hasVotedDisagree
+                                  ? 'bg-red-600 text-white'
+                                  : 'bg-green-100 text-green-800 hover:bg-green-200'
+                              }`}
+                            >
+                              Disagree ({deadline.disagrees.length})
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm font-medium text-gray-900">{date}</p>
+                        <p className="text-sm text-gray-500">{time}</p>
+                      </div>
+                    </div>
+                    {selectedDeadline && (selectedDeadline._id === (deadline._id || deadline.id) || selectedDeadline.id === (deadline._id || deadline.id)) && (
+                      <div className="mt-4 pt-4 border-t border-gray-200">
+                        <div className="flex justify-between items-center mb-4">
+                          <h3 className="text-lg font-medium text-gray-900">Details:</h3>
+                          <button
+                            onClick={() => setSelectedDeadline(null)}
+                            className="text-gray-400 hover:text-gray-500"
+                            type="button"
+                          >
+                            <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                          </button>
+                        </div>
+                        <p className="text-sm text-gray-600 whitespace-pre-wrap break-words">{deadline.details}</p>
                         {deadline.submissionLink && (
                           <a
                             href={deadline.submissionLink}
@@ -295,12 +439,11 @@ const handleSubmit = async (e: React.FormEvent) => {
                             Submission Link →
                           </a>
                         )}
+                        <p className="mt-2 text-sm font-medium text-gray-900">Due: {date} at {time}</p>
+                        <p className="mt-2 text-sm text-gray-500">Created by: {deadline.createdByName && deadline.createdByStudentId ? `${deadline.createdByName} (${deadline.createdByStudentId})` : 'Unknown'}</p>
+                        <p className="mt-2 text-sm text-gray-500">Created at: {formatDateTime(deadline.createdAt).date} at {formatDateTime(deadline.createdAt).time}</p>
                       </div>
-                      <div className="text-right">
-                        <p className="text-sm font-medium text-gray-900">{date}</p>
-                        <p className="text-sm text-gray-500">{time}</p>
-                      </div>
-                    </div>
+                    )}
                   </div>
                 );
               })}
@@ -309,7 +452,7 @@ const handleSubmit = async (e: React.FormEvent) => {
         </div>
       </div>
 
-      {/* Modal */}
+      {/* Add Deadline Modal */}
       {showModal && (
         <div className="fixed inset-0 bg-gray-600 bg-opacity-50 backdrop-blur-sm overflow-y-auto h-full w-full z-50">
           <div ref={modalRef} className="relative top-20 mx-auto p-5 border w-full max-w-md shadow-lg rounded-md bg-white">

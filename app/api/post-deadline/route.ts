@@ -1,3 +1,4 @@
+// post-deadline/route.tsx
 import { NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/mongodb';
 import Course from '@/lib/models/Course';
@@ -15,14 +16,27 @@ export async function POST(req: Request) {
     await connectToDatabase();
     
     const body = await req.json();
-    // Destructure originalCourseId from the request body
-    const { courseId, originalCourseId, section, type, title, details, submissionLink, lastDate } = body;
+    const { 
+      courseId, 
+      originalCourseId, 
+      section, 
+      type, 
+      title, 
+      details,
+      submissionLink, 
+      lastDate
+    } = body;
 
     if (!courseId || !originalCourseId || !section || !type || !title || !details || !lastDate) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
-    // Use the originalCourseId directly from the request body
+    // Fetch user details from MongoDB using clerkId
+    const user = await User.findOne({ clerkId: userId });
+    if (!user) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    }
+
     const course = await Course.findById(originalCourseId);
     if (!course) {
       return NextResponse.json({ error: 'Course not found' }, { status: 404 });
@@ -34,16 +48,20 @@ export async function POST(req: Request) {
     }
 
     const deadline = {
-      id: Date.now().toString(),
+      id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}-${userId.substring(0, 8)}`,
       title,
-      details,
+      details: details || '',
       submissionLink: submissionLink || '',
       lastDate: new Date(lastDate),
       createdBy: userId,
-      createdAt: new Date()
+      createdByName: user.name,
+      createdByStudentId: user.student_ID,
+      createdAt: new Date(),
+      type,
+      agrees: [],
+      disagrees: []
     };
 
-    // Update course deadlines
     if (type === 'theory') {
       if (!sectionData.theory.deadlines) {
         sectionData.theory.deadlines = [];
@@ -58,26 +76,23 @@ export async function POST(req: Request) {
 
     await course.save();
 
-    // Update user deadlines
-    const user = await User.findOne({ clerkId: userId });
-    if (user) {
-      if (!user.deadlines) {
-        user.deadlines = [];
-      }
-      
-      const userDeadline = {
-        ...deadline,
-        courseId,
-        originalCourseId: originalCourseId, // Use the originalCourseId from the request
-        courseCode: course.courseCode,
-        courseName: course.courseName,
-        section,
-        type
-      };
-      
-      user.deadlines.push(userDeadline);
-      await user.save();
+    // Add to user's deadlines
+    if (!user.deadlines) {
+      user.deadlines = [];
     }
+    
+    const userDeadline = {
+      ...deadline,
+      courseId,
+      originalCourseId,
+      courseCode: course.courseCode,
+      courseName: course.courseName,
+      section,
+      type
+    };
+    
+    user.deadlines.push(userDeadline);
+    await user.save();
 
     return NextResponse.json({ success: true, deadline }, { status: 201 });
   } catch (error) {

@@ -38,11 +38,11 @@ export async function POST(request: Request) {
     }
 
     // 4. --- Find the Deadline within the Section (check both theory and lab) ---
-    let deadline = sectionObj.theory?.deadlines.find((d: any) => d.id === deadlineId);
+    let deadline = sectionObj.theory?.deadlines.find((d: any) => d.id === deadlineId || d._id === deadlineId);
     let deadlineType = 'theory';
 
     if (!deadline && sectionObj.lab) {
-        deadline = sectionObj.lab.deadlines.find((d: any) => d.id === deadlineId);
+        deadline = sectionObj.lab.deadlines.find((d: any) => d.id === deadlineId || d._id === deadlineId);
         deadlineType = 'lab';
     }
 
@@ -80,7 +80,7 @@ export async function POST(request: Request) {
     
     // Find the updated deadline to return it
     const updatedSection = (await Course.findById(originalCourseId)).sections.find((s: any) => s.section === section);
-    const updatedDeadline = updatedSection[deadlineType]?.deadlines.find((d: any) => d.id === deadlineId);
+    const updatedDeadline = updatedSection[deadlineType]?.deadlines.find((d: any) => d.id === deadlineId || d._id === deadlineId);
 
     return NextResponse.json({ success: true, data: updatedDeadline }, { status: 200 });
 
