@@ -67,8 +67,7 @@ export default function ManageDeadlinesLayout({ children }: { children: React.Re
 
   const handleCourseSelect = (courseId: string) => {
     setSelectedCourse(courseId);
-    // No longer redirecting to course-specific page
-    // The root page now handles all course content
+    router.push(`/manage-deadlines/${courseId}`);
   };
 
   if (loading) {
