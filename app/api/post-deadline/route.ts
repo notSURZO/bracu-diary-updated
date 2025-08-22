@@ -1,10 +1,8 @@
-// post-deadline/route.tsx
 import { NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/mongodb';
 import Course from '@/lib/models/Course';
 import User from '@/lib/models/User';
 import { auth } from '@clerk/nextjs/server';
-import mongoose from 'mongoose';
 
 export async function POST(req: Request) {
   try {
@@ -31,6 +29,13 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
+    // Validate that lastDate is in the future
+    const deadlineDate = new Date(lastDate);
+    const currentDate = new Date();
+    if (deadlineDate <= currentDate) {
+      return NextResponse.json({ error: 'Deadline date must be in the future' }, { status: 400 });
+    }
+
     // Fetch user details from MongoDB using clerkId
     const user = await User.findOne({ clerkId: userId });
     if (!user) {
@@ -52,7 +57,7 @@ export async function POST(req: Request) {
       title,
       details: details || '',
       submissionLink: submissionLink || '',
-      lastDate: new Date(lastDate),
+      lastDate: deadlineDate,
       createdBy: userId,
       createdByName: user.name,
       createdByStudentId: user.student_ID,
@@ -68,10 +73,15 @@ export async function POST(req: Request) {
       }
       sectionData.theory.deadlines.push(deadline);
     } else if (type === 'lab') {
+      if (!sectionData.lab) {
+        return NextResponse.json({ error: 'Lab section not available for this course' }, { status: 400 });
+      }
       if (!sectionData.lab.deadlines) {
         sectionData.lab.deadlines = [];
       }
       sectionData.lab.deadlines.push(deadline);
+    } else {
+      return NextResponse.json({ error: 'Invalid deadline type' }, { status: 400 });
     }
 
     await course.save();
@@ -88,7 +98,8 @@ export async function POST(req: Request) {
       courseCode: course.courseCode,
       courseName: course.courseName,
       section,
-      type
+      type,
+      completed: false
     };
     
     user.deadlines.push(userDeadline);

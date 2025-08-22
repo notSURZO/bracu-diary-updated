@@ -46,6 +46,7 @@ export default function ManageDeadlinesPage() {
   const [selectedDeadline, setSelectedDeadline] = useState<Deadline | null>(null);
   const [deleteDeadline, setDeleteDeadline] = useState<Deadline | null>(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const modalRef = useRef<HTMLDivElement>(null);
 
@@ -75,6 +76,7 @@ export default function ManageDeadlinesPage() {
     function handleClickOutside(event: MouseEvent) {
       if (modalRef.current && !modalRef.current.contains(event.target as Node)) {
         setShowModal(false);
+        setError(null);
       }
     }
 
@@ -93,6 +95,7 @@ export default function ManageDeadlinesPage() {
     if (event.key === 'Escape') {
       if (showModal) {
         setShowModal(false);
+        setError(null);
       }
       if (selectedDeadline) {
         setSelectedDeadline(null);
@@ -163,6 +166,7 @@ export default function ManageDeadlinesPage() {
     e.preventDefault();
 
     if (!course || !user) {
+      setError('User or course data not available');
       return;
     }
     
@@ -183,16 +187,12 @@ export default function ManageDeadlinesPage() {
           details: formData.details,
           submissionLink: formData.submissionLink,
           lastDate: lastDateTime.toISOString(),
-          agrees: [],
-          disagrees: [],
-          createdBy: user.id,
-          createdByName: user.fullName || 'Unknown',
-          createdByStudentId: user.publicMetadata.student_ID || 'Unknown'
         }),
       });
 
       if (response.ok) {
         setShowModal(false);
+        setError(null);
         setSelectedDeadline(null);
         setFormData({
           type: 'theory',
@@ -206,10 +206,11 @@ export default function ManageDeadlinesPage() {
         fetchDeadlines();
       } else {
         const errorData = await response.json();
-        console.error('Failed to post deadline:', errorData.error);
+        setError(errorData.error || 'Failed to post deadline');
       }
     } catch (error) {
       console.error('Error posting deadline:', error);
+      setError('Failed to post deadline');
     }
   };
 
@@ -413,8 +414,8 @@ export default function ManageDeadlinesPage() {
             <div className="space-y-4">
               {deadlines.map((deadline) => {
                 const { date, time } = formatDateTime(deadline.lastDate);
-                const hasVotedAgree = user && (deadline.agrees ?? []).includes(user.id);
-                const hasVotedDisagree = user && (deadline.disagrees ?? []).includes(user.id);
+                const hasVotedAgree = user?.id ? (deadline.agrees ?? []).includes(user.id) : false;
+                const hasVotedDisagree = user?.id ? (deadline.disagrees ?? []).includes(user.id) : false;
                 return (
                   <div 
                     key={deadline._id || deadline.id} 
@@ -433,7 +434,7 @@ export default function ManageDeadlinesPage() {
                           </span>
                         </div>
                         <p className="mt-1 text-sm text-gray-600">{truncateText(deadline.details || 'No details provided')}</p>
-                        <div className="mt-2 flex items-center space-x-4">
+                        <div className="mt-2 flex items-center space-x-2">
                           <label className="flex items-center space-x-2">
                             <input
                               type="checkbox"
@@ -457,6 +458,7 @@ export default function ManageDeadlinesPage() {
                                   ? 'bg-green-600 text-white'
                                   : 'bg-green-100 text-green-800 hover:bg-green-200'
                               }`}
+                              disabled={hasVotedAgree}
                             >
                               Agree ({deadline.agrees.length})
                             </button>
@@ -467,6 +469,7 @@ export default function ManageDeadlinesPage() {
                                   ? 'bg-red-600 text-white'
                                   : 'bg-green-100 text-green-800 hover:bg-green-200'
                               }`}
+                              disabled={hasVotedDisagree}
                             >
                               Disagree ({deadline.disagrees.length})
                             </button>
@@ -522,7 +525,10 @@ export default function ManageDeadlinesPage() {
               <div className="flex justify-between items-center mb-4">
                 <h3 className="text-lg font-medium text-gray-900">Add New Deadline</h3>
                 <button
-                  onClick={() => setShowModal(false)}
+                  onClick={() => {
+                    setShowModal(false);
+                    setError(null);
+                  }}
                   className="text-gray-400 hover:text-gray-500"
                 >
                   <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -532,6 +538,11 @@ export default function ManageDeadlinesPage() {
               </div>
               
               <form onSubmit={handleSubmit} className="space-y-4">
+                {error && (
+                  <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-2 rounded relative" role="alert">
+                    <span className="block sm:inline">{error}</span>
+                  </div>
+                )}
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Type</label>
                   <select
@@ -599,22 +610,13 @@ export default function ManageDeadlinesPage() {
                   </div>
                 </div>
 
-                <div>
-                  <label className="flex items-center space-x-2">
-                    <input
-                      type="checkbox"
-                      checked={formData.completed}
-                      onChange={(e) => setFormData({...formData, completed: e.target.checked})}
-                      className="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300 rounded"
-                    />
-                    <span className="text-sm text-gray-600">Mark as Completed</span>
-                  </label>
-                </div>
-
                 <div className="flex justify-end space-x-3">
                   <button
                     type="button"
-                    onClick={() => setShowModal(false)}
+                    onClick={() => {
+                      setShowModal(false);
+                      setError(null);
+                    }}
                     className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50"
                   >
                     Cancel
