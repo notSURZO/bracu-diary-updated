@@ -418,15 +418,6 @@ export default function ManageDeadlinesPage() {
                       <div className="mt-4 pt-4 border-t border-gray-200">
                         <div className="flex justify-between items-center mb-4">
                           <h3 className="text-lg font-medium text-gray-900">Details:</h3>
-                          <button
-                            onClick={() => setSelectedDeadline(null)}
-                            className="text-gray-400 hover:text-gray-500"
-                            type="button"
-                          >
-                            <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                            </svg>
-                          </button>
                         </div>
                         <p className="text-sm text-gray-600 whitespace-pre-wrap break-words">{deadline.details}</p>
                         {deadline.submissionLink && (
