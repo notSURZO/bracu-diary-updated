@@ -44,44 +44,40 @@ export default function ManageDeadlinesLayout({ children }: { children: React.Re
 
   // Restore scroll position on mount
   useEffect(() => {
-    if (scrollContainerRef.current && courses.length > 0) {
-      const savedScrollPosition = localStorage.getItem('manageDeadlinesScrollPosition');
-      if (savedScrollPosition) {
-        const scrollPosition = parseInt(savedScrollPosition, 10);
-        // Only restore if the scroll position is valid
-        if (!isNaN(scrollPosition) && scrollPosition >= 0) {
-          // Use a small delay to ensure DOM is fully rendered
-          setTimeout(() => {
-            if (scrollContainerRef.current) {
-              scrollContainerRef.current.scrollLeft = scrollPosition;
-            }
-          }, 100);
-        }
+    if (!scrollContainerRef.current || !selectedCourse || courses.length === 0) return;
+
+    const scrollKey = `scroll-position-${pathname}`;
+    const savedScrollPosition = localStorage.getItem(scrollKey);
+    if (savedScrollPosition) {
+      const scrollPosition = parseInt(savedScrollPosition, 10);
+      if (!isNaN(scrollPosition) && scrollPosition >= 0) {
+        scrollContainerRef.current.scrollLeft = scrollPosition;
       }
     }
-  }, [courses]);
+  }, [courses, selectedCourse, pathname]);
 
   // Save scroll position on scroll and before unmount
   useEffect(() => {
     const scrollContainer = scrollContainerRef.current;
     if (!scrollContainer) return;
 
+    const scrollKey = `scroll-position-${pathname}`;
     const handleScroll = () => {
-      localStorage.setItem('manageDeadlinesScrollPosition', scrollContainer.scrollLeft.toString());
+      localStorage.setItem(scrollKey, scrollContainer.scrollLeft.toString());
     };
 
     const handleBeforeUnload = () => {
-      localStorage.setItem('manageDeadlinesScrollPosition', scrollContainer.scrollLeft.toString());
+      localStorage.setItem(scrollKey, scrollContainer.scrollLeft.toString());
     };
 
     scrollContainer.addEventListener('scroll', handleScroll);
     window.addEventListener('beforeunload', handleBeforeUnload);
-    
+
     return () => {
       scrollContainer.removeEventListener('scroll', handleScroll);
       window.removeEventListener('beforeunload', handleBeforeUnload);
     };
-  }, []);
+  }, [pathname]);
 
   const fetchUserCourses = async () => {
     try {
@@ -109,8 +105,9 @@ export default function ManageDeadlinesLayout({ children }: { children: React.Re
 
   const handleCourseSelect = (courseId: string) => {
     setSelectedCourse(courseId);
-    // Clear scroll position when switching courses for a fresh start
-    localStorage.removeItem('manageDeadlinesScrollPosition');
+    // Clear scroll position for the new course
+    const scrollKey = `scroll-position-${pathname}`;
+    localStorage.removeItem(scrollKey);
     router.push(`/manage-deadlines/${courseId}`);
   };
 
@@ -139,14 +136,13 @@ export default function ManageDeadlinesLayout({ children }: { children: React.Re
           </div>
         ) : (
           <>
-            {/* The course navigation is now wrapped in a div with overflow-x-auto */}
-            <div ref={scrollContainerRef} className="border-b border-gray-200 overflow-x-auto">
+            <div ref={scrollContainerRef} className="border-b border-gray-200 overflow-x-auto whitespace-nowrap">
               <nav className="-mb-px flex space-x-8" aria-label="Courses">
                 {courses.map((course) => (
                   <button
                     key={course._id}
                     onClick={() => handleCourseSelect(course._id)}
-                    className={`whitespace-nowrap py-4 px-3 border-b-2 font-medium text-sm ${
+                    className={`inline-block py-4 px-3 border-b-2 font-medium text-sm ${
                       selectedCourse === course._id
                         ? 'border-blue-500 text-blue-600'
                         : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
@@ -158,7 +154,6 @@ export default function ManageDeadlinesLayout({ children }: { children: React.Re
               </nav>
             </div>
             
-            {/* The main content now has a top margin for padding */}
             <main className="mt-6">
               {children}
             </main>

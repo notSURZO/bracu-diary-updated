@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useRef, useCallback } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, usePathname } from 'next/navigation';
 import { useUser } from '@clerk/nextjs';
 import { format } from 'date-fns';
 
@@ -36,6 +36,7 @@ interface Course {
 export default function ManageDeadlinesPage() {
   const { courseId } = useParams();
   const { user } = useUser();
+  const pathname = usePathname();
   const [deadlines, setDeadlines] = useState<Deadline[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<'all' | 'theory' | 'lab'>('all');
@@ -47,7 +48,7 @@ export default function ManageDeadlinesPage() {
   const [deleteDeadline, setDeleteDeadline] = useState<Deadline | null>(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
   const modalRef = useRef<HTMLDivElement>(null);
 
   const [formData, setFormData] = useState({
@@ -71,6 +72,44 @@ export default function ManageDeadlinesPage() {
       fetchDeadlines();
     }
   }, [courseId, user, selectedSection, filter]);
+
+  useEffect(() => {
+    // Generate a unique key for this page to store scroll position
+    const scrollKey = `scroll-position-${pathname}`;
+
+    // Restore scroll position when component mounts
+    const savedScrollPosition = sessionStorage.getItem(scrollKey);
+    if (savedScrollPosition && scrollContainerRef.current) {
+      scrollContainerRef.current.scrollTop = parseInt(savedScrollPosition, 10);
+    }
+
+    // Save scroll position on scroll
+    const handleScroll = () => {
+      if (scrollContainerRef.current) {
+        sessionStorage.setItem(scrollKey, scrollContainerRef.current.scrollTop.toString());
+      }
+    };
+
+    // Save scroll position before unload
+    const handleBeforeUnload = () => {
+      if (scrollContainerRef.current) {
+        sessionStorage.setItem(scrollKey, scrollContainerRef.current.scrollTop.toString());
+      }
+    };
+
+    const container = scrollContainerRef.current;
+    if (container) {
+      container.addEventListener('scroll', handleScroll);
+      window.addEventListener('beforeunload', handleBeforeUnload);
+    }
+
+    return () => {
+      if (container) {
+        container.removeEventListener('scroll', handleScroll);
+      }
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, [pathname]);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -149,7 +188,8 @@ export default function ManageDeadlinesPage() {
       }
       
       const response = await fetch(
-        `/api/get-deadlines?courseId=${courseId}&section=${selectedSection}&type=${filter}`
+        `/api/get-deadlines?courseId=${courseId}&section=${selectedSection}&type=${filter}`,
+        { cache: 'no-store' } // Prevent caching to ensure fresh data
       );
       const data = await response.json();
       
@@ -251,7 +291,7 @@ export default function ManageDeadlinesPage() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          deadlineId: deadlineId,
+          deadlineId,
           originalCourseId: course._id,
           section: selectedSection,
           userId: user.id,
@@ -260,7 +300,7 @@ export default function ManageDeadlinesPage() {
       });
 
       if (response.ok) {
-        fetchDeadlines();
+        await fetchDeadlines(); // Ensure fresh data is fetched
       } else {
         const errorData = await response.json();
         console.error('Failed to update vote:', errorData.error);
@@ -411,7 +451,7 @@ export default function ManageDeadlinesPage() {
               </p>
             </div>
           ) : (
-            <div className="space-y-4">
+            <div ref={scrollContainerRef} className="space-y-4 overflow-y-auto" style={{ maxHeight: 'calc(100vh - 200px)' }}>
               {deadlines.map((deadline) => {
                 const { date, time } = formatDateTime(deadline.lastDate);
                 const hasVotedAgree = user?.id ? (deadline.agrees ?? []).includes(user.id) : false;
@@ -455,10 +495,9 @@ export default function ManageDeadlinesPage() {
                               onClick={() => handleAgreeDisagree(deadline._id || deadline.id, 'agree')}
                               className={`px-3 py-1 rounded-md text-sm font-medium ${
                                 hasVotedAgree
-                                  ? 'bg-green-600 text-white'
-                                  : 'bg-green-100 text-green-800 hover:bg-green-200'
+                                  ? 'bg-green-600 text-white hover:bg-green-700'
+                                  : 'bg-gray-100 text-green-800 hover:bg-green-200'
                               }`}
-                              disabled={hasVotedAgree}
                             >
                               Agree ({deadline.agrees.length})
                             </button>
@@ -466,10 +505,9 @@ export default function ManageDeadlinesPage() {
                               onClick={() => handleAgreeDisagree(deadline._id || deadline.id, 'disagree')}
                               className={`px-3 py-1 rounded-md text-sm font-medium ${
                                 hasVotedDisagree
-                                  ? 'bg-red-600 text-white'
-                                  : 'bg-green-100 text-green-800 hover:bg-green-200'
+                                  ? 'bg-red-600 text-white hover:bg-red-700'
+                                  : 'bg-gray-100 text-red-800 hover:bg-red-200'
                               }`}
-                              disabled={hasVotedDisagree}
                             >
                               Disagree ({deadline.disagrees.length})
                             </button>
@@ -485,6 +523,7 @@ export default function ManageDeadlinesPage() {
                         </div>
                       </div>
                       <div className="text-right">
+                        <h3>Due:</h3>
                         <p className="text-sm font-medium text-gray-900">{date}</p>
                         <p className="text-sm text-gray-500">{time}</p>
                       </div>
