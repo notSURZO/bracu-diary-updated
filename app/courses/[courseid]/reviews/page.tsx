@@ -253,7 +253,7 @@ export default function CourseReviewsPage() {
     if (!courseId) return;
     setLoading(true);
     try {
-      const courseRes = await fetch(`/api/courses-dewan/${courseId}`);
+      const courseRes = await fetch(`/api/courses-raiyan/${courseId}`);
       if (courseRes.ok) {
         const courseData = await courseRes.json();
         setCourseDetails(courseData);

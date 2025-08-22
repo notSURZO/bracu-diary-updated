@@ -41,7 +41,7 @@ export default function CourseDetailsPage() {
     const fetchCourseDetails = async () => {
       setLoading(true);
       try {
-        const res = await fetch(`/api/courses-dewan/${courseId}`);
+        const res = await fetch(`/api/courses-raiyan/${courseId}`);
         
         if (!res.ok) {
           throw new Error("Course not found or an error occurred.");
