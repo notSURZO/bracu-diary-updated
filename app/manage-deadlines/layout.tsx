@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useUser } from '@clerk/nextjs';
 
@@ -26,6 +26,7 @@ export default function ManageDeadlinesLayout({ children }: { children: React.Re
   const { user } = useUser();
   const router = useRouter();
   const pathname = usePathname();
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (user?.emailAddresses?.[0]?.emailAddress) {
@@ -40,6 +41,47 @@ export default function ManageDeadlinesLayout({ children }: { children: React.Re
       setSelectedCourse(courseIdFromPath);
     }
   }, [pathname]);
+
+  // Restore scroll position on mount
+  useEffect(() => {
+    if (scrollContainerRef.current && courses.length > 0) {
+      const savedScrollPosition = localStorage.getItem('manageDeadlinesScrollPosition');
+      if (savedScrollPosition) {
+        const scrollPosition = parseInt(savedScrollPosition, 10);
+        // Only restore if the scroll position is valid
+        if (!isNaN(scrollPosition) && scrollPosition >= 0) {
+          // Use a small delay to ensure DOM is fully rendered
+          setTimeout(() => {
+            if (scrollContainerRef.current) {
+              scrollContainerRef.current.scrollLeft = scrollPosition;
+            }
+          }, 100);
+        }
+      }
+    }
+  }, [courses]);
+
+  // Save scroll position on scroll and before unmount
+  useEffect(() => {
+    const scrollContainer = scrollContainerRef.current;
+    if (!scrollContainer) return;
+
+    const handleScroll = () => {
+      localStorage.setItem('manageDeadlinesScrollPosition', scrollContainer.scrollLeft.toString());
+    };
+
+    const handleBeforeUnload = () => {
+      localStorage.setItem('manageDeadlinesScrollPosition', scrollContainer.scrollLeft.toString());
+    };
+
+    scrollContainer.addEventListener('scroll', handleScroll);
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    
+    return () => {
+      scrollContainer.removeEventListener('scroll', handleScroll);
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, []);
 
   const fetchUserCourses = async () => {
     try {
@@ -67,6 +109,8 @@ export default function ManageDeadlinesLayout({ children }: { children: React.Re
 
   const handleCourseSelect = (courseId: string) => {
     setSelectedCourse(courseId);
+    // Clear scroll position when switching courses for a fresh start
+    localStorage.removeItem('manageDeadlinesScrollPosition');
     router.push(`/manage-deadlines/${courseId}`);
   };
 
@@ -96,7 +140,7 @@ export default function ManageDeadlinesLayout({ children }: { children: React.Re
         ) : (
           <>
             {/* The course navigation is now wrapped in a div with overflow-x-auto */}
-            <div className="border-b border-gray-200 overflow-x-auto">
+            <div ref={scrollContainerRef} className="border-b border-gray-200 overflow-x-auto">
               <nav className="-mb-px flex space-x-8" aria-label="Courses">
                 {courses.map((course) => (
                   <button
