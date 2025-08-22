@@ -1,6 +1,25 @@
 // lib/models/User.ts
 import mongoose, { Schema, Document } from 'mongoose';
 
+// Interface for social media links
+export interface ISocialMedia {
+  linkedin?: string;
+  github?: string;
+  facebook?: string;
+  instagram?: string;
+  snapchat?: string;
+  twitter?: string;
+  website?: string;
+  youtube?: string;
+}
+
+// Interface for education details
+export interface IEducation {
+  school?: string;
+  college?: string;
+}
+
+// Main User Interface
 export interface IUser extends Document {
   clerkId: string;
   name: string;
@@ -9,18 +28,40 @@ export interface IUser extends Document {
   student_ID: string;
   phone?: string;
   picture_url: string;
-  createdAt: Date;
-  updatedAt: Date;
   bio?: string;
-
-  connectionRequests: string[]; // Array to store emails of users who sent connect requests
-  avatarUrl?: string;
+  dateOfBirth?: Date;
+  bloodGroup?: string;
+  socialMedia?: ISocialMedia;
+  education?: IEducation;
   address?: string;
   department?: string;
-  enrolledCourses: string[]; // Array to store IDs of enrolled courses
-  connections: string[]; // Array to store emails of accepted connections
+  enrolledCourses: string[];
+  connections: string[];
+  connectionRequests: string[];
+  theme_color?: string;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
+// SocialMediaSchema
+const SocialMediaSchema: Schema = new Schema({
+  linkedin: { type: String, default: '' },
+  github: { type: String, default: '' },
+  facebook: { type: String, default: '' },
+  instagram: { type: String, default: '' },
+  snapchat: { type: String, default: '' },
+  twitter: { type: String, default: '' },
+  website: { type: String, default: '' },
+  youtube: { type: String, default: '' },
+}, { _id: false });
+
+// EducationSchema
+const EducationSchema: Schema = new Schema({
+  school: { type: String, default: '' },
+  college: { type: String, default: '' },
+}, { _id: false });
+
+// Main UserSchema
 const UserSchema: Schema = new Schema({
   clerkId: { type: String, required: true, unique: true },
   name: { type: String, required: true },
@@ -29,15 +70,19 @@ const UserSchema: Schema = new Schema({
   student_ID: { type: String, required: true, unique: true },
   picture_url: { type: String, default: '' },
   phone: { type: String, default: '' },
-  createdAt: { type: Date, default: Date.now },
-  updatedAt: { type: Date, default: Date.now },
-  bio: { type: String },
-  avatarUrl: { type: String },
-  connectionRequests: [{ type: String, default: [] }],
+  bio: { type: String, default: '' },
+  dateOfBirth: { type: Date },
+  bloodGroup: { type: String, default: '' },
+  socialMedia: { type: SocialMediaSchema, default: {} },
+  education: { type: EducationSchema, default: {} },
   address: { type: String, default: '' },
   department: { type: String, default: '' },
-  enrolledCourses: { type: Array, default: [] },
-  connections: [{ type: String, default: [] }], // Added for accepted connections
+  enrolledCourses: [{ type: String, default: [] }],
+  connections: [{ type: String, default: [] }],
+  connectionRequests: [{ type: String, default: [] }],
+  theme_color: { type: String, default: 'blue' },
+  createdAt: { type: Date, default: Date.now },
+  updatedAt: { type: Date, default: Date.now },
 });
 
 // Update the updatedAt field before saving
