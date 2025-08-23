@@ -41,7 +41,7 @@ export default function CourseDetailsPage() {
     const fetchCourseDetails = async () => {
       setLoading(true);
       try {
-        const res = await fetch(`/api/courses/${courseId}`);
+        const res = await fetch(`/api/courses-raiyan/${courseId}`);
         
         if (!res.ok) {
           throw new Error("Course not found or an error occurred.");
