@@ -1,5 +1,24 @@
 import mongoose, { Schema, Document } from 'mongoose';
 
+// Interface for social media links
+export interface ISocialMedia {
+  linkedin?: string;
+  github?: string;
+  facebook?: string;
+  instagram?: string;
+  snapchat?: string;
+  twitter?: string;
+  website?: string;
+  youtube?: string;
+}
+
+// Interface for education details
+export interface IEducation {
+  school?: string;
+  college?: string;
+}
+
+// Main User Interface
 export interface IUser extends Document {
   clerkId: string;
   name: string;
@@ -8,13 +27,16 @@ export interface IUser extends Document {
   student_ID: string;
   phone?: string;
   picture_url: string;
+  bio?: string;
+  dateOfBirth?: Date;
   createdAt: Date;
   updatedAt: Date;
-  bio?: string;
-  connectionRequests: string[];
-  avatarUrl?: string;
+  bloodGroup?: string;
+  socialMedia?: ISocialMedia;
+  education?: IEducation;
   address?: string;
   department?: string;
+  theme_color?: string;
   enrolledCourses: Array<{
     _id: string;
     originalCourseId: string;
@@ -49,7 +71,26 @@ export interface IUser extends Document {
     createdAt: Date;
     completed: boolean;
   }>;
+
 }
+
+const SocialMediaSchema: Schema = new Schema({
+  linkedin: { type: String, default: '' },
+  github: { type: String, default: '' },
+  facebook: { type: String, default: '' },
+  instagram: { type: String, default: '' },
+  snapchat: { type: String, default: '' },
+  twitter: { type: String, default: '' },
+  website: { type: String, default: '' },
+  youtube: { type: String, default: '' },
+}, { _id: false });
+
+// EducationSchema
+const EducationSchema: Schema = new Schema({
+  school: { type: String, default: '' },
+  college: { type: String, default: '' },
+}, { _id: false });
+
 
 const UserSchema: Schema = new Schema({
   clerkId: { type: String, required: true, unique: true },
@@ -59,13 +100,20 @@ const UserSchema: Schema = new Schema({
   student_ID: { type: String, required: true, unique: true },
   picture_url: { type: String, default: '' },
   phone: { type: String, default: '' },
-  createdAt: { type: Date, default: Date.now },
-  updatedAt: { type: Date, default: Date.now },
-  bio: { type: String },
-  connectionRequests: [{ type: String, default: [] }],
-  avatarUrl: { type: String },
+  bio: { type: String, default: '' },
+  dateOfBirth: { type: Date },
+  bloodGroup: { type: String, default: '' },
+  socialMedia: { type: SocialMediaSchema, default: {} },
+  education: { type: EducationSchema, default: {} },
   address: { type: String, default: '' },
   department: { type: String, default: '' },
+
+ 
+  connectionRequests: [{ type: String, default: [] }],
+  theme_color: { type: String, default: 'blue' },
+  createdAt: { type: Date, default: Date.now },
+  updatedAt: { type: Date, default: Date.now },
+
   enrolledCourses: [{
     _id: { type: String, required: true },
     originalCourseId: { type: String, required: true },
@@ -102,6 +150,7 @@ const UserSchema: Schema = new Schema({
   }]
 });
 
+// Update the updatedAt field before saving
 UserSchema.pre('save', function (next) {
   this.updatedAt = new Date();
   next();
