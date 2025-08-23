@@ -232,7 +232,7 @@ export default function CourseReviewsPage() {
     setLoading(true);
     try {
       // Fetch course details to get the courseCode and name for the heading
-      const courseRes = await fetch(`/api/courses/${courseId}`);
+      const courseRes = await fetch(`/api/courses-surzo/${courseId}`);
       if (courseRes.ok) {
         const courseData = await courseRes.json();
         setCourseDetails(courseData);

@@ -20,7 +20,7 @@ export default function CoursesListPage() {
     const fetchCourses = async () => {
       setLoading(true);
       try {
-        const res = await fetch("/api/courses");
+        const res = await fetch("/api/courses-surzo");
         const data = await res.json();
         setCourses(data);
       } catch (error) {

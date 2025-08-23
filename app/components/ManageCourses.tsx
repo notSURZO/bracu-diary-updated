@@ -91,7 +91,7 @@ export default function ManageCourses() {
   const fetchAndSyncCourses = async () => {
     setLoading(true);
     try {
-      const allCoursesRes = await fetch("/api/courses");
+      const allCoursesRes = await fetch("/api/courses-surzo");
       const allCourses = await allCoursesRes.json();
       setAllCoursesCache(allCourses);
 
