@@ -42,16 +42,19 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
+    // Fetch course details
     const course = await Course.findById(originalCourseId);
     if (!course) {
       return NextResponse.json({ error: 'Course not found' }, { status: 404 });
     }
 
+    // Verify section exists
     const sectionData = course.sections.find((s: any) => s.section === section);
     if (!sectionData) {
       return NextResponse.json({ error: 'Section not found' }, { status: 404 });
     }
 
+    // Create deadline object
     const deadline = {
       id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}-${userId.substring(0, 8)}`,
       title,
@@ -67,6 +70,7 @@ export async function POST(req: Request) {
       disagrees: []
     };
 
+    // Add deadline to course schema
     if (type === 'theory') {
       if (!sectionData.theory.deadlines) {
         sectionData.theory.deadlines = [];
@@ -86,24 +90,43 @@ export async function POST(req: Request) {
 
     await course.save();
 
-    // Add to user's deadlines
-    if (!user.deadlines) {
-      user.deadlines = [];
-    }
-    
+    // Find all users enrolled in this course section
+    const users = await User.find({
+      'enrolledCourses': {
+        $elemMatch: {
+          originalCourseId: originalCourseId,
+          section: section
+        }
+      }
+    });
+
+    // Add deadline to each user's deadlines array
     const userDeadline = {
-      ...deadline,
+      id: deadline.id,
+      title: deadline.title,
+      details: deadline.details,
+      submissionLink: deadline.submissionLink,
+      lastDate: deadline.lastDate,
       courseId,
       originalCourseId,
       courseCode: course.courseCode,
       courseName: course.courseName,
       section,
       type,
+      createdBy: deadline.createdBy,
+      createdByName: deadline.createdByName,
+      createdByStudentId: deadline.createdByStudentId,
+      createdAt: deadline.createdAt,
       completed: false
     };
-    
-    user.deadlines.push(userDeadline);
-    await user.save();
+
+    for (const enrolledUser of users) {
+      if (!enrolledUser.deadlines) {
+        enrolledUser.deadlines = [];
+      }
+      enrolledUser.deadlines.push(userDeadline);
+      await enrolledUser.save();
+    }
 
     return NextResponse.json({ success: true, deadline }, { status: 201 });
   } catch (error) {

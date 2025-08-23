@@ -10,6 +10,7 @@ import { toast } from 'react-toastify';
 import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
 import { debounce } from "lodash";
+import { format } from 'date-fns';
 
 interface ConnectionRequest {
   email: string;
@@ -17,6 +18,24 @@ interface ConnectionRequest {
   username: string;
   student_ID: string;
   picture_url: string;
+}
+
+interface Deadline {
+  id: string;
+  title: string;
+  details: string;
+  submissionLink?: string;
+  lastDate: string;
+  courseId: string;
+  courseCode: string;
+  courseName: string;
+  section: string;
+  type: 'theory' | 'lab';
+  createdBy: string;
+  createdByName: string;
+  createdByStudentId: string;
+  createdAt: string;
+  completed: boolean;
 }
 
 type MatchType = 'firstWord' | 'secondWord' | 'username';
@@ -27,7 +46,7 @@ interface Connection {
   username: string;
   email: string;
   picture_url: string;
-  matchType?: MatchType; // Optional matchType for filtering
+  matchType?: MatchType;
 }
 
 export default function ConditionalHeader() {
@@ -35,19 +54,21 @@ export default function ConditionalHeader() {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [showRequests, setShowRequests] = useState(false);
   const [showConnections, setShowConnections] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
   const [requests, setRequests] = useState<ConnectionRequest[]>([]);
   const [connections, setConnections] = useState<Connection[]>([]);
   const [filteredConnections, setFilteredConnections] = useState<Connection[]>([]);
+  const [deadlines, setDeadlines] = useState<Deadline[]>([]);
   const [connectionSearchQuery, setConnectionSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
+  const notificationButtonRef = useRef<HTMLButtonElement>(null);
   const router = useRouter();
   const pathname = usePathname();
 
-
-  const isIconHighlighted = isDropdownOpen ;
+  const isIconHighlighted = isDropdownOpen;
 
   // Debounced search handler
   const handleSearchChange = debounce((value: string) => {
@@ -61,12 +82,15 @@ export default function ConditionalHeader() {
         dropdownRef.current &&
         !dropdownRef.current.contains(event.target as Node) &&
         buttonRef.current &&
-        !buttonRef.current.contains(event.target as Node)
+        !buttonRef.current.contains(event.target as Node) &&
+        notificationButtonRef.current &&
+        !notificationButtonRef.current.contains(event.target as Node)
       ) {
         setIsDropdownOpen(false);
         setError(null);
         setShowRequests(false);
         setShowConnections(false);
+        setShowNotifications(false);
         setConnectionSearchQuery('');
       }
     };
@@ -78,18 +102,28 @@ export default function ConditionalHeader() {
     };
   }, [isDropdownOpen]);
 
-  // Fetch connection requests or connections based on state
+  // Fetch connection requests, connections, and deadlines on mount
   useEffect(() => {
     if (isSignedIn && user) {
-      if (showRequests) {
+      fetchConnectionRequests();
+      fetchNotifications();
+    }
+  }, [isSignedIn, user]);
+
+  // Fetch connection requests, connections, or notifications based on state
+  useEffect(() => {
+    if (isSignedIn && user) {
+      if (showRequests && !requests.length) {
         fetchConnectionRequests();
       } else if (showConnections) {
         fetchConnections();
+      } else if (showNotifications && !deadlines.length) {
+        fetchNotifications();
       }
     }
-  }, [isSignedIn, user, showRequests, showConnections]);
+  }, [isSignedIn, user, showRequests, showConnections, showNotifications, requests.length, deadlines.length]);
 
-  // Filter connections to mimic /api/search logic
+  // Filter connections
   useEffect(() => {
     if (connectionSearchQuery.trim() === '') {
       setFilteredConnections(connections);
@@ -123,7 +157,7 @@ export default function ConditionalHeader() {
         }
         return a.name.localeCompare(b.name);
       })
-      .slice(0, 10); // Limit to 10 results, like /api/search
+      .slice(0, 10);
 
     setFilteredConnections(filtered);
   }, [connectionSearchQuery, connections]);
@@ -180,16 +214,54 @@ export default function ConditionalHeader() {
     }
   };
 
-  const handleToggleDropdown = (e: React.MouseEvent) => {
+  const fetchNotifications = async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const response = await fetch('/api/get-user-deadlines', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: user?.id }),
+      });
+      const data = await response.json();
+      if (response.ok) {
+        setDeadlines(data.deadlines || []);
+      } else {
+        console.error('Error fetching deadlines:', data.error);
+        setError(data.error || 'Failed to fetch deadlines');
+        toast.error(data.error || 'Failed to fetch deadlines');
+      }
+    } catch (error) {
+      console.error('Error fetching deadlines:', error);
+      setError('An error occurred while fetching deadlines');
+      toast.error('An error occurred while fetching deadlines');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleToggleDropdown = (e: React.MouseEvent, type: 'connections' | 'notifications') => {
     e.preventDefault();
     e.stopPropagation();
     setIsDropdownOpen((prev) => {
-      const newState = !prev;
+      const newState = !prev || (prev && (type === 'notifications' ? showConnections || showRequests : showNotifications));
       if (!newState) {
         setError(null);
         setShowRequests(false);
         setShowConnections(false);
+        setShowNotifications(false);
         setConnectionSearchQuery('');
+      } else {
+        if (type === 'connections') {
+          setShowNotifications(false);
+          setShowRequests(false);
+          setShowConnections(false);
+        } else if (type === 'notifications') {
+          setShowRequests(false);
+          setShowConnections(false);
+          setShowNotifications(true);
+          if (!deadlines.length) fetchNotifications();
+        }
       }
       return newState;
     });
@@ -198,8 +270,9 @@ export default function ConditionalHeader() {
   const handleShowRequests = () => {
     setShowRequests(true);
     setShowConnections(false);
+    setShowNotifications(false);
     setConnectionSearchQuery('');
-    if (user) {
+    if (user && !requests.length) {
       fetchConnectionRequests();
     }
   };
@@ -207,6 +280,7 @@ export default function ConditionalHeader() {
   const handleShowConnections = () => {
     setShowConnections(true);
     setShowRequests(false);
+    setShowNotifications(false);
     setConnectionSearchQuery('');
     if (user) {
       fetchConnections();
@@ -257,6 +331,20 @@ export default function ConditionalHeader() {
     }
   };
 
+  const formatDateTime = (dateString: string) => {
+    if (!dateString || typeof dateString !== 'string') {
+      return { date: 'Unknown', time: 'Unknown' };
+    }
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) {
+      return { date: 'Unknown', time: 'Unknown' };
+    }
+    return {
+      date: format(date, 'MMM dd, yyyy'),
+      time: format(date, 'hh:mm a')
+    };
+  };
+
   if (!isLoaded) {
     return <div className="fixed top-0 left-0 right-0 p-4 bg-white shadow-sm">Loading...</div>;
   }
@@ -285,9 +373,9 @@ export default function ConditionalHeader() {
           <div className="relative">
             <button
               ref={buttonRef}
-              onClick={handleToggleDropdown}
+              onClick={(e) => handleToggleDropdown(e, 'connections')}
               className={`relative cursor-pointer p-1 rounded-full transition-colors ${
-                isIconHighlighted ? 'bg-gray-200 border border-gray-400' : 'hover:bg-gray-100'
+                isIconHighlighted && (showRequests || showConnections) ? 'bg-gray-200 border border-gray-400' : 'hover:bg-gray-100'
               }`}
             >
               <Image
@@ -303,6 +391,26 @@ export default function ConditionalHeader() {
                 </span>
               )}
             </button>
+            <button
+              ref={notificationButtonRef}
+              onClick={(e) => handleToggleDropdown(e, 'notifications')}
+              className={`relative cursor-pointer p-1 rounded-full transition-colors ${
+                isIconHighlighted && showNotifications ? 'bg-gray-200 border border-gray-400' : 'hover:bg-gray-100'
+              }`}
+            >
+              <Image
+                src="/bell-icon.svg"
+                alt="Notifications"
+                width={35}
+                height={35}
+                className="hover:opacity-80 transition"
+              />
+              {deadlines.length > 0 && (
+                <span className="absolute -top-2 -right-2 bg-red-600 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                  {deadlines.length}
+                </span>
+              )}
+            </button>
             {isDropdownOpen && (
               <div
                 ref={dropdownRef}
@@ -311,7 +419,9 @@ export default function ConditionalHeader() {
                 } overflow-y-auto z-50`}
               >
                 <div className="bg-gray-50 p-3 border-b border-gray-200 flex justify-between items-center">
-                  <h2 className="text-lg font-semibold text-gray-800">Connections</h2>
+                  <h2 className="text-lg font-semibold text-gray-800">
+                    {showNotifications ? 'Notifications' : 'Connections'}
+                  </h2>
                   <button
                     onClick={() => setIsDropdownOpen(false)}
                     className="text-gray-500 hover:text-gray-700 text-xl"
@@ -319,7 +429,7 @@ export default function ConditionalHeader() {
                     &times;
                   </button>
                 </div>
-                {!showRequests && !showConnections ? (
+                {!showRequests && !showConnections && !showNotifications ? (
                   <ul className="divide-y divide-gray-100">
                     <li
                       className="p-3 hover:bg-gray-50 transition-colors cursor-pointer"
@@ -332,6 +442,17 @@ export default function ConditionalHeader() {
                       onClick={handleShowRequests}
                     >
                       <p className="font-medium text-gray-800">Connection Requests</p>
+                    </li>
+                    <li
+                      className="p-3 hover:bg-gray-50 transition-colors cursor-pointer"
+                      onClick={() => {
+                        setShowNotifications(true);
+                        setShowRequests(false);
+                        setShowConnections(false);
+                        if (!deadlines.length) fetchNotifications();
+                      }}
+                    >
+                      <p className="font-medium text-gray-800">Notifications</p>
                     </li>
                   </ul>
                 ) : showConnections ? (
@@ -348,6 +469,7 @@ export default function ConditionalHeader() {
                       onClick={() => {
                         setShowConnections(false);
                         setShowRequests(false);
+                        setShowNotifications(false);
                         setConnectionSearchQuery('');
                       }}
                       className="p-3 text-sm text-blue-600 hover:underline"
@@ -400,12 +522,13 @@ export default function ConditionalHeader() {
                       </ul>
                     )}
                   </>
-                ) : (
+                ) : showRequests ? (
                   <>
                     <button
                       onClick={() => {
                         setShowRequests(false);
                         setShowConnections(false);
+                        setShowNotifications(false);
                         setConnectionSearchQuery('');
                       }}
                       className="p-3 text-sm text-blue-600 hover:underline"
@@ -464,7 +587,67 @@ export default function ConditionalHeader() {
                       </ul>
                     )}
                   </>
-                )}
+                ) : showNotifications ? (
+                  <>
+                    <button
+                      onClick={() => {
+                        setShowNotifications(false);
+                        setShowRequests(false);
+                        setShowConnections(false);
+                        setConnectionSearchQuery('');
+                      }}
+                      className="p-3 text-sm text-blue-600 hover:underline"
+                    >
+                      Back to options
+                    </button>
+                    {isLoading ? (
+                      <div className="p-4 text-center text-gray-500">Loading...</div>
+                    ) : error ? (
+                      <div className="p-4 text-center text-red-500">{error}</div>
+                    ) : deadlines.length === 0 ? (
+                      <div className="p-4 text-center text-gray-500">No upcoming deadlines.</div>
+                    ) : (
+                      <ul className="divide-y divide-gray-100">
+                        {deadlines.map((deadline) => {
+                          const { date, time } = formatDateTime(deadline.lastDate);
+                          return (
+                            <li
+                              key={deadline.id}
+                              className={`p-3 hover:bg-gray-50 transition-colors flex justify-between items-center ${
+                                deadline.completed ? 'bg-green-50' : 'bg-white'
+                              }`}
+                            >
+                              <Link
+                                href={`/manage-deadlines/${deadline.courseId}`}
+                                className="flex flex-col space-y-1 w-full"
+                                onClick={() => {
+                                  setIsDropdownOpen(false);
+                                  setShowNotifications(false);
+                                }}
+                              >
+                                <div className="flex items-center space-x-2">
+                                  <p className="font-medium text-gray-800">{deadline.title}</p>
+                                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                                    deadline.type === 'theory' 
+                                      ? 'bg-blue-100 text-blue-800' 
+                                      : 'bg-green-100 text-green-800'
+                                  }`}>
+                                    {deadline.type === 'theory' ? 'Theory' : 'Lab'}
+                                  </span>
+                                </div>
+                                <p className="text-sm text-gray-600">{deadline.courseCode} - {deadline.courseName} (Section {deadline.section})</p>
+                                <p className="text-sm text-gray-500">Due: {date} at {time}</p>
+                              </Link>
+                              {deadline.completed && (
+                                <span className="text-sm text-green-600 font-medium">Completed</span>
+                              )}
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    )}
+                  </>
+                ) : null}
               </div>
             )}
           </div>
