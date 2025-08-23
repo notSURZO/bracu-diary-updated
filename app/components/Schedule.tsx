@@ -245,9 +245,9 @@ export default function Schedule() {
 
   return (
     <div className="flex flex-col gap-12">
-      <h1 className="text-4xl md:text-6xl font-extrabold text-blue-900 text-center tracking-tight mt-8 md:mt-12 lg:mt-16">
+      <h2 className="text-4xl md:text-6xl font-extrabold text-blue-900 text-center tracking-tight mt-8 md:mt-12 lg:mt-16">
         Schedule of Summer 2025
-      </h1>
+      </h2>
       <div className="flex justify-center mt-4 mb-2">
         <button
           onClick={handleDownloadPDF}
@@ -259,9 +259,9 @@ export default function Schedule() {
       <div id="schedule-container" className="flex flex-col gap-10">
         {/* Theory Class Schedule Section */}
         <div className="bg-white p-4 sm:p-6 lg:p-8 rounded-none sm:rounded-3xl shadow-2xl border-t sm:border border-gray-100">
-          <h2 className="font-bold text-blue-800 text-3xl md:text-4xl mb-6 pb-4 border-b-2 border-blue-300 flex items-center">
+          <h3 className="font-bold text-blue-800 text-2xl md:text-2xl mb-6 pb-4 border-b-2 border-blue-300 flex items-center">
             <span className="inline-block mr-4 text-blue-500 text-4xl"></span>Theory Class Schedule
-          </h2>
+          </h3>
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200 text-lg">
               <thead className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white">
@@ -307,7 +307,7 @@ export default function Schedule() {
         {/* Lab Class Schedule Section */}
         {labSchedule.length > 0 && (
           <div className="bg-white p-4 sm:p-6 lg:p-8 rounded-none sm:rounded-3xl shadow-2xl border-t sm:border border-gray-100">
-            <h2 className="font-bold text-blue-800 text-3xl md:text-4xl mb-6 pb-4 border-b-2 border-blue-300 flex items-center">
+            <h2 className="font-bold text-blue-800 text-3xl md:text-2xl mb-6 pb-4 border-b-2 border-blue-300 flex items-center">
               <span className="inline-block mr-4 text-blue-500 text-4xl"></span>Lab Class Schedule
             </h2>
             <div className="overflow-x-auto">
@@ -355,7 +355,7 @@ export default function Schedule() {
 
         {/* Exam Schedule Section - Simplified and changed UI */}
         <div className="bg-white p-4 sm:p-6 lg:p-8 rounded-none sm:rounded-3xl shadow-2xl border-t sm:border border-gray-100 mb-8 md:mb-12 lg:mb-16">
-          <h2 className="font-bold text-purple-800 text-3xl md:text-4xl mb-6 pb-4 border-b-2 border-purple-300 flex items-center">
+          <h2 className="font-bold text-purple-800 text-3xl md:text-2xl mb-6 pb-4 border-b-2 border-purple-300 flex items-center">
             <span className="inline-block mr-4 text-purple-500 text-4xl"></span> Exam Schedule
           </h2>
           {examSchedule.length === 0 ? (

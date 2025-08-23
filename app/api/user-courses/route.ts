@@ -86,10 +86,30 @@ export async function PUT(req: Request) {
   await connectToDatabase();
   const { email, selectedCourses } = await req.json();
 
-  // Fetch current user to get existing deadlines
+  // Fetch current user to get existing enrolled courses and deadlines
   const user = await User.findOne({ email });
   if (!user) {
     return NextResponse.json({ success: false, error: "User not found" }, { status: 404 });
+  }
+
+  // Determine which courses are being removed
+  const currentCourseIds = user.enrolledCourses.map((course: any) => course.originalCourseId);
+  const newCourseIds = selectedCourses.map((course: any) => course.originalCourseId);
+  const coursesToRemove = currentCourseIds.filter((id: string) => !newCourseIds.includes(id));
+
+  // Remove deadlines associated with removed courses
+  if (coursesToRemove.length > 0) {
+    await User.findOneAndUpdate(
+      { email },
+      {
+        $pull: {
+          deadlines: {
+            originalCourseId: { $in: coursesToRemove },
+          },
+        },
+      },
+      { new: true }
+    );
   }
 
   // Fetch deadlines for the selected courses
