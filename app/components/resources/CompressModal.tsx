@@ -441,12 +441,12 @@ export default function CompressModal({ triggerLabel = "Compress", courseCode, d
         {triggerLabel}
       </button>
       <Modal isOpen={open} onOpenChange={(v) => { setOpen(v); if (!v) resetAll(); }} backdrop="opaque">
-        <ModalContent>
+        <ModalContent className="bg-white border-0 outline-none shadow-xl">
           {onClose => (
             <>
               <ModalHeader id="compress-modal-title">Compress a File</ModalHeader>
               <ModalBody>
-                <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+                <div className="bg-white p-4">
                   <div className="space-y-4">
                   <div>
                     <label htmlFor="compress-file-input" className="mb-1 block text-xs text-gray-600">Select File (PDF, DOC/DOCX, TXT)</label>
@@ -461,7 +461,6 @@ export default function CompressModal({ triggerLabel = "Compress", courseCode, d
                   <div>
                     <label htmlFor="level" className="mb-1 block text-xs text-gray-600">Compression level: {level}</label>
                     <input id="level" type="range" min={1} max={9} value={level} onChange={(e) => setLevel(parseInt(e.target.value, 10))} className="w-full" />
-                    <p className="mt-1 text-[11px] text-gray-500">Higher level = smaller ZIP, but slower.</p>
                   </div>
                   {file && (file.type === 'application/pdf' || /\.pdf$/i.test(file.name)) && (
                     <label className="flex items-center gap-2 text-xs text-gray-700">
@@ -474,7 +473,7 @@ export default function CompressModal({ triggerLabel = "Compress", courseCode, d
                     </label>
                   )}
                   {file && (
-                    <div className="rounded-md border border-gray-200 bg-gray-50 p-3 text-[12px]">
+                    <div className="rounded-md bg-gray-50 p-3 text-[12px]">
                       <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
                         <span className="text-gray-700">Original:</span>
                         <span className="font-medium text-gray-900">{formatBytes(file.size)}</span>
@@ -499,7 +498,7 @@ export default function CompressModal({ triggerLabel = "Compress", courseCode, d
                         <p className="mt-2 text-red-600">Warning: Estimated ZIP exceeds {formatBytes(MAX_UPLOAD)} upload limit.</p>
                       )}
                       {file.type === 'application/pdf' && (
-                        <div className="mt-3 border-t pt-3">
+                        <div className="mt-3 pt-3">
                           <div className="flex flex-wrap items-center gap-2">
                             <button
                               type="button"
@@ -553,7 +552,7 @@ export default function CompressModal({ triggerLabel = "Compress", courseCode, d
                   {/* close inner content stack */}
                   </div>
 
-                  <form className="mt-6 border-t pt-4">
+                  <form className="mt-6 pt-4">
                     <h4 className="mb-2 text-sm font-semibold text-gray-900">Details</h4>
                     <div className="grid gap-3 md:grid-cols-2">
                       <div className="md:col-span-1">
@@ -573,7 +572,7 @@ export default function CompressModal({ triggerLabel = "Compress", courseCode, d
                         <textarea id="zipdesc" value={description} onChange={(e) => setDescription(e.target.value)} rows={3} className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm" placeholder="Add a short description" />
                       </div>
                     </div>
-                    <div className="mt-3 text-[11px] text-gray-500">Use the "Upload & Publish" button above to finish.</div>
+                    
                   </form>
                 </div>
               </ModalBody>

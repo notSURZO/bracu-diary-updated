@@ -4,16 +4,14 @@ import FolderTile from "@/app/components/resources/FolderTile";
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 
-export type PrivateDirectory = {
+export type PublicDirectory = {
   _id: string;
   courseCode: string;
   title: string;
-  visibility: 'private' | 'connections' | 'public';
-  ownerUserId: string;
   updatedAt: string; // or Date
 };
 
-export default function PrivateDirectoriesClient({ items }: { readonly items: PrivateDirectory[] }) {
+export default function PublicDirectoriesClient({ items }: { readonly items: PublicDirectory[] }) {
   const searchParams = useSearchParams();
   const [query, setQuery] = useState<string>(() => searchParams.get("q") || "");
 
@@ -46,8 +44,11 @@ export default function PrivateDirectoriesClient({ items }: { readonly items: Pr
       const titleWords = words(d.title);
 
       return tokens.every((t) => {
+        // Prefix match on course code
         if (code.startsWith(t)) return true;
+        // Prefix match on any title word (e.g., "programming l" => Programming Language)
         if (titleWords.some((w) => w.startsWith(t))) return true;
+        // Substring fallback for longer fragments
         if (t.length >= 3 && (title.includes(t) || code.includes(t))) return true;
         return false;
       });
@@ -63,7 +64,7 @@ export default function PrivateDirectoriesClient({ items }: { readonly items: Pr
   }
 
   return (
-    <div className="grid gap-5 justify-start justify-items-start [grid-template-columns:repeat(auto-fit,minmax(300px,1fr))]">
+    <div className="grid gap-5 justify-start justify-items-start [grid-template-columns:repeat(auto-fit,minmax(280px,1fr))]">
       {visible.map((d) => (
         <FolderTile
           key={d._id}
@@ -71,9 +72,9 @@ export default function PrivateDirectoriesClient({ items }: { readonly items: Pr
           courseCode={d.courseCode}
           title={d.title}
           updatedAt={d.updatedAt}
-          variant="private"
-        />
-      ))}
+          variant="public"
+        />)
+      )}
     </div>
   );
 }

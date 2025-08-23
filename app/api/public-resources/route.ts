@@ -3,6 +3,7 @@ import { revalidateTag } from 'next/cache';
 import { getAuth } from '@clerk/nextjs/server';
 import { connectToDatabase } from '@/lib/db';
 import CourseResource from '@/lib/models/CourseResource';
+import CourseResourceDirectory from '@/lib/models/CourseResourceDirectory';
 import type { PipelineStage } from 'mongoose';
 import { Types } from 'mongoose';
 import { getSupabaseAdmin } from '@/lib/storage/supabase';
@@ -91,6 +92,22 @@ export async function POST(req: NextRequest) {
 
     if (!courseCodeTrimmed || !courseNameTrimmed || !titleTrimmed) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+    }
+
+    // Guard: prevent uploading into a main directory if it has subfolders
+    if (directoryId) {
+      try {
+        const dirDoc: any = await CourseResourceDirectory.findById(String(directoryId)).lean();
+        if (dirDoc && !dirDoc.isSubdirectory) {
+          const subCount = await CourseResourceDirectory.countDocuments({ parentDirectoryId: dirDoc._id });
+          if (subCount > 0) {
+            return NextResponse.json(
+              { error: 'Uploads are restricted to subfolders for this course. Please open Theory or Lab and upload there.' },
+              { status: 400 }
+            );
+          }
+        }
+      } catch {}
     }
 
     interface FileBlock {

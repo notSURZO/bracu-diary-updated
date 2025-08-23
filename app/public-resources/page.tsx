@@ -1,10 +1,11 @@
-import DirectoryCard from "@/app/components/resources/DirectoryCard";
+import FolderTile from "@/app/components/resources/FolderTile";
 import SearchInput from "@/app/components/resources/SearchInput";
 import CreateDirectoryModal from "@/app/components/resources/CreateDirectoryModal";
 import SortSelect from "../components/resources/SortSelect";
 import { headers } from "next/headers";
+import PublicDirectoriesClient from "./PublicDirectoriesClient";
 
-export const revalidate = 60;
+export const revalidate = 0;
 
 async function getDirectories(searchParams: { q?: string; page?: string; limit?: string; sort?: string }) {
   const qs = new URLSearchParams();
@@ -19,22 +20,29 @@ async function getDirectories(searchParams: { q?: string; page?: string; limit?:
   const proto = hdrs.get("x-forwarded-proto") || (host.includes("localhost") ? "http" : "https");
   const baseUrl = `${proto}://${host}/api/resource-directories`;
   const url = query ? `${baseUrl}?${query}` : baseUrl;
-  const res = await fetch(url,
-  {
-    next: { tags: ["public-resources"], revalidate: 60 },
-  });
+  const res = await fetch(url, { cache: 'no-store' });
   if (!res.ok) {
-    return { items: [] as Array<{ _id: string; courseCode: string; title: string }>, page: 1, limit: 12 };
+    let message = `Failed to load resources (${res.status})`;
+    try {
+      const data = await res.json();
+      if (data?.error) message = data.error;
+    } catch {}
+    return { items: [] as Array<{ _id: string; courseCode: string; title: string }>, page: 1, limit: 12, error: message } as any;
   }
   return res.json();
 }
 
 export default async function PublicResourcesPage({ searchParams }: { readonly searchParams: { q?: string; page?: string; limit?: string; sort?: string } }) {
   const data = await getDirectories(searchParams);
-  const items: Array<{ _id: string; courseCode: string; title: string; visibility: 'private' | 'connections' | 'public'; ownerUserId: string; updatedAt: string; }> = data.items || [];
+  const items: Array<{ _id: string; courseCode: string; title: string; updatedAt: string; }> = (data.items || []).map((d: any) => ({
+    _id: String(d._id),
+    courseCode: String(d.courseCode),
+    title: String(d.title),
+    updatedAt: String(d.updatedAt || d.createdAt || new Date().toISOString()),
+  }));
 
   return (
-    <div className="px-4 py-6 max-w-7xl mx-auto">
+    <div className="px-4 py-6 max-w-screen-2xl mx-auto">
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900">Public Course Resources</h1>
         <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -50,24 +58,12 @@ export default async function PublicResourcesPage({ searchParams }: { readonly s
         </div>
       </div>
 
-      {items.length === 0 ? (
-        <div className="rounded-lg border border-dashed border-gray-300 p-8 text-center text-sm text-gray-600">
-          No folders found. Try a different search or create one.
+      {('error' in (data as any) && (data as any).error) ? (
+        <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+          {(data as any).error}
         </div>
       ) : (
-        <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {items.map((d) => (
-            <DirectoryCard
-              key={d._id}
-              _id={d._id}
-              courseCode={d.courseCode}
-              title={d.title}
-              visibility={d.visibility}
-              ownerUserId={d.ownerUserId}
-              updatedAt={d.updatedAt}
-            />
-          ))}
-        </div>
+        <PublicDirectoriesClient items={items} />
       )}
     </div>
   );

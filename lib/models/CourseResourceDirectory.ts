@@ -1,4 +1,4 @@
-import mongoose, { Schema, models, model } from 'mongoose';
+import mongoose, { Schema, model } from 'mongoose';
 
 export interface ICourseResourceDirectory extends mongoose.Document {
   courseCode: string;
@@ -6,6 +6,9 @@ export interface ICourseResourceDirectory extends mongoose.Document {
   ownerUserId: string;
   visibility: 'private' | 'connections' | 'public';
   sharedUserIds?: string[];
+  parentDirectoryId?: mongoose.Types.ObjectId;
+  isSubdirectory?: boolean;
+  subdirectoryType?: 'theory' | 'lab';
   createdAt: Date;
   updatedAt: Date;
 }
@@ -17,6 +20,9 @@ const CourseResourceDirectorySchema = new Schema<ICourseResourceDirectory>(
     ownerUserId: { type: String, required: true, index: true },
     visibility: { type: String, enum: ['private', 'connections', 'public'], default: 'private', index: true },
     sharedUserIds: { type: [String], default: [], index: true },
+    parentDirectoryId: { type: Schema.Types.ObjectId, ref: 'CourseResourceDirectory', index: true },
+    isSubdirectory: { type: Boolean, default: false, index: true },
+    subdirectoryType: { type: String, enum: ['theory', 'lab'] },
   },
   { timestamps: true }
 );

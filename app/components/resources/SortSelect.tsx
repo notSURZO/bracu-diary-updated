@@ -33,7 +33,7 @@ export default function SortSelect() {
   const current = searchParams.get("sort") || "";
 
   return (
-    <div className="min-w-[180px]">
+    <div className="min-w-[200px]">
       <Select
         aria-label="Sort folders"
         selectedKeys={new Set([current])}
@@ -42,14 +42,16 @@ export default function SortSelect() {
           onChange(val);
         }}
         size="sm"
-        radius="md"
+        radius="lg"
         popoverProps={{ className: "z-[70]" }}
         classNames={{
-          trigger: "h-10 shadow-sm border border-gray-300 bg-white pr-12",
-          popoverContent: "bg-white border border-gray-200 shadow-lg",
+          trigger:
+            "h-10 pr-12 rounded-xl border border-gray-200 bg-white/80 backdrop-blur supports-[backdrop-filter]:bg-white/60 shadow-sm hover:shadow transition-colors hover:border-gray-300 data-[focus-visible=true]:ring-2 data-[focus-visible=true]:ring-blue-500",
+          value: "truncate text-[0.95rem] text-gray-900",
+          selectorIcon: "right-3 text-gray-600",
+          popoverContent:
+            "rounded-xl bg-white border border-gray-200 shadow-xl",
           listbox: "bg-white",
-          selectorIcon: "right-4 text-gray-600",
-          value: "truncate",
         }}
       >
         {options.map((opt) => (

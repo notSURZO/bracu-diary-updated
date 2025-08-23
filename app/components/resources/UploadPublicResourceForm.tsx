@@ -129,26 +129,39 @@ export default function UploadPublicResourceForm({ courseCode, defaultCourseName
   }
 
   return (
-    <form onSubmit={onSubmit} className="mt-8 rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+    <form onSubmit={onSubmit} className="mt-8 bg-white p-4">
       <h2 className="mb-3 text-sm font-semibold text-gray-900">Upload a Public Resource</h2>
       <div className="grid gap-3 md:grid-cols-2">
-        {!directoryId && (
-          <div className="md:col-span-1">
-            <label htmlFor="course-code" className="mb-1 block text-xs text-gray-600">Course Code</label>
-            <input id="course-code" value={courseCode ?? ""} readOnly className="w-full rounded-md border border-gray-300 bg-gray-50 px-3 py-2 text-sm" />
-          </div>
+        {directoryId ? (
+          <>
+            <div className="md:col-span-1">
+              <label htmlFor="course-code" className="mb-1 block text-xs text-gray-600">Course Code</label>
+              <input id="course-code" value={courseCode ?? ""} readOnly className="w-full rounded-md border border-gray-300 bg-gray-50 px-3 py-2 text-sm" />
+            </div>
+            <div className="md:col-span-1">
+              <label htmlFor="course-name" className="mb-1 block text-xs text-gray-600">Course Name</label>
+              <input id="course-name" value={defaultCourseName ?? ""} readOnly className="w-full rounded-md border border-gray-300 bg-gray-50 px-3 py-2 text-sm" />
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="md:col-span-1">
+              <label htmlFor="course-code" className="mb-1 block text-xs text-gray-600">Course Code</label>
+              <input id="course-code" value={courseCode ?? ""} readOnly className="w-full rounded-md border border-gray-300 bg-gray-50 px-3 py-2 text-sm" />
+            </div>
+            <div className="md:col-span-1">
+              <label htmlFor="course-name" className="mb-1 block text-xs text-gray-600">Course Name</label>
+              <input
+                id="course-name"
+                value={courseName ?? ""}
+                onChange={(e) => setCourseName(e.target.value)}
+                placeholder="e.g., Data Structures"
+                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                required
+              />
+            </div>
+          </>
         )}
-        <div className="md:col-span-1">
-          <label htmlFor="course-name" className="mb-1 block text-xs text-gray-600">Course Name</label>
-          <input
-            id="course-name"
-            value={courseName ?? ""}
-            onChange={(e) => setCourseName(e.target.value)}
-            placeholder="e.g., Data Structures"
-            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
-            required
-          />
-        </div>
         <div className="md:col-span-1">
           <label htmlFor="resource-title" className="mb-1 block text-xs text-gray-600">Title</label>
           <input
@@ -161,7 +174,7 @@ export default function UploadPublicResourceForm({ courseCode, defaultCourseName
           />
         </div>
         <div className="md:col-span-2">
-          <div className="mb-2 inline-flex rounded-md border border-gray-200 bg-white p-0.5 text-xs">
+          <div className="mb-2 inline-flex rounded-md bg-white p-0.5 text-xs">
             <button
               type="button"
               onClick={() => setSource('link')}
@@ -189,10 +202,6 @@ export default function UploadPublicResourceForm({ courseCode, defaultCourseName
                 required
                 type="url"
               />
-              <p className="mt-1 text-[11px] text-gray-500">Supported: PDF, DOC/DOCX, TXT. For videos, paste a YouTube link.</p>
-              {detectedType && (
-                <p className="mt-1 text-[11px] text-gray-600">Detected type: <span className="font-medium">{detectedType}</span></p>
-              )}
             </div>
           ) : (
             <div key="file-mode">

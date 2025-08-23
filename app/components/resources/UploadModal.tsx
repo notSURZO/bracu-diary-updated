@@ -87,7 +87,7 @@ export default function UploadModal({ triggerLabel = "Upload", courseCode, defau
         {triggerLabel}
       </button>
       <Modal isOpen={open} onOpenChange={setOpen} backdrop="opaque">
-        <ModalContent>
+        <ModalContent className="bg-white border-0 outline-none shadow-xl">
           {onClose => (
             <>
               <ModalHeader id="upload-modal-title">Upload a Resource</ModalHeader>

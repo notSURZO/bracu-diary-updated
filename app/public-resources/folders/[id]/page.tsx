@@ -7,11 +7,15 @@ import UploadModal from "@/app/components/resources/UploadModal";
 import CompressModal from "@/app/components/resources/CompressModal";
 import SearchInput from "@/app/components/resources/SearchInput";
 import FolderGridClient from "./FolderGridClient";
+import SubfolderTile from "@/app/components/resources/SubfolderTile";
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
-async function getDirectory(id: string) {
+type Directory = { _id: string; courseCode: string; title: string };
+type Subdirectory = { _id: string; title: string; subdirectoryType?: 'theory' | 'lab' };
+
+async function getDirectory(id: string): Promise<{ item: Directory; subdirectories: Subdirectory[] } | null> {
   const hdrs = await headers();
   const host = hdrs.get("x-forwarded-host") || hdrs.get("host") || "localhost:3000";
   const proto = hdrs.get("x-forwarded-proto") || (host.includes("localhost") ? "http" : "https");
@@ -19,7 +23,7 @@ async function getDirectory(id: string) {
   const res = await fetch(url, { cache: 'no-store' });
   if (!res.ok) return null;
   const data = await res.json();
-  return data.item as { _id: string; courseCode: string; title: string } | null;
+  return { item: data.item as Directory, subdirectories: (data.subdirectories || []) as Subdirectory[] };
 }
 
 async function getResources(id: string) {
@@ -65,12 +69,14 @@ async function resolveOwnerNames(ownerIds: string[]): Promise<Record<string, str
 
 export default async function FolderPage({ params, searchParams }: Readonly<{ params: Promise<{ id: string }>; searchParams: Promise<{ q?: string }> }>) {
   const { id } = await params;
-  const [dir, data] = await Promise.all([getDirectory(id), getResources(id)]);
-  if (!dir) {
+  const [dirResp, data] = await Promise.all([getDirectory(id), getResources(id)]);
+  if (!dirResp) {
     return (
       <div className="p-6 text-sm text-gray-600">Folder not found.</div>
     );
   }
+  const dir = dirResp.item;
+  const subdirectories = dirResp.subdirectories || [];
   const items: Array<{ _id: string; title: string; kind: 'file' | 'youtube'; file?: { url: string; bytes?: number; originalName?: string }; youtube?: { url: string; videoId: string }; description?: string; createdAt?: string; upvoters?: string[]; downvoters?: string[] }>
     = data.items || [];
 
@@ -161,15 +167,44 @@ export default async function FolderPage({ params, searchParams }: Readonly<{ pa
           </div>
           <div className="flex items-center gap-2">
             <CompressModal triggerLabel="Compress" courseCode={dir.courseCode} defaultCourseName={dir.title} directoryId={dir._id} />
-            <UploadModal triggerLabel="+ Upload" courseCode={dir.courseCode} defaultCourseName={dir.title} directoryId={dir._id} />
+            {subdirectories.length === 0 && (
+              <UploadModal triggerLabel="+ Upload" courseCode={dir.courseCode} defaultCourseName={dir.title} directoryId={dir._id} />
+            )}
           </div>
         </div>
       </div>
       <div className="sm:hidden mb-3"><SearchInput placeholder="Search files, videos, links..." /></div>
 
+      {subdirectories.length > 0 && (
+        <div className="mb-6">
+          <div className="text-sm font-semibold text-gray-700 mb-2">Subfolders</div>
+          <div className="grid gap-5 justify-center justify-items-center [grid-template-columns:repeat(auto-fit,minmax(320px,1fr))]">
+            {(() => {
+              const ordered = [...subdirectories].toSorted((a, b) => (a.subdirectoryType || '').localeCompare(b.subdirectoryType || ''));
+              return ordered.map((sd) => (
+                <SubfolderTile
+                  key={sd._id}
+                  _id={sd._id}
+                  title={sd.title}
+                  subdirectoryType={sd.subdirectoryType}
+                  variant="public"
+                />
+              ));
+            })()}
+          </div>
+        </div>
+      )}
+
       {filtered.length === 0 ? (
         <div className="mb-6 rounded-lg border border-dashed border-gray-300 p-8 text-center text-sm text-gray-600">
-          No resources yet. Be the first to upload!
+          {subdirectories.length > 0 ? (
+            <>
+              <div className="font-medium text-gray-800 mb-1">Uploads are restricted to subfolders for this course.</div>
+              <div>Open <span className="font-semibold">Theory</span> or <span className="font-semibold">Lab</span> and upload there.</div>
+            </>
+          ) : (
+            <>No resources yet. Be the first to upload!</>
+          )}
         </div>
       ) : (
         <FolderGridClient items={enriched as any} />
