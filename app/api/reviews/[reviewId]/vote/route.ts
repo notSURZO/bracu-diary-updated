@@ -1,4 +1,3 @@
-// app/api/reviews/[reviewId]/vote/route.ts
 import { NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/mongodb';
 import Review from '@/lib/models/Review';
@@ -22,15 +21,20 @@ export async function POST(request: Request, { params }: { params: { reviewId: s
     const agreesSet = new Set(review.agrees);
     const disagreesSet = new Set(review.disagrees);
 
-    // Remove user's previous vote if any
-    agreesSet.delete(userEmail);
-    disagreesSet.delete(userEmail);
-
-    // Add new vote
     if (voteType === 'agree') {
-      agreesSet.add(userEmail);
-    } else {
-      disagreesSet.add(userEmail);
+      if (agreesSet.has(userEmail)) {
+        agreesSet.delete(userEmail); // Undo agree
+      } else {
+        agreesSet.add(userEmail);
+        disagreesSet.delete(userEmail); // Ensure user is not in disagrees
+      }
+    } else if (voteType === 'disagree') {
+      if (disagreesSet.has(userEmail)) {
+        disagreesSet.delete(userEmail); // Undo disagree
+      } else {
+        disagreesSet.add(userEmail);
+        agreesSet.delete(userEmail); // Ensure user is not in agrees
+      }
     }
 
     review.agrees = Array.from(agreesSet);

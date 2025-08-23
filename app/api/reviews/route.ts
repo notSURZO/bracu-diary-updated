@@ -1,4 +1,3 @@
-// app/api/reviews/route.ts
 import { NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/mongodb';
 import Review from '@/lib/models/Review';
@@ -10,14 +9,42 @@ export async function GET(request: Request) {
     await connectToDatabase();
     const { searchParams } = new URL(request.url);
     const courseId = searchParams.get('courseId');
+    const sortBy = searchParams.get('sortBy') || 'newest'; // Default to newest
 
     if (!courseId || !mongoose.Types.ObjectId.isValid(courseId)) {
       return NextResponse.json({ message: 'Invalid Course ID' }, { status: 400 });
     }
 
-    const reviews = await Review.find({ courseId }).sort({ createdAt: -1 });
+    let sortOptions: any = { createdAt: -1 }; // Default: newest
 
-    return NextResponse.json(reviews, { status: 200 });
+    switch (sortBy) {
+      case 'oldest':
+        sortOptions = { createdAt: 1 };
+        break;
+      case 'mostAgreed':
+        // The aggregation pipeline is more suitable for sorting by array length
+        break;
+      case 'mostDisagreed':
+        // The aggregation pipeline is more suitable for sorting by array length
+        break;
+    }
+
+    if (sortBy === 'mostAgreed' || sortBy === 'mostDisagreed') {
+        const reviews = await Review.aggregate([
+            { $match: { courseId: new mongoose.Types.ObjectId(courseId) } },
+            {
+                $addFields: {
+                    agreesCount: { $size: "$agrees" },
+                    disagreesCount: { $size: "$disagrees" }
+                }
+            },
+            { $sort: sortBy === 'mostAgreed' ? { agreesCount: -1 } : { disagreesCount: -1 } }
+        ]);
+        return NextResponse.json(reviews, { status: 200 });
+    } else {
+        const reviews = await Review.find({ courseId }).sort(sortOptions);
+        return NextResponse.json(reviews, { status: 200 });
+    }
   } catch (error) {
     console.error(error);
     return NextResponse.json({ message: 'Failed to fetch reviews' }, { status: 500 });
