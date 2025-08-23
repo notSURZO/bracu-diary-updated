@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useState } from "react";
 
 interface Props {
   _id: string;
@@ -10,24 +11,36 @@ interface Props {
   variant: "public" | "private";
 }
 
-function timeAgo(dateString: string) {
-  const date = new Date(dateString);
-  const seconds = Math.floor((Date.now() - date.getTime()) / 1000);
-  let interval = seconds / 31536000;
-  if (interval > 1) return `${Math.floor(interval)} years ago`;
-  interval = seconds / 2592000;
-  if (interval > 1) return `${Math.floor(interval)} months ago`;
-  interval = seconds / 86400;
-  if (interval > 1) return `${Math.floor(interval)} days ago`;
-  interval = seconds / 3600;
-  if (interval > 1) return `${Math.floor(interval)} hours ago`;
-  interval = seconds / 60;
-  if (interval > 1) return `${Math.floor(interval)} minutes ago`;
-  return `${Math.max(0, Math.floor(seconds))} seconds ago`;
+// Compute on client after mount to avoid hydration mismatch from Date.now()
+function useTimeAgo(dateString: string) {
+  const [text, setText] = useState<string>("");
+  useEffect(() => {
+    const date = new Date(dateString);
+    const compute = () => {
+      const seconds = Math.floor((Date.now() - date.getTime()) / 1000);
+      let interval = seconds / 31536000;
+      if (interval > 1) return `${Math.floor(interval)} years ago`;
+      interval = seconds / 2592000;
+      if (interval > 1) return `${Math.floor(interval)} months ago`;
+      interval = seconds / 86400;
+      if (interval > 1) return `${Math.floor(interval)} days ago`;
+      interval = seconds / 3600;
+      if (interval > 1) return `${Math.floor(interval)} hours ago`;
+      interval = seconds / 60;
+      if (interval > 1) return `${Math.floor(interval)} minutes ago`;
+      return `${Math.max(0, Math.floor(seconds))} seconds ago`;
+    };
+    setText(compute());
+    const id = setInterval(() => setText(compute()), 60 * 1000);
+    return () => clearInterval(id);
+  }, [dateString]);
+  return text;
 }
 
 export default function FolderTile({ _id, courseCode, title, updatedAt, variant }: Readonly<Props>) {
   const href = `/${variant}-resources/folders/${_id}`;
+  const rel = useTimeAgo(updatedAt);
+  const isoTitle = new Date(updatedAt).toISOString();
   return (
     <Link
       href={href}
@@ -111,8 +124,8 @@ export default function FolderTile({ _id, courseCode, title, updatedAt, variant 
         <div className="mt-1 min-h-[2.6em] line-clamp-2 text-[0.95rem] font-semibold leading-snug text-gray-900 group-hover:text-gray-950" title={title}>
           {title}
         </div>
-        <div className="mt-0.5 text-[11px] text-gray-500" title={new Date(updatedAt).toLocaleString()}>
-          Updated {timeAgo(updatedAt)}
+        <div className="mt-0.5 text-[11px] text-gray-500" title={isoTitle} suppressHydrationWarning>
+          {rel ? `Updated ${rel}` : "\u00A0"}
         </div>
       </div>
     </Link>

@@ -16,6 +16,7 @@ export type PrivateDirectory = {
 export default function PrivateDirectoriesClient({ items }: { readonly items: PrivateDirectory[] }) {
   const searchParams = useSearchParams();
   const [query, setQuery] = useState<string>(() => searchParams.get("q") || "");
+  const [list, setList] = useState<PrivateDirectory[]>(() => items.map(i => ({ ...i })));
 
   // Sync with URL (blur/Enter or history nav)
   useEffect(() => {
@@ -35,12 +36,12 @@ export default function PrivateDirectoriesClient({ items }: { readonly items: Pr
   const visible = useMemo(() => {
     const q = (query || "").toLowerCase().trim().replace(/\s+/g, " ");
     const tokens = q ? q.split(" ").filter(Boolean) : [];
-    if (tokens.length === 0) return items;
+    if (tokens.length === 0) return list;
 
     const norm = (s: string) => (s || "").toLowerCase();
     const words = (s: string) => norm(s).split(/[^a-z0-9]+/).filter(Boolean);
 
-    return items.filter((d) => {
+    return list.filter((d) => {
       const code = norm(d.courseCode);
       const title = norm(d.title);
       const titleWords = words(d.title);
@@ -52,7 +53,19 @@ export default function PrivateDirectoriesClient({ items }: { readonly items: Pr
         return false;
       });
     });
-  }, [items, query]);
+  }, [list, query]);
+
+  // Live update: when a private resource is created in a directory, bump that directory's updatedAt
+  useEffect(() => {
+    const onCreated = (e: Event) => {
+      const detail = (e as CustomEvent).detail as { item?: { directoryId?: string } } | undefined;
+      const dirId = detail?.item?.directoryId;
+      if (!dirId) return;
+      setList(prev => prev.map(d => d._id === dirId ? { ...d, updatedAt: new Date().toISOString() } : d));
+    };
+    window.addEventListener('private-resource:created', onCreated as EventListener);
+    return () => window.removeEventListener('private-resource:created', onCreated as EventListener);
+  }, []);
 
   if (visible.length === 0) {
     return (
@@ -63,7 +76,7 @@ export default function PrivateDirectoriesClient({ items }: { readonly items: Pr
   }
 
   return (
-    <div className="grid gap-5 justify-start justify-items-start [grid-template-columns:repeat(auto-fit,minmax(300px,1fr))]">
+    <div className="grid gap-6 justify-start justify-items-center [grid-template-columns:repeat(auto-fill,minmax(280px,1fr))]">
       {visible.map((d) => (
         <FolderTile
           key={d._id}

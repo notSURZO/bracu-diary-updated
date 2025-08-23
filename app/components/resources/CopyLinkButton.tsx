@@ -14,7 +14,7 @@ export default function CopyLinkButton({ url }: { readonly url: string }) {
           setTimeout(() => setCopied(false), 1500);
         } catch {}
       }}
-      className="inline-flex h-8 items-center justify-center rounded-md bg-blue-600 px-3 text-xs font-medium text-white hover:bg-blue-700"
+      className="inline-flex items-center gap-1 rounded-md border border-gray-200 bg-white px-3.5 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
       aria-label="Copy link"
     >
       {copied ? (

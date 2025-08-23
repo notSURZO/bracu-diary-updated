@@ -54,15 +54,21 @@ async function resolveOwnerNames(ownerIds: string[]): Promise<Record<string, str
       for (const id of missing) {
         try {
           const cu = await client.users.getUser(id);
-          const fallback = [cu.firstName, cu.lastName].filter(Boolean).join(' ') || cu.username || cu.emailAddresses?.[0]?.emailAddress || id;
-          map[id] = fallback as string;
+          const full = [cu.firstName, cu.lastName].filter(Boolean).join(' ');
+          if (full) {
+            map[id] = full as string;
+          }
         } catch {
-          map[id] = id.slice(0, 6) + '…';
+          // ignore; will handle below
         }
       }
     } catch {
-      for (const id of missing) map[id] = id.slice(0, 6) + '…';
+      // ignore network/SDK errors; we'll fall back to short id
     }
+  }
+  // Final fallback for any unresolved IDs: shortened id
+  for (const id of ownerIds) {
+    if (!map[id]) map[id] = id.slice(0, 6) + '…';
   }
   return map;
 }
@@ -225,8 +231,10 @@ async function OwnerName({ ownerId }: { readonly ownerId: string }) {
     try {
       const client = await (getClerkClient as any)();
       const clerkUser = await client.users.getUser(ownerId);
-      const fallback = [clerkUser.firstName, clerkUser.lastName].filter(Boolean).join(' ') || clerkUser.username || clerkUser.emailAddresses?.[0]?.emailAddress || ownerId;
-      return <span title={fallback} className="truncate max-w-[160px] sm:max-w-[220px] inline-block align-middle">by {fallback}</span>;
+      const full = [clerkUser.firstName, clerkUser.lastName].filter(Boolean).join(' ');
+      if (full) {
+        return <span title={full} className="truncate max-w-[160px] sm:max-w-[220px] inline-block align-middle">by {full}</span>;
+      }
     } catch {}
     return <span title={ownerId} className="truncate max-w-[160px] sm:max-w-[220px] inline-block align-middle">by {ownerId.slice(0, 6)}…</span>;
   } catch {

@@ -1,12 +1,14 @@
 "use client";
 
 import CopyLinkButton from "@/app/components/resources/CopyLinkButton";
-import { FaYoutube, FaFilePdf, FaFileWord, FaFileAlt, FaLink, FaFileArchive } from "react-icons/fa";
+import { FaYoutube, FaLink, FaExternalLinkAlt, FaDownload, FaFileAlt, FaFileArchive, FaFilePdf, FaFileWord } from "react-icons/fa";
+import { SiGoogledrive } from "react-icons/si";
 import { useState, useCallback, useEffect, useRef, useMemo } from "react";
+import Image from "next/image";
 import { useSearchParams } from "next/navigation";
 import { FiTrash2 } from "react-icons/fi";
 import { toast } from "react-toastify";
-import { useAuth } from "@clerk/nextjs";
+import { useAuth, useUser } from "@clerk/nextjs";
 
 export type PrivateResourceItem = {
   _id: string;
@@ -20,6 +22,8 @@ export type PrivateResourceItem = {
   ownerDisplayName?: string;
 };
 
+// Using library icon for Google Drive links
+
 function getFileType(u: string): "PDF" | "DOCX" | "VIDEO" | "TEXT" | "LINK" | "DRIVE" | "ZIP" {
   const url = u.toLowerCase();
   if (url.endsWith(".pdf")) return "PDF";
@@ -31,33 +35,18 @@ function getFileType(u: string): "PDF" | "DOCX" | "VIDEO" | "TEXT" | "LINK" | "D
   return "LINK";
 }
 
-function colorForType(t: ReturnType<typeof getFileType>): string {
-  switch (t) {
-    case "PDF":
-      return "#ef4444";
-    case "DOCX":
-      return "#2563eb";
-    case "VIDEO":
-      return "#059669";
-    case "DRIVE":
-      return "#22c55e";
-    case "ZIP":
-      return "#f59e0b";
-    case "TEXT":
-      return "#7c3aed";
-    default:
-      return "#6b7280";
-  }
-}
-
 export default function PrivateFolderGridClient({ items: initialItems }: { readonly items: PrivateResourceItem[] }) {
   const searchParams = useSearchParams();
   const { userId } = useAuth();
+  const { user } = useUser();
   const [items, setItems] = useState(() => initialItems.map(i => ({ ...i })));
   const [query, setQuery] = useState<string>(() => (searchParams.get('q') || ''));
   const [confirmingId, setConfirmingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const deletedIdsRef = useRef<Set<string>>(new Set());
+  const [avatarMap, setAvatarMap] = useState<Record<string, string>>({});
+  type TypeFilter = 'ALL'|'DOCS'|'TEXT'|'VIDEO'|'DRIVE'|'PDF';
+  const [typeFilter, setTypeFilter] = useState<TypeFilter>('ALL');
 
   const sortItems = useCallback((arr: PrivateResourceItem[]) => {
     return [...arr].sort((a, b) => {
@@ -92,6 +81,24 @@ export default function PrivateFolderGridClient({ items: initialItems }: { reado
       window.removeEventListener('private-resource:deleted', onDeleted);
     };
   }, [sortItems]);
+
+  // Fetch uploader avatars for display
+  useEffect(() => {
+    const ids = Array.from(new Set((items || []).map(i => i.ownerUserId).filter(Boolean))) as string[];
+    if (!ids.length) return;
+    (async () => {
+      try {
+        const res = await fetch('/api/users/by-ids', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ids }) });
+        if (!res.ok) return;
+        const data = await res.json();
+        const map: Record<string, string> = {};
+        for (const u of data?.users || []) {
+          if (u?.id) map[u.id] = u.picture_url || '';
+        }
+        setAvatarMap(map);
+      } catch {}
+    })();
+  }, [items]);
 
   const handleDelete = useCallback(async (id: string) => {
     // capture item for rollback
@@ -159,7 +166,8 @@ export default function PrivateFolderGridClient({ items: initialItems }: { reado
   const formatDate = (d?: string) => {
     if (!d) return undefined;
     try {
-      return new Date(d).toLocaleDateString();
+      // Stable UTC date to avoid SSR/CSR locale mismatch
+      return new Date(d).toISOString().slice(0, 10);
     } catch {
       return undefined;
     }
@@ -179,6 +187,31 @@ export default function PrivateFolderGridClient({ items: initialItems }: { reado
     window.addEventListener('resource-search:q', onQ as EventListener);
     return () => window.removeEventListener('resource-search:q', onQ as EventListener);
   }, []);
+
+  // Live updates: reflect created/deleted private resources instantly
+  useEffect(() => {
+    const handleCreated = (e: Event) => {
+      const detail = (e as CustomEvent).detail as { item: PrivateResourceItem } | undefined;
+      if (!detail?.item) return;
+      setItems(prev => {
+        if (prev.some(it => it._id === detail.item._id)) return prev; // dedupe
+        if (deletedIdsRef.current.has(detail.item._id)) return prev; // ignore if recently deleted
+        return sortItems([detail.item, ...prev]);
+      });
+    };
+    const handleDeleted = (e: Event) => {
+      const detail = (e as CustomEvent).detail as { id: string } | undefined;
+      if (!detail?.id) return;
+      deletedIdsRef.current.add(detail.id);
+      setItems(prev => prev.filter(it => it._id !== detail.id));
+    };
+    window.addEventListener('private-resource:created', handleCreated as EventListener);
+    window.addEventListener('private-resource:deleted', handleDeleted as EventListener);
+    return () => {
+      window.removeEventListener('private-resource:created', handleCreated as EventListener);
+      window.removeEventListener('private-resource:deleted', handleDeleted as EventListener);
+    };
+  }, [sortItems]);
 
   // Advanced, lightweight scoring similar to professional sites
   const visible = useMemo(() => {
@@ -249,91 +282,178 @@ export default function PrivateFolderGridClient({ items: initialItems }: { reado
     return ranked;
   }, [items, query]);
 
+  // Apply type filter on the search-visible list
+  const finalVisible = visible.filter((it) => {
+    if (typeFilter === 'ALL') return true;
+    const url = it.kind === 'youtube' ? (it.youtube?.url || '') : (it.file?.url || '');
+    const t = it.kind === 'youtube' ? 'VIDEO' : getFileType(url);
+    switch (typeFilter) {
+      case 'DOCS': return t === 'DOCX';
+      case 'TEXT': return t === 'TEXT';
+      case 'VIDEO': return t === 'VIDEO';
+      case 'DRIVE': return t === 'DRIVE';
+      case 'PDF': return t === 'PDF';
+      default: return true;
+    }
+  });
+
   return (
-    <div className="space-y-4">
-      {visible.map((r) => {
-        const url = r.kind === "youtube" ? r.youtube?.url : r.file?.url;
-        if (!url) return null;
+    <div className="overflow-x-auto rounded-lg border border-gray-200 bg-white shadow-sm">
+      <div className="px-4 pt-4">
+        <div className="inline-flex flex-wrap gap-2 rounded-lg bg-gray-50 p-1">
+          {([
+            { key: 'ALL', label: 'View all' },
+            { key: 'DOCS', label: 'Documents' },
+            { key: 'TEXT', label: 'Text files' },
+            { key: 'VIDEO', label: 'Videos' },
+            { key: 'DRIVE', label: 'Drive links' },
+            { key: 'PDF', label: 'PDFs' },
+          ] as const).map(tab => (
+            <button
+              key={tab.key}
+              onClick={() => setTypeFilter(tab.key)}
+              className={`px-3 py-1.5 text-sm rounded-md border transition-colors ${typeFilter === tab.key ? 'bg-white border-gray-300 text-gray-900 shadow-sm' : 'bg-transparent border-transparent text-gray-600 hover:text-gray-800'}`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+      </div>
+      <table className="min-w-full divide-y divide-gray-200">
+        <thead className="bg-gray-50/80">
+          <tr>
+            <th scope="col" className="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wide text-gray-600">Resource Name</th>
+            <th scope="col" className="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wide text-gray-600">Uploaded By</th>
+            <th scope="col" className="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wide text-gray-600">Date Uploaded</th>
+            {/* Votes removed for private resources */}
+            <th scope="col" className="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wide text-gray-600">Actions</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-gray-100">
+          {finalVisible.map((r) => {
+            const url = r.kind === "youtube" ? r.youtube?.url : r.file?.url;
+            if (!url) return null;
+            const type = getFileType(url);
+            const dateStr = formatDate(r.createdAt) || "";
+            const isOwner = !!userId && r.ownerUserId === userId;
 
-        const type = getFileType(url);
-        const color = colorForType(type);
-        const dateStr = formatDate(r.createdAt);
-        const sizeStr = r.file?.bytes ? formatBytes(r.file.bytes) : undefined;
-        const isOwner = userId && r.ownerUserId === userId;
+            const iconEl = () => {
+              switch (type) {
+                case "PDF":
+                  return <FaFilePdf className="h-full w-full text-red-600" aria-hidden />;
+                case "DOCX":
+                  return <FaFileWord className="h-full w-full text-blue-600" aria-hidden />;
+                case "TEXT":
+                  return <FaFileAlt className="h-full w-full text-purple-600" aria-hidden />;
+                case "ZIP":
+                  return <FaFileArchive className="h-full w-full text-amber-500" aria-hidden />;
+                case "DRIVE":
+                  return <SiGoogledrive className="h-full w-full text-green-600" aria-hidden />;
+                case "VIDEO":
+                  return <FaYoutube className="h-full w-full text-red-600" aria-hidden />;
+                default:
+                  return <FaLink className="h-full w-full text-gray-500" aria-hidden />;
+              }
+            };
 
-        return (
-          <div key={r._id} className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
-            <div className="flex items-start justify-between">
-              <div className="min-w-0 flex-1">
-                <div className="truncate text-base font-semibold text-gray-900">{r.title}</div>
-                {r.description ? (
-                  <div className="mt-2 line-clamp-2 text-sm text-gray-600">{r.description}</div>
-                ) : null}
-              </div>
-              <span
-                className="ml-2 inline-flex h-7 items-center gap-1.5 rounded-md px-2.5 text-xs font-medium text-white"
-                style={{ backgroundColor: color }}
-              >
-                {type === 'VIDEO' ? <FaYoutube className="h-4 w-4 opacity-90" /> : type === 'PDF' ? <FaFilePdf className="h-4 w-4 opacity-90" /> : type === 'DOCX' ? <FaFileWord className="h-4 w-4 opacity-90" /> : type === 'ZIP' ? <FaFileArchive className="h-4 w-4 opacity-90" /> : type === 'TEXT' ? <FaFileAlt className="h-4 w-4 opacity-90" /> : <FaLink className="h-4 w-4 opacity-90" />}
-                {type === 'VIDEO' ? 'YOUTUBE' : type === 'DRIVE' ? 'DRIVE' : type}
-              </span>
-            </div>
-            <div className="mt-4 flex items-center justify-between gap-3 text-[12px] text-gray-500">
-              <div className="min-w-0 flex flex-col gap-1">
-                <div className="flex items-center gap-3">
-                  {dateStr && <span className="whitespace-nowrap">{dateStr}</span>}
-                </div>
-                {r.ownerDisplayName && (
-                  <div className="text-gray-600">by {r.ownerDisplayName}</div>
-                )}
-                {sizeStr && <div className="text-gray-500">{sizeStr}</div>}
-              </div>
-              <div className="flex items-center gap-2">
-                <CopyLinkButton url={url} />
-                <a
-                  href={url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center rounded-md bg-green-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-green-700"
-                >
-                  {type === 'VIDEO' ? 'Watch' : 'Download'}
-                </a>
-                {isOwner && (
-                  <div className="relative">
-                    {confirmingId === r._id ? (
-                      <div className="flex items-center gap-1">
-                        <button
-                          onClick={() => handleDelete(r._id)}
-                          disabled={deletingId === r._id}
-                          className="inline-flex items-center rounded-md bg-red-600 px-2 py-1 text-xs font-medium text-white hover:bg-red-700 disabled:opacity-50"
+            return (
+              <tr key={r._id} className="hover:bg-gray-50">
+                <td className="px-4 py-3 whitespace-nowrap text-center">
+                  <div className="flex items-center justify-center gap-3 min-w-0">
+                    <div className="shrink-0 w-6 h-6 p-0.5 flex items-center justify-center">{iconEl()}</div>
+                    <div className="min-w-0 flex-1">
+                      <div className="truncate text-sm font-medium text-gray-900" title={r.title}>{r.title}</div>
+                      {r.file?.originalName && (
+                        <div className="truncate text-xs text-gray-500" title={r.file.originalName}>{r.file.originalName}</div>
+                      )}
+                    </div>
+                  </div>
+                </td>
+                <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-700 text-center">
+                  <div className="flex items-center justify-center gap-2">
+                    {r.ownerUserId && avatarMap[r.ownerUserId] ? (
+                      <Image src={avatarMap[r.ownerUserId]} alt="uploader avatar" width={24} height={24} className="rounded-full" />
+                    ) : (
+                      <div className="w-6 h-6 rounded-full bg-gray-100 flex items-center justify-center text-[10px] text-gray-500">{(r.ownerDisplayName || user?.fullName || 'U')?.[0] || 'U'}</div>
+                    )}
+                    <span>{r.ownerDisplayName || (r.ownerUserId === userId ? (user?.fullName || "You") : "Unknown")}</span>
+                  </div>
+                </td>
+                <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-700 text-center">{dateStr}</td>
+                <td className="px-4 py-3 whitespace-nowrap text-center">
+                  <div className="flex items-center justify-center gap-2 text-gray-600">
+                    {/* Slot 1: View (always) */}
+                    <div className="w-[120px] flex justify-center">
+                      <a
+                        href={url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 rounded-md border border-gray-200 bg-white px-3.5 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                        title="View"
+                      >
+                        <FaExternalLinkAlt className="h-3.5 w-3.5" />
+                        <span>View</span>
+                      </a>
+                    </div>
+
+                    {/* Slot 2: Copy link (VIDEO/DRIVE) or Download (file types), else placeholder */}
+                    {(type === 'VIDEO' || type === 'DRIVE') ? (
+                      <div className="w-[120px] flex justify-center">
+                        <CopyLinkButton url={url} />
+                      </div>
+                    ) : (type === 'PDF' || type === 'DOCX' || type === 'TEXT') ? (
+                      <div className="w-[120px] flex justify-center">
+                        <a
+                          href={url}
+                          download
+                          className="inline-flex items-center gap-1 rounded-md border border-gray-200 bg-white px-3.5 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                          title="Download"
                         >
-                          {deletingId === r._id ? 'Deleting…' : 'Confirm'}
-                        </button>
-                        <button
-                          onClick={() => setConfirmingId(null)}
-                          disabled={deletingId === r._id}
-                          className="inline-flex items-center rounded-md bg-gray-300 px-2 py-1 text-xs font-medium text-gray-700 hover:bg-gray-400 disabled:opacity-50"
-                        >
-                          Cancel
-                        </button>
+                          <FaDownload className="h-3.5 w-3.5" />
+                          <span>Download</span>
+                        </a>
                       </div>
                     ) : (
-                      <button
-                        onClick={() => setConfirmingId(r._id)}
-                        disabled={deletingId === r._id}
-                        className="inline-flex items-center rounded-md bg-red-50 px-2 py-1 text-xs font-medium text-red-700 hover:bg-red-100 disabled:opacity-50"
-                        title="Delete resource"
-                      >
-                        <FiTrash2 className="h-3 w-3" />
-                      </button>
+                      <div className="w-[120px]" aria-hidden="true" />
                     )}
+
+                    {/* Slot 3: Delete / Confirm-Cancel */}
+                    <div className="w-[96px] flex justify-center">
+                      {isOwner && confirmingId !== r._id && (
+                        <button
+                          onClick={() => setConfirmingId(r._id)}
+                          className="inline-flex items-center gap-1 rounded-md bg-red-50 px-3.5 py-1.5 text-sm font-medium text-red-700 hover:bg-red-100"
+                          title="Delete resource"
+                        >
+                          <FiTrash2 className="h-4 w-4" />
+                        </button>
+                      )}
+                      {isOwner && confirmingId === r._id && (
+                        <div className="inline-flex items-center gap-2">
+                          <button
+                            onClick={() => { if (deletingId !== r._id) { handleDelete(r._id); } }}
+                            disabled={deletingId === r._id}
+                            className="inline-flex items-center rounded-md bg-red-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
+                          >
+                            {deletingId === r._id ? 'Deleting…' : 'Confirm'}
+                          </button>
+                          <button
+                            onClick={() => setConfirmingId(null)}
+                            disabled={deletingId === r._id}
+                            className="inline-flex items-center rounded-md border border-gray-200 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   </div>
-                )}
-              </div>
-            </div>
-          </div>
-        );
-      })}
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
     </div>
   );
 }
