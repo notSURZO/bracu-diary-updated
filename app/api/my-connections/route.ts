@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) { // Use NextRequest instead of 
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
-        type FriendData = {
+    type FriendData = {
       _id: mongoose.Types.ObjectId;
       name: string;
       username: string;

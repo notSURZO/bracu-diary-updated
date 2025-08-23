@@ -1,5 +1,6 @@
 import SearchInput from "@/app/components/resources/SearchInput";
 import CreateDirectoryModal from "@/app/components/resources/CreateDirectoryModal";
+import ConnectionsDropdown from "@/app/components/resources/ConnectionsDropdown";
 import SortSelect from "../components/resources/SortSelect";
 import { headers } from "next/headers";
 import PrivateDirectoriesClient from "./PrivateDirectoriesClient";
@@ -37,7 +38,7 @@ export default async function PrivateResourcesPage({ searchParams }: { readonly 
   const items: Array<{ _id: string; courseCode: string; title: string; visibility: 'private' | 'connections' | 'public'; ownerUserId: string; updatedAt: string }> = data.items || [];
 
   return (
-    <div className="px-4 py-6 max-w-7xl mx-auto">
+    <div className="px-4 py-6 max-w-screen-2xl mx-auto">
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900">Private Course Resources</h1>
         <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -46,6 +47,7 @@ export default async function PrivateResourcesPage({ searchParams }: { readonly 
               <SearchInput placeholder="Search course code or folder title" />
             </div>
             <CreateDirectoryModal isPrivate={true} />
+            <ConnectionsDropdown />
           </div>
           <div className="flex items-center">
             <SortSelect />
