@@ -19,6 +19,7 @@ export default function PrivateFolderHeader({ directory }: Readonly<Props>) {
   const router = useRouter();
   const [currentVisibility, setCurrentVisibility] = useState(directory.visibility);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const isOwner = user?.id === directory.ownerUserId;
 
@@ -50,6 +51,25 @@ export default function PrivateFolderHeader({ directory }: Readonly<Props>) {
     } finally {
       setIsSubmitting(false);
     }
+
+  }
+
+  async function handleDelete() {
+    if (!isOwner || isDeleting) return;
+    const confirmed = window.confirm('Delete this folder and its subfolders? This cannot be undone.');
+    if (!confirmed) return;
+    setIsDeleting(true);
+    try {
+      const res = await fetch(`/api/private-resource-directories/${directory._id}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error('Failed to delete folder');
+      // Navigate back to private directories list and refresh
+      router.replace('/private-resources');
+      router.refresh();
+    } catch (err) {
+      console.error(err);
+      alert('Could not delete folder. Please try again.');
+      setIsDeleting(false);
+    }
   }
 
   return (
@@ -73,8 +93,18 @@ export default function PrivateFolderHeader({ directory }: Readonly<Props>) {
                   className={`relative inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition-transform duration-200 disabled:opacity-70 ${currentVisibility === 'connections' ? 'translate-x-4' : 'translate-x-0'}`}
                 />
               </div>
-              {isSubmitting && <div className="absolute -inset-1.5 animate-pulse rounded-full bg-blue-400/30" />} 
+              {isSubmitting && <div className="absolute -inset-1.5 animate-pulse rounded-full bg-blue-400/30" />}
             </div>
+          )}
+          {isOwner && (
+            <button
+              type="button"
+              onClick={handleDelete}
+              disabled={isDeleting}
+              className="inline-flex h-8 items-center justify-center rounded-md border border-red-200 bg-red-50 px-3 text-xs font-medium text-red-700 hover:bg-red-100 disabled:opacity-60"
+            >
+              {isDeleting ? 'Deleting…' : 'Delete'}
+            </button>
           )}
         </div>
       </div>

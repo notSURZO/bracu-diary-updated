@@ -1,4 +1,4 @@
-import { clerkClient as getClerkClient, auth } from "@clerk/nextjs/server";
+import { clerkClient, auth } from "@clerk/nextjs/server";
 import { connectToDatabase } from "@/lib/db";
 import User from "@/lib/models/User";
 import CourseResourceDirectory, { ICourseResourceDirectory } from "@/lib/models/CourseResourceDirectory";
@@ -11,11 +11,14 @@ import SearchInput from "@/app/components/resources/SearchInput";
 import PrivateFolderGridClient, { PrivateResourceItem } from "./PrivateFolderGridClient";
 import PrivateFolderHeader from "./PrivateFolderHeader";
 import { getConnectionIds } from "@/lib/connections";
+import SubfolderTile from "@/app/components/resources/SubfolderTile";
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
-async function getDirectory(id: string) {
+type Subdirectory = { _id: string; title: string; subdirectoryType?: 'theory' | 'lab' };
+
+async function getDirectory(id: string): Promise<{ dir: any; subdirectories: Subdirectory[] } | null> {
   await connectToDatabase();
   const { userId } = await auth();
   if (!userId) return null;
@@ -27,14 +30,20 @@ async function getDirectory(id: string) {
   // Check access
   const isOwner = raw.ownerUserId === userId;
   if (isOwner) {
-    return { ...raw, _id: String(raw._id) };
+    const subdirectories = await CourseResourceDirectory.find({ parentDirectoryId: raw._id, isSubdirectory: true })
+      .select({ _id: 1, title: 1, subdirectoryType: 1 })
+      .lean();
+    return { dir: { ...raw, _id: String(raw._id) }, subdirectories: (subdirectories || []).map((sd: any) => ({ _id: String(sd._id), title: sd.title, subdirectoryType: sd.subdirectoryType })) };
   }
 
   if (raw.visibility === 'connections') {
     const connectionIds = await getConnectionIds(raw.ownerUserId);
     // Primary check: new Connection model using Clerk IDs
     if (connectionIds.includes(userId)) {
-      return { ...raw, _id: String(raw._id) };
+      const subdirectories = await CourseResourceDirectory.find({ parentDirectoryId: raw._id, isSubdirectory: true })
+        .select({ _id: 1, title: 1, subdirectoryType: 1 })
+        .lean();
+      return { dir: { ...raw, _id: String(raw._id) }, subdirectories: (subdirectories || []).map((sd: any) => ({ _id: String(sd._id), title: sd.title, subdirectoryType: sd.subdirectoryType })) };
     }
 
     // Fallback checks: legacy email-based connections on User model
@@ -53,7 +62,10 @@ async function getDirectory(id: string) {
       (!!viewerConnections && !!ownerEmail && viewerConnections.includes(ownerEmail));
 
     if (connectedByEmail) {
-      return { ...raw, _id: String(raw._id) };
+      const subdirectories = await CourseResourceDirectory.find({ parentDirectoryId: raw._id, isSubdirectory: true })
+        .select({ _id: 1, title: 1, subdirectoryType: 1 })
+        .lean();
+      return { dir: { ...raw, _id: String(raw._id) }, subdirectories: (subdirectories || []).map((sd: any) => ({ _id: String(sd._id), title: sd.title, subdirectoryType: sd.subdirectoryType })) };
     }
   }
 
@@ -112,7 +124,7 @@ async function getEnrichedResources(directoryId: string, ownerUserId: string, qu
   const missing = ownerIds.filter((id) => !namesMap[id]);
   if (missing.length > 0) {
     try {
-      const clerk = getClerkClient();
+      const clerk = await clerkClient();
       const clerkUsers = await clerk.users.getUserList({ userId: missing });
       for (const u of clerkUsers.data) {
         namesMap[u.id] = [u.firstName, u.lastName].filter(Boolean).join(' ') || u.username || u.emailAddresses?.[0]?.emailAddress || u.id;
@@ -133,13 +145,14 @@ async function getEnrichedResources(directoryId: string, ownerUserId: string, qu
 
 export default async function PrivateFolderPage({ params, searchParams }: Readonly<{ params: Promise<{ id: string }>; searchParams: Promise<{ q?: string }> }>) {
   const { id } = await params;
-  const dir = await getDirectory(id);
-  if (!dir) {
+  const resp = await getDirectory(id);
+  if (!resp) {
     return (
       <div className="p-6 text-sm text-gray-600">Folder not found or you do not have access.</div>
     );
   }
-    const sp = await searchParams;
+  const { dir, subdirectories } = resp;
+  const sp = await searchParams;
   const enrichedResources = await getEnrichedResources(id, dir.ownerUserId, sp?.q);
 
   function getFileType(u: string): "PDF" | "DOCX" | "VIDEO" | "TEXT" | "LINK" | "DRIVE" | "ZIP" {
@@ -202,25 +215,61 @@ export default async function PrivateFolderPage({ params, searchParams }: Readon
   return (
     <div className="px-4 py-6 max-w-7xl mx-auto">
       <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:flex-nowrap">
-        <PrivateFolderHeader directory={dir as any} />
+        <PrivateFolderHeader
+          directory={{
+            _id: String(dir._id),
+            courseCode: String(dir.courseCode),
+            title: String(dir.title),
+            visibility: dir.visibility as 'private' | 'connections',
+            ownerUserId: String(dir.ownerUserId),
+          }}
+        />
         <div className="flex items-center gap-3 sm:flex-nowrap flex-wrap">
           <div className="hidden sm:block sm:w-80 md:w-96">
             <SearchInput placeholder="Search files, videos, links..." />
           </div>
           <div className="flex items-center gap-2">
             <CompressModal triggerLabel="Compress" courseCode={dir.courseCode} defaultCourseName={dir.title} directoryId={dir._id} isPrivate={true} />
-            <UploadModal triggerLabel="+ Upload" courseCode={dir.courseCode} defaultCourseName={dir.title} directoryId={dir._id} isPrivate={true} />
+            {subdirectories.length === 0 && (
+              <UploadModal triggerLabel="+ Upload" courseCode={dir.courseCode} defaultCourseName={dir.title} directoryId={dir._id} isPrivate={true} />
+            )}
           </div>
         </div>
       </div>
       <div className="sm:hidden mb-3"><SearchInput placeholder="Search files, videos, links..." /></div>
 
-      {enrichedResources.length === 0 ? (
-        <div className="mb-6 rounded-lg border border-dashed border-gray-300 p-8 text-center text-sm text-gray-600">
-          No resources yet. Be the first to upload!
+      {subdirectories.length > 0 && (
+        <div className="mb-6">
+          <div className="text-sm font-semibold text-gray-700 mb-2">Subfolders</div>
+          <div className="grid gap-5 justify-center justify-items-center [grid-template-columns:repeat(auto-fit,minmax(320px,1fr))]">
+            {(() => {
+              const ordered = [...subdirectories].toSorted((a, b) => (a.subdirectoryType || '').localeCompare(b.subdirectoryType || ''));
+              return ordered.map((sd) => (
+                <SubfolderTile
+                  key={sd._id}
+                  _id={sd._id}
+                  title={sd.title}
+                  subdirectoryType={sd.subdirectoryType}
+                  variant="private"
+                />
+              ));
+            })()}
+          </div>
         </div>
+      )}
+
+      {subdirectories.length === 0 ? (
+        enrichedResources.length === 0 ? (
+          <div className="mb-6 rounded-lg border border-dashed border-gray-300 p-8 text-center text-sm text-gray-600">
+            No resources yet. Be the first to upload!
+          </div>
+        ) : (
+          <PrivateFolderGridClient items={enrichedResources} />
+        )
       ) : (
-        <PrivateFolderGridClient items={enrichedResources} />
+        <div className="mt-6 text-xs text-gray-600">
+          Resources for this course are organized under the subfolders above.
+        </div>
       )}
     </div>
   );

@@ -21,7 +21,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     const baseFilter: any = { visibility: 'public', directoryId: dirObjectId };
     if (q) baseFilter.$text = { $search: q };
     // Sort by highest upvotes first, then score (up - down), then recency
-    let items: any[] = await CourseResource.aggregate([
+    const items: any[] = await CourseResource.aggregate([
       { $match: baseFilter },
       {
         $addFields: {
@@ -33,27 +33,6 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
       { $sort: { upCount: -1, score: -1, createdAt: -1 } },
       { $limit: limit },
     ]);
-
-    // Fallback: if none found by directoryId (legacy uploads), load by courseCode of directory
-    if (!items.length && Types.ObjectId.isValid(id)) {
-      const dir = (await CourseResourceDirectory.findById(id).lean()) as any;
-      if (dir?.courseCode) {
-        const courseFilter: any = { visibility: 'public', courseCode: dir.courseCode };
-        if (q) courseFilter.$text = { $search: q };
-        items = await CourseResource.aggregate([
-          { $match: courseFilter },
-          {
-            $addFields: {
-              upCount: { $size: { $ifNull: ['$upvoters', []] } },
-              downCount: { $size: { $ifNull: ['$downvoters', []] } },
-            },
-          },
-          { $addFields: { score: { $subtract: ['$upCount', '$downCount'] } } },
-          { $sort: { upCount: -1, score: -1, createdAt: -1 } },
-          { $limit: limit },
-        ]);
-      }
-    }
 
     return NextResponse.json({ items, page, limit, total: items.length });
   } catch (e) {

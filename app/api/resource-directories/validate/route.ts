@@ -8,7 +8,7 @@ export async function POST(req: NextRequest) {
   try {
     await connectToDatabase();
 
-    const { courseCode, courseName } = await req.json();
+    const { courseCode, courseName, ignoreDuplicates } = await req.json();
     if (!courseCode) {
       return NextResponse.json({ valid: false, message: 'courseCode is required' }, { status: 400 });
     }
@@ -35,19 +35,20 @@ export async function POST(req: NextRequest) {
     // Canonical course name from DB (used to auto-fill on client)
     const canonicalName = (course as any).courseName || providedName;
 
-    // Check if a main public directory with same code+name already exists
-    const existing = await (CourseResourceDirectory as any).findOne({
-      courseCode: code,
-      title: { $regex: new RegExp(`^${canonicalName}$`, 'i') },
-      isSubdirectory: { $ne: true },
-      visibility: 'public',
-    }).lean();
+    if (!ignoreDuplicates) {
+      const existing = await (CourseResourceDirectory as any).findOne({
+        courseCode: code,
+        title: { $regex: new RegExp(`^${canonicalName}$`, 'i') },
+        isSubdirectory: { $ne: true },
+        visibility: 'public',
+      }).lean();
 
-    if (existing) {
-      return NextResponse.json({
-        valid: false,
-        message: 'A folder for this course code and course name already exists.',
-      }, { status: 200 });
+      if (existing) {
+        return NextResponse.json({
+          valid: false,
+          message: 'A folder for this course code and course name already exists.',
+        }, { status: 200 });
+      }
     }
 
     const hasLab = Array.isArray((course as any).sections)

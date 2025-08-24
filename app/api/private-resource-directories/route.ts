@@ -23,6 +23,7 @@ export async function GET(req: NextRequest) {
     // Build filter for private resources (user's own + connections')
     const connectionIds = await getConnectionIds(userId);
     const baseFilter = {
+      isSubdirectory: { $ne: true },
       $or: [
         { ownerUserId: userId, visibility: { $ne: 'public' } }, // Only own directories that are not public
         {
@@ -112,7 +113,7 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { courseCode, title, visibility } = body;
+    const { courseCode, title, visibility, createTheoryLab } = body as { courseCode: string; title: string; visibility?: 'private' | 'connections'; createTheoryLab?: boolean };
 
     const courseCodeTrimmed = (courseCode || '').trim().toUpperCase();
     const titleTrimmed = (title || '').trim();
@@ -127,10 +128,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Title is too short' }, { status: 400 });
     }
 
-    const validVisibilities = ['private', 'connections'];
-    const newVisibility = validVisibilities.includes(visibility) ? visibility : 'private';
+    const newVisibility: 'private' | 'connections' = visibility === 'connections' ? 'connections' : 'private';
 
-    let directory;
+    let directory: any;
     try {
       directory = await CourseResourceDirectory.create({
         courseCode: courseCodeTrimmed,
@@ -141,6 +141,35 @@ export async function POST(req: NextRequest) {
     } catch (e: any) {
       const msg = e?.message || 'Database error creating directory';
       return NextResponse.json({ error: msg }, { status: 500 });
+    }
+
+    // Optionally create Theory/Lab subdirectories for private directories when requested
+    const createdDirectories: any[] = [];
+    if (createTheoryLab) {
+      try {
+        const theoryDir = await CourseResourceDirectory.create({
+          courseCode: courseCodeTrimmed,
+          title: `${titleTrimmed} - Theory`,
+          visibility: newVisibility,
+          ownerUserId: userId,
+          parentDirectoryId: (directory as any)._id,
+          isSubdirectory: true,
+          subdirectoryType: 'theory',
+        });
+        const labDir = await CourseResourceDirectory.create({
+          courseCode: courseCodeTrimmed,
+          title: `${titleTrimmed} - Lab`,
+          visibility: newVisibility,
+          ownerUserId: userId,
+          parentDirectoryId: (directory as any)._id,
+          isSubdirectory: true,
+          subdirectoryType: 'lab',
+        });
+        createdDirectories.push(theoryDir, labDir);
+      } catch (e) {
+        // If subdirectory creation fails, we still proceed with main directory
+        console.warn('Failed creating private subdirectories:', e);
+      }
     }
 
     // Revalidate private resources listing cache so the new folder appears immediately
@@ -159,7 +188,11 @@ export async function POST(req: NextRequest) {
       title: directory.title,
       visibility: directory.visibility,
       ownerUserId: directory.ownerUserId,
-      createdAt: directory.createdAt
+      createdAt: directory.createdAt,
+      createdTheoryLab: createdDirectories.length === 2,
+      directories: [{ id: directory._id.toString(), title: directory.title, type: 'main' }].concat(
+        createdDirectories.map((d: any) => ({ id: d._id.toString(), title: d.title, type: d.subdirectoryType || 'sub' }))
+      ),
     }, { status: 201 });
   } catch (error) {
     console.error('private-resource-directories POST error:', error);

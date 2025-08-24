@@ -1,4 +1,3 @@
-import FolderTile from "@/app/components/resources/FolderTile";
 import SearchInput from "@/app/components/resources/SearchInput";
 import CreateDirectoryModal from "@/app/components/resources/CreateDirectoryModal";
 import SortSelect from "../components/resources/SortSelect";
@@ -7,12 +6,12 @@ import PublicDirectoriesClient from "./PublicDirectoriesClient";
 
 export const revalidate = 0;
 
-async function getDirectories(searchParams: { q?: string; page?: string; limit?: string; sort?: string }) {
+async function getDirectories(params: { q?: string; page?: string; limit?: string; sort?: string }) {
   const qs = new URLSearchParams();
-  if (searchParams.q) qs.set("q", searchParams.q);
-  if (searchParams.page) qs.set("page", searchParams.page);
-  if (searchParams.limit) qs.set("limit", searchParams.limit);
-  if (searchParams.sort) qs.set("sort", searchParams.sort);
+  if (params.q) qs.set("q", params.q);
+  if (params.page) qs.set("page", params.page);
+  if (params.limit) qs.set("limit", params.limit);
+  if (params.sort) qs.set("sort", params.sort);
 
   const query = qs.toString();
   const hdrs = await headers();
@@ -32,8 +31,9 @@ async function getDirectories(searchParams: { q?: string; page?: string; limit?:
   return res.json();
 }
 
-export default async function PublicResourcesPage({ searchParams }: { readonly searchParams: { q?: string; page?: string; limit?: string; sort?: string } }) {
-  const data = await getDirectories(searchParams);
+export default async function PublicResourcesPage({ searchParams }: { readonly searchParams: Promise<{ q?: string; page?: string; limit?: string; sort?: string }> }) {
+  const sp = await searchParams;
+  const data = await getDirectories(sp);
   const items: Array<{ _id: string; courseCode: string; title: string; updatedAt: string; }> = (data.items || []).map((d: any) => ({
     _id: String(d._id),
     courseCode: String(d.courseCode),

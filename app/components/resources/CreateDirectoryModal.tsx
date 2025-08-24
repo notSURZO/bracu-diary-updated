@@ -29,7 +29,7 @@ export default function CreateDirectoryModal({ isPrivate = false }: { readonly i
       const course = await fetch('/api/resource-directories/validate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ courseCode })
+        body: JSON.stringify({ courseCode, ignoreDuplicates: isPrivate })
       });
       
       const data = await course.json();
@@ -51,8 +51,8 @@ export default function CreateDirectoryModal({ isPrivate = false }: { readonly i
       if (data.hasLab) {
         setShowLabPrompt(true);
       } else {
-        // No lab, proceed directly
-        await createDirectories(false);
+        // No lab: stay in validated state and show the Create button for finalization
+        setShowLabPrompt(false);
       }
       
     } catch (err) {
@@ -63,7 +63,7 @@ export default function CreateDirectoryModal({ isPrivate = false }: { readonly i
     }
   }
 
-  async function createDirectories(includeLab: boolean) {
+  async function createDirectories(includeLab: boolean, overrideTitle?: string) {
     try {
       setSubmitting(true);
       setError(null);
@@ -71,7 +71,7 @@ export default function CreateDirectoryModal({ isPrivate = false }: { readonly i
       const endpoint = isPrivate ? "/api/private-resource-directories" : "/api/resource-directories";
       const payload = {
         courseCode,
-        title,
+        title: overrideTitle ?? title,
         visibility: isPrivate ? visibility : 'public',
         createTheoryLab: includeLab
       };
@@ -95,6 +95,19 @@ export default function CreateDirectoryModal({ isPrivate = false }: { readonly i
       
       const result = await res.json();
       
+      // Optimistic UI: notify private list about the newly created directory
+      try {
+        const newItem = {
+          _id: result.id as string,
+          courseCode: result.courseCode as string,
+          title: result.title as string,
+          visibility: (isPrivate ? (visibility as 'private' | 'connections') : 'public') as 'private' | 'connections' | 'public',
+          ownerUserId: result.ownerUserId as string,
+          updatedAt: new Date().toISOString(),
+        };
+        window.dispatchEvent(new CustomEvent('private-directory:created', { detail: { item: newItem } }));
+      } catch {}
+
       if (result.createdTheoryLab) {
         toast.success('Course folder created with Theory and Lab subfolders');
       } else {
@@ -130,6 +143,9 @@ export default function CreateDirectoryModal({ isPrivate = false }: { readonly i
       await validateCourse();
     } else if (courseValid && showLabPrompt) {
       await createDirectories(createBothFolders);
+    } else if (courseValid && !showLabPrompt) {
+      // Validated course with no lab: finalize creation now
+      await createDirectories(false, title);
     }
   }
 
