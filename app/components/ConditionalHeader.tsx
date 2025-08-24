@@ -10,6 +10,7 @@ import { toast } from 'react-toastify';
 import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
 import { debounce } from "lodash";
+import { format } from 'date-fns';
 
 interface ConnectionRequest {
   email: string;
@@ -17,6 +18,24 @@ interface ConnectionRequest {
   username: string;
   student_ID: string;
   picture_url: string;
+}
+
+interface Deadline {
+  id: string;
+  title: string;
+  details: string;
+  submissionLink?: string;
+  lastDate: string;
+  courseId: string;
+  courseCode: string;
+  courseName: string;
+  section: string;
+  type: 'theory' | 'lab';
+  createdBy: string;
+  createdByName: string;
+  createdByStudentId: string;
+  createdAt: string;
+  completed: boolean;
 }
 
 type MatchType = 'firstWord' | 'secondWord' | 'username';
@@ -27,69 +46,111 @@ interface Connection {
   username: string;
   email: string;
   picture_url: string;
-  matchType?: MatchType; // Optional matchType for filtering
+  matchType?: MatchType;
 }
+
+const DisconnectConfirmationToast = ({
+  friendName,
+  onConfirm,
+  onCancel,
+}: {
+  friendName: string;
+  onConfirm: () => void;
+  onCancel: () => void;
+}) => (
+  <div className="p-3 bg-white border border-gray-200 rounded-lg shadow-md">
+    <p className="text-gray-800 font-medium mb-2">Are you sure you want to disconnect from {friendName}?</p>
+    <div className="flex space-x-2">
+      <button
+        onClick={onConfirm}
+        className="px-3 py-1 bg-blue-600 text-white rounded-md text-sm hover:bg-blue-700 transition-colors"
+      >
+        Confirm
+      </button>
+      <button
+        onClick={onCancel}
+        className="px-3 py-1 bg-gray-200 text-gray-700 rounded-md text-sm hover:bg-gray-300 transition-colors"
+      >
+        Cancel
+      </button>
+    </div>
+  </div>
+);
 
 export default function ConditionalHeader() {
   const { isSignedIn, user, isLoaded } = useUser();
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [isConnectionsDropdownOpen, setIsConnectionsDropdownOpen] = useState(false);
+  const [isNotificationsDropdownOpen, setIsNotificationsDropdownOpen] = useState(false);
   const [showRequests, setShowRequests] = useState(false);
   const [showConnections, setShowConnections] = useState(false);
   const [requests, setRequests] = useState<ConnectionRequest[]>([]);
   const [connections, setConnections] = useState<Connection[]>([]);
   const [filteredConnections, setFilteredConnections] = useState<Connection[]>([]);
+  const [deadlines, setDeadlines] = useState<Deadline[]>([]);
   const [connectionSearchQuery, setConnectionSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const dropdownRef = useRef<HTMLDivElement>(null);
-  const buttonRef = useRef<HTMLButtonElement>(null);
+  const connectionsDropdownRef = useRef<HTMLDivElement>(null);
+  const connectionsButtonRef = useRef<HTMLButtonElement>(null);
+  const notificationsDropdownRef = useRef<HTMLDivElement>(null);
+  const notificationsButtonRef = useRef<HTMLButtonElement>(null);
   const router = useRouter();
   const pathname = usePathname();
 
-
-  const isIconHighlighted = isDropdownOpen ;
+  const isConnectionsIconHighlighted = isConnectionsDropdownOpen;
+  const isNotificationsIconHighlighted = isNotificationsDropdownOpen;
 
   // Debounced search handler
   const handleSearchChange = debounce((value: string) => {
     setConnectionSearchQuery(value);
   }, 300);
 
-  // Click-outside handler for dropdown
+  // Click-outside handler for connections dropdown
   useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
+    const handleClickOutsideConnections = (event: MouseEvent) => {
       if (
-        dropdownRef.current &&
-        !dropdownRef.current.contains(event.target as Node) &&
-        buttonRef.current &&
-        !buttonRef.current.contains(event.target as Node)
+        connectionsDropdownRef.current &&
+        !connectionsDropdownRef.current.contains(event.target as Node) &&
+        connectionsButtonRef.current &&
+        !connectionsButtonRef.current.contains(event.target as Node)
       ) {
-        setIsDropdownOpen(false);
+        setIsConnectionsDropdownOpen(false);
         setError(null);
         setShowRequests(false);
         setShowConnections(false);
         setConnectionSearchQuery('');
       }
     };
-    if (isDropdownOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
+    if (isConnectionsDropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutsideConnections);
     }
     return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('mousedown', handleClickOutsideConnections);
     };
-  }, [isDropdownOpen]);
+  }, [isConnectionsDropdownOpen]);
 
-  // Fetch connection requests or connections based on state
+  // Click-outside handler for notifications dropdown
   useEffect(() => {
-    if (isSignedIn && user) {
-      if (showRequests) {
-        fetchConnectionRequests();
-      } else if (showConnections) {
-        fetchConnections();
+    const handleClickOutsideNotifications = (event: MouseEvent) => {
+      if (
+        notificationsDropdownRef.current &&
+        !notificationsDropdownRef.current.contains(event.target as Node) &&
+        notificationsButtonRef.current &&
+        !notificationsButtonRef.current.contains(event.target as Node)
+      ) {
+        setIsNotificationsDropdownOpen(false);
+        setError(null);
       }
+    };
+    if (isNotificationsDropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutsideNotifications);
     }
-  }, [isSignedIn, user, showRequests, showConnections]);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutsideNotifications);
+    };
+  }, [isNotificationsDropdownOpen]);
 
-  // Filter connections to mimic /api/search logic
+  // Filter connections
   useEffect(() => {
     if (connectionSearchQuery.trim() === '') {
       setFilteredConnections(connections);
@@ -123,7 +184,7 @@ export default function ConditionalHeader() {
         }
         return a.name.localeCompare(b.name);
       })
-      .slice(0, 10); // Limit to 10 results, like /api/search
+      .slice(0, 10);
 
     setFilteredConnections(filtered);
   }, [connectionSearchQuery, connections]);
@@ -180,16 +241,60 @@ export default function ConditionalHeader() {
     }
   };
 
-  const handleToggleDropdown = (e: React.MouseEvent) => {
+  const fetchNotifications = async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const response = await fetch('/api/get-user-deadlines', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: user?.id }),
+      });
+      const data = await response.json();
+      if (response.ok) {
+        setDeadlines(data.deadlines || []);
+      } else {
+        console.error('Error fetching deadlines:', data.error);
+        setError(data.error || 'Failed to fetch deadlines');
+        toast.error(data.error || 'Failed to fetch deadlines');
+      }
+    } catch (error) {
+      console.error('Error fetching deadlines:', error);
+      setError('An error occurred while fetching deadlines');
+      toast.error('An error occurred while fetching deadlines');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleConnectionsToggleDropdown = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    setIsDropdownOpen((prev) => {
+    setIsNotificationsDropdownOpen(false);
+    setIsConnectionsDropdownOpen((prev) => {
       const newState = !prev;
       if (!newState) {
         setError(null);
         setShowRequests(false);
         setShowConnections(false);
         setConnectionSearchQuery('');
+      } else {
+        fetchConnectionRequests(); // Fetch requests on every icon click
+      }
+      return newState;
+    });
+  };
+
+  const handleNotificationsToggleDropdown = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsConnectionsDropdownOpen(false);
+    setIsNotificationsDropdownOpen((prev) => {
+      const newState = !prev;
+      if (!newState) {
+        setError(null);
+      } else {
+        fetchNotifications(); // Fetch notifications on every icon click
       }
       return newState;
     });
@@ -257,6 +362,54 @@ export default function ConditionalHeader() {
     }
   };
 
+  const handleDisconnect = (friendEmail: string, friendName: string) => {
+    if (!user) return;
+
+    const toastId = toast(
+      <DisconnectConfirmationToast
+        friendName={friendName}
+        onConfirm={async () => {
+          try {
+            const response = await fetch('/api/disconnect', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ userId: user.id, friendEmail }),
+            });
+            const data = await response.json();
+            if (response.ok) {
+              toast.success(data.message);
+              fetchConnections();
+            } else {
+              console.error('Error disconnecting:', data.error);
+              toast.error(data.error || 'Failed to disconnect');
+            }
+          } catch (error) {
+            console.error('Error disconnecting:', error);
+            toast.error('Failed to disconnect');
+          } finally {
+            toast.dismiss(toastId);
+          }
+        }}
+        onCancel={() => toast.dismiss(toastId)}
+      />,
+      { autoClose: false, closeOnClick: false, draggable: false }
+    );
+  };
+
+  const formatDateTime = (dateString: string) => {
+    if (!dateString || typeof dateString !== 'string') {
+      return { date: 'Unknown', time: 'Unknown' };
+    }
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) {
+      return { date: 'Unknown', time: 'Unknown' };
+    }
+    return {
+      date: format(date, 'MMM dd, yyyy'),
+      time: format(date, 'hh:mm a')
+    };
+  };
+
   if (!isLoaded) {
     return <div className="fixed top-0 left-0 right-0 p-4 bg-white shadow-sm">Loading...</div>;
   }
@@ -267,7 +420,7 @@ export default function ConditionalHeader() {
 
   return (
     <>
-      <header className="fixed top-0 left-0 right-0 z-50 p-4 flex items-center justify-between bg-white shadow-sm">
+      <header className="fixed top-0 left-0 right-0 z-50 p-4 flex items-center justify-between  bg-white  shadow-sm">
         <div className="flex items-center space-x-4">
           <Link href="/" className="pointer-events-auto">
             <Image
@@ -282,30 +435,42 @@ export default function ConditionalHeader() {
           <SearchBar />
         </div>
         <div className="flex items-center space-x-4">
-          <div className="relative">
+          <div className="relative flex items-center space-x-2">
             <button
-              ref={buttonRef}
-              onClick={handleToggleDropdown}
-              className={`relative cursor-pointer p-1 rounded-full transition-colors ${
-                isIconHighlighted ? 'bg-gray-200 border border-gray-400' : 'hover:bg-gray-100'
+              ref={connectionsButtonRef}
+              onClick={handleConnectionsToggleDropdown}
+              className={`relative cursor-pointer p-2 rounded-full transition-colors flex items-center justify-center ${
+                isConnectionsIconHighlighted && (showRequests || showConnections) ? 'bg-gray-200 border border-gray-400' : 'hover:bg-gray-100'
               }`}
+
             >
               <Image
                 src="/connect-requests.svg"
                 alt="Connection Requests"
-                width={35}
-                height={35}
+                width={30}
+                height={30}
                 className="hover:opacity-80 transition"
               />
-              {requests.length > 0 && (
-                <span className="absolute -top-2 -right-2 bg-blue-600 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
-                  {requests.length}
-                </span>
-              )}
             </button>
-            {isDropdownOpen && (
+            <button
+              ref={notificationsButtonRef}
+              onClick={handleNotificationsToggleDropdown}
+              className={`relative cursor-pointer p-2 rounded-full transition-colors flex items-center justify-center ${
+                isNotificationsIconHighlighted ? 'bg-gray-200 border border-gray-400' : 'hover:bg-gray-100'
+              }`}
+              style={{ width: '40px', height: '40px' }}
+            >
+              <Image
+                src="/bell-icon.svg"
+                alt="Notifications"
+                width={24}
+                height={24}
+                className="hover:opacity-80 transition"
+              />
+            </button>
+            {isConnectionsDropdownOpen && (
               <div
-                ref={dropdownRef}
+                ref={connectionsDropdownRef}
                 className={`absolute top-full right-0 mt-3 w-96 bg-white border border-gray-200 rounded-lg shadow-xl p-0 ${
                   showConnections ? 'max-h-[80vh]' : 'max-h-[70vh]'
                 } overflow-y-auto z-50`}
@@ -313,7 +478,7 @@ export default function ConditionalHeader() {
                 <div className="bg-gray-50 p-3 border-b border-gray-200 flex justify-between items-center">
                   <h2 className="text-lg font-semibold text-gray-800">Connections</h2>
                   <button
-                    onClick={() => setIsDropdownOpen(false)}
+                    onClick={() => setIsConnectionsDropdownOpen(false)}
                     className="text-gray-500 hover:text-gray-700 text-xl"
                   >
                     &times;
@@ -371,9 +536,9 @@ export default function ConditionalHeader() {
                           >
                             <Link
                               href={`/profile/${connection.username}`}
-                              className="flex items-center space-x-3 w-full"
+                              className="flex items-center space-x-3"
                               onClick={() => {
-                                setIsDropdownOpen(false);
+                                setIsConnectionsDropdownOpen(false);
                                 setConnectionSearchQuery('');
                               }}
                             >
@@ -395,12 +560,18 @@ export default function ConditionalHeader() {
                                 <p className="text-sm text-gray-500">@{connection.username || connection.email}</p>
                               </div>
                             </Link>
+                            <button
+                              onClick={() => handleDisconnect(connection.email, connection.name)}
+                              className="px-3 py-1 bg-red-200 text-red-700 rounded-md text-sm hover:bg-red-300 transition-colors"
+                            >
+                              Disconnect
+                            </button>
                           </li>
                         ))}
                       </ul>
                     )}
                   </>
-                ) : (
+                ) : showRequests ? (
                   <>
                     <button
                       onClick={() => {
@@ -464,6 +635,67 @@ export default function ConditionalHeader() {
                       </ul>
                     )}
                   </>
+                ) : null}
+              </div>
+            )}
+            {isNotificationsDropdownOpen && (
+              <div
+                ref={notificationsDropdownRef}
+                className="absolute top-full right-0 mt-3 w-96 bg-white border border-gray-200 rounded-lg shadow-xl p-0 max-h-[70vh] overflow-y-auto z-50"
+              >
+                <div className="bg-gray-50 p-3 border-b border-gray-200 flex justify-between items-center">
+                  <h2 className="text-lg font-semibold text-gray-800">Notifications</h2>
+                  <button
+                    onClick={() => setIsNotificationsDropdownOpen(false)}
+                    className="text-gray-500 hover:text-gray-700 text-xl"
+                  >
+                    &times;
+                  </button>
+                </div>
+                {isLoading ? (
+                  <div className="p-4 text-center text-gray-500">Loading...</div>
+                ) : error ? (
+                  <div className="p-4 text-center text-red-500">{error}</div>
+                ) : deadlines.length === 0 ? (
+                  <div className="p-4 text-center text-gray-500">No upcoming deadlines.</div>
+                ) : (
+                  <ul className="divide-y divide-gray-100">
+                    {deadlines.map((deadline) => {
+                      const { date, time } = formatDateTime(deadline.lastDate);
+                      return (
+                        <li
+                          key={deadline.id}
+                          className={`p-3 hover:bg-gray-50 transition-colors flex justify-between items-center ${
+                            deadline.completed ? 'bg-green-50' : 'bg-white'
+                          }`}
+                        >
+                          <Link
+                            href={`/manage-deadlines/${deadline.courseId}`}
+                            className="flex flex-col space-y-1 w-full"
+                            onClick={() => {
+                              setIsNotificationsDropdownOpen(false);
+                            }}
+                          >
+                            <div className="flex items-center space-x-2">
+                              <p className="font-medium text-gray-800">{deadline.title}</p>
+                              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                                deadline.type === 'theory' 
+                                  ? 'bg-blue-100 text-blue-800' 
+                                  : 'bg-green-100 text-green-800'
+                              }`}>
+                                {deadline.type === 'theory' ? 'Theory' : 'Lab'}
+                              </span>
+                            </div>
+                            <p className="text-sm text-gray-600">{deadline.courseCode} - {deadline.courseName} (Section {deadline.section})</p>
+                            <p className="text-sm text-gray-500">Due: {date} at {time}</p>
+                          </Link>
+                          {deadline.completed && (
+                            <span className="text-sm text-green-600 font-medium">Completed</span>
+                          )}
+                        </li>
+                      );
+                    })}
+                  </ul>
                 )}
               </div>
             )}

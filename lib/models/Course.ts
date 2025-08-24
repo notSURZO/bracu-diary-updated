@@ -1,5 +1,57 @@
 import mongoose from "mongoose";
 
+const DeadlineSchema = new mongoose.Schema({
+  id: {
+    type: String,
+    required: true
+  },
+  title: {
+    type: String,
+    required: true
+  },
+  details: {
+    type: String,
+    required: true
+  },
+  submissionLink: {
+    type: String,
+    default: ''
+  },
+  lastDate: {
+    type: Date,
+    required: true
+  },
+  createdBy: {
+    type: String,
+    required: true
+  },
+  createdByName: {
+    type: String,
+    required: true
+  },
+  createdByStudentId: {
+    type: String,
+    required: true
+  },
+  createdAt: {
+    type: Date,
+    default: Date.now
+  },
+  type: {
+    type: String,
+    enum: ['theory', 'lab'],
+    required: false
+  },
+  agrees: { 
+    type: [String], 
+    default: [] 
+  },
+  disagrees: { 
+    type: [String], 
+    default: [] 
+  }
+});
+
 const ClassDetailsSchema = new mongoose.Schema({
   faculty: {
     type: String,
@@ -21,6 +73,10 @@ const ClassDetailsSchema = new mongoose.Schema({
     type: String,
     required: true
   },
+  deadlines: {
+    type: [DeadlineSchema],
+    default: []
+  }
 });
 
 const SectionSchema = new mongoose.Schema({
@@ -38,7 +94,6 @@ const SectionSchema = new mongoose.Schema({
   },
 });
 
-// The main Course schema. Each document represents a full course with all its sections.
 const CourseSchema = new mongoose.Schema({
   courseCode: {
     type: String,
