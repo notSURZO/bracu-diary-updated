@@ -472,6 +472,14 @@ export default function ManageDeadlinesPage() {
                           }`}>
                             {deadline.type === 'theory' ? 'Theory' : (deadline.type === 'lab' ? 'Lab' : 'Unknown')}
                           </span>
+                          {user && deadline.createdBy === user.id && (
+                            <button
+                              onClick={() => confirmDelete(deadline)}
+                              className="px-5 py-3 bg-red-500 text-white rounded-md hover:bg-red-700 text-sm font-medium"
+                            >
+                              Delete Your Reminded Deadline
+                            </button>
+                          )}
                         </div>
                         <p className="mt-1 text-sm text-gray-600">{truncateText(deadline.details || 'No details provided')}</p>
                         <div className="mt-2 flex items-center space-x-2">
@@ -499,7 +507,7 @@ export default function ManageDeadlinesPage() {
                                   : 'bg-gray-100 text-green-800 hover:bg-green-200'
                               }`}
                             >
-                              Agree ({deadline.agrees.length})
+                              👍 Upvote ({deadline.agrees.length})
                             </button>
                             <button
                               onClick={() => handleAgreeDisagree(deadline._id || deadline.id, 'disagree')}
@@ -509,17 +517,9 @@ export default function ManageDeadlinesPage() {
                                   : 'bg-gray-100 text-red-800 hover:bg-red-200'
                               }`}
                             >
-                              Disagree ({deadline.disagrees.length})
+                             👎 Downvote ({deadline.disagrees.length})
                             </button>
                           </div>
-                          {user && deadline.createdBy === user.id && (
-                            <button
-                              onClick={() => confirmDelete(deadline)}
-                              className="px-3 py-1 bg-red-100 text-red-700 rounded-md hover:bg-red-200 text-sm font-medium"
-                            >
-                              Delete
-                            </button>
-                          )}
                         </div>
                       </div>
                       <div className="text-right">
