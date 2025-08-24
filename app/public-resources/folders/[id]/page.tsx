@@ -201,19 +201,18 @@ export default async function FolderPage({ params, searchParams }: Readonly<{ pa
         </div>
       )}
 
-      {filtered.length === 0 ? (
-        <div className="mb-6 rounded-lg border border-dashed border-gray-300 p-8 text-center text-sm text-gray-600">
-          {subdirectories.length > 0 ? (
-            <>
-              <div className="font-medium text-gray-800 mb-1">Uploads are restricted to subfolders for this course.</div>
-              <div>Open <span className="font-semibold">Theory</span> or <span className="font-semibold">Lab</span> and upload there.</div>
-            </>
-          ) : (
+      {subdirectories.length === 0 ? (
+        filtered.length === 0 ? (
+          <div className="mb-6 rounded-lg border border-dashed border-gray-300 p-8 text-center text-sm text-gray-600">
             <>No resources yet. Be the first to upload!</>
-          )}
-        </div>
+          </div>
+        ) : (
+          <FolderGridClient items={enriched as any} />
+        )
       ) : (
-        <FolderGridClient items={enriched as any} />
+        <div className="mt-6 text-xs text-gray-600">
+          Resources for this course are organized under the subfolders above.
+        </div>
       )}
     </div>
   );

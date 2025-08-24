@@ -7,11 +7,11 @@ import { headers } from "next/headers";
 
 export const revalidate = 60;
 
-async function getResources(courseCode: string, searchParams: { q?: string; page?: string; limit?: string }) {
+async function getResources(courseCode: string, params: { q?: string; page?: string; limit?: string }) {
   const qs = new URLSearchParams();
-  if (searchParams.q) qs.set("q", searchParams.q);
-  if (searchParams.page) qs.set("page", searchParams.page);
-  if (searchParams.limit) qs.set("limit", searchParams.limit);
+  if (params.q) qs.set("q", params.q);
+  if (params.page) qs.set("page", params.page);
+  if (params.limit) qs.set("limit", params.limit);
 
   const query = qs.toString();
   const hdrs = await headers();

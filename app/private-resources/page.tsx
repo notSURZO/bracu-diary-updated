@@ -7,12 +7,12 @@ import PrivateDirectoriesClient from "./PrivateDirectoriesClient";
 
 export const revalidate = 60;
 
-async function getDirectories(searchParams: { q?: string; page?: string; limit?: string; sort?: string }) {
+async function getDirectories(params: { q?: string; page?: string; limit?: string; sort?: string }) {
   const qs = new URLSearchParams();
-  if (searchParams.q) qs.set("q", searchParams.q);
-  if (searchParams.page) qs.set("page", searchParams.page);
-  if (searchParams.limit) qs.set("limit", searchParams.limit);
-  if (searchParams.sort) qs.set("sort", searchParams.sort);
+  if (params.q) qs.set("q", params.q);
+  if (params.page) qs.set("page", params.page);
+  if (params.limit) qs.set("limit", params.limit);
+  if (params.sort) qs.set("sort", params.sort);
 
   const query = qs.toString();
   // Build absolute URL so server-side fetch can resolve it, and forward cookies for Clerk auth

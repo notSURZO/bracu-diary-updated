@@ -51,8 +51,8 @@ export default function CreateDirectoryModal({ isPrivate = false }: { readonly i
       if (data.hasLab) {
         setShowLabPrompt(true);
       } else {
-        // No lab, proceed directly
-        await createDirectories(false, data.courseName || title);
+        // No lab: stay in validated state and show the Create button for finalization
+        setShowLabPrompt(false);
       }
       
     } catch (err) {
@@ -143,6 +143,9 @@ export default function CreateDirectoryModal({ isPrivate = false }: { readonly i
       await validateCourse();
     } else if (courseValid && showLabPrompt) {
       await createDirectories(createBothFolders);
+    } else if (courseValid && !showLabPrompt) {
+      // Validated course with no lab: finalize creation now
+      await createDirectories(false, title);
     }
   }
 
