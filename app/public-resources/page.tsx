@@ -1,4 +1,3 @@
-import FolderTile from "@/app/components/resources/FolderTile";
 import SearchInput from "@/app/components/resources/SearchInput";
 import CreateDirectoryModal from "@/app/components/resources/CreateDirectoryModal";
 import SortSelect from "../components/resources/SortSelect";
@@ -32,8 +31,9 @@ async function getDirectories(searchParams: { q?: string; page?: string; limit?:
   return res.json();
 }
 
-export default async function PublicResourcesPage({ searchParams }: { readonly searchParams: { q?: string; page?: string; limit?: string; sort?: string } }) {
-  const data = await getDirectories(searchParams);
+export default async function PublicResourcesPage({ searchParams }: { readonly searchParams: Promise<{ q?: string; page?: string; limit?: string; sort?: string }> }) {
+  const sp = await searchParams;
+  const data = await getDirectories(sp);
   const items: Array<{ _id: string; courseCode: string; title: string; updatedAt: string; }> = (data.items || []).map((d: any) => ({
     _id: String(d._id),
     courseCode: String(d.courseCode),

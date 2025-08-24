@@ -67,6 +67,22 @@ export default function PrivateDirectoriesClient({ items }: { readonly items: Pr
     return () => window.removeEventListener('private-resource:created', onCreated as EventListener);
   }, []);
 
+  // Optimistic: when a private directory is created, prepend it to the list immediately
+  useEffect(() => {
+    const onDirCreated = (e: Event) => {
+      const detail = (e as CustomEvent).detail as { item?: PrivateDirectory } | undefined;
+      const item = detail?.item;
+      if (!item) return;
+      setList(prev => {
+        // Avoid duplicates by id
+        if (prev.some(d => d._id === item._id)) return prev;
+        return [item, ...prev];
+      });
+    };
+    window.addEventListener('private-directory:created', onDirCreated as EventListener);
+    return () => window.removeEventListener('private-directory:created', onDirCreated as EventListener);
+  }, []);
+
   if (visible.length === 0) {
     return (
       <div className="rounded-lg border border-dashed border-gray-300 p-8 text-center text-sm text-gray-600">
