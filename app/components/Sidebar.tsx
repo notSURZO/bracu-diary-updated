@@ -82,7 +82,7 @@ export default function Sidebar(): React.ReactElement {
   };
 
   return (
-    <aside className="fixed top-24 left-0 h-[calc(100vh-4rem)] w-64 bg-white shadow-sm z-40 rounded-lg">
+    <aside className="fixed top-24 left-0 h-[calc(100vh-4rem)] w-64 bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 z-40 rounded-lg">
       <nav className="p-4">
         <ul>
           {navItems.map((item) => {

@@ -354,7 +354,7 @@ export default function CourseReviewsPage() {
   }
 
   return (
-    <div className="flex flex-col md:flex-row min-h-screen bg-gray-100 text-gray-800 font-sans">
+    <div className="flex flex-col md:flex-row min-h-screen bg-gradient-to-br from-indigo-50 via-blue-50 to-slate-100 text-gray-800 font-sans">
       <Sidebar />
       <ToastContainer position="top-right" autoClose={5000} hideProgressBar={false} />
       <main className="flex-1 p-6 md:p-12">

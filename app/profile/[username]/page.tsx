@@ -174,7 +174,7 @@ export default function UserProfilePage({ params }: { params: Promise<{ username
   const currentThemeBgClass = themeBgs[profile.theme_color || 'blue'];
 
   return (
-    <div className="w-full min-h-screen bg-slate-100 p-4 sm:p-6 lg:p-8">
+    <div className="w-full min-h-screen bg-gradient-to-br from-indigo-50 via-blue-50 to-slate-100 p-4 sm:p-6 lg:p-8">
       <div className="relative bg-white rounded-2xl shadow-lg">
         <div className={`h-40 bg-gradient-to-r ${currentThemeClass} rounded-t-2xl`}></div>
 

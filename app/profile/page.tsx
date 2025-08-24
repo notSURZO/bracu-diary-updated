@@ -149,7 +149,7 @@ export default function ProfilePage() {
     }
   };
   
-  if (initialLoading) { return (<div className="flex w-full h-screen items-center justify-center"><Loader2 className="h-12 w-12 animate-spin text-blue-600" /></div>); }
+  if (initialLoading) { return (<div className="flex w-full h-screen bg-gradient-to-br from-indigo-50 via-blue-50 to-slate-100 items-center justify-center"><Loader2 className="h-12 w-12 animate-spin text-blue-600" /></div>); }
   if (!profile) { return (<div className="flex w-full h-screen items-center justify-center"><div className="text-xl font-semibold text-red-600 p-8 rounded-lg shadow-lg bg-white">Profile not found.</div></div>); }
   
   const SocialLink = ({ href, icon: Icon, label }: { href?: string; icon: React.ElementType; label: string }) => {
@@ -172,7 +172,7 @@ export default function ProfilePage() {
   return (
     <>
       <ToastContainer position="bottom-right" autoClose={5000} hideProgressBar={false} />
-      <div className="w-full min-h-screen bg-slate-100 p-4 sm:p-6 lg:p-8">
+      <div className="w-full min-h-screen bg-gradient-to-br from-indigo-50 via-blue-50 to-slate-100 p-4 sm:p-6 lg:p-8">
           <div className="relative bg-white rounded-2xl shadow-lg">
             <div className={`h-40 bg-gradient-to-r ${currentThemeClass} rounded-t-2xl`}></div>
             
