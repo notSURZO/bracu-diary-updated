@@ -420,7 +420,7 @@ export default function ConditionalHeader() {
 
   return (
     <>
-      <header className="fixed top-0 left-0 right-0 z-50 p-4 flex items-center justify-between bg-white shadow-sm">
+      <header className="fixed top-0 left-0 right-0 z-50 p-4 flex items-center justify-between  bg-white  shadow-sm">
         <div className="flex items-center space-x-4">
           <Link href="/" className="pointer-events-auto">
             <Image
@@ -435,34 +435,36 @@ export default function ConditionalHeader() {
           <SearchBar />
         </div>
         <div className="flex items-center space-x-4">
-          <div className="relative">
+          <div className="relative flex items-center space-x-2">
             <button
               ref={connectionsButtonRef}
               onClick={handleConnectionsToggleDropdown}
-              className={`relative cursor-pointer p-1 rounded-full transition-colors ${
+              className={`relative cursor-pointer p-2 rounded-full transition-colors flex items-center justify-center ${
                 isConnectionsIconHighlighted && (showRequests || showConnections) ? 'bg-gray-200 border border-gray-400' : 'hover:bg-gray-100'
               }`}
+
             >
               <Image
                 src="/connect-requests.svg"
                 alt="Connection Requests"
-                width={35}
-                height={35}
+                width={30}
+                height={30}
                 className="hover:opacity-80 transition"
               />
             </button>
             <button
               ref={notificationsButtonRef}
               onClick={handleNotificationsToggleDropdown}
-              className={`relative cursor-pointer p-1 rounded-full transition-colors ${
+              className={`relative cursor-pointer p-2 rounded-full transition-colors flex items-center justify-center ${
                 isNotificationsIconHighlighted ? 'bg-gray-200 border border-gray-400' : 'hover:bg-gray-100'
               }`}
+              style={{ width: '40px', height: '40px' }}
             >
               <Image
                 src="/bell-icon.svg"
                 alt="Notifications"
-                width={35}
-                height={35}
+                width={24}
+                height={24}
                 className="hover:opacity-80 transition"
               />
             </button>

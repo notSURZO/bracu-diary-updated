@@ -11,7 +11,7 @@ export default async function Home() {
   if (user) {
     return (
       
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-blue-50 to-slate-100 flex items-center justify-center">
         
         <main className="flex-1 p-8">
           <Schedule />

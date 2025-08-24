@@ -62,7 +62,7 @@ export default function CourseDetailsPage() {
 
   if (loading) {
     return (
-      <div className="flex-1 flex items-center justify-center p-8 bg-gray-50 rounded-2xl shadow-lg">
+      <div className="flex-1 flex items-center justify-center p-8 bg-gradient-to-br from-indigo-50 via-blue-50 to-slate-100 rounded-2xl shadow-lg">
         <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-500"></div>
         <span className="ml-4 text-blue-500 font-semibold">Loading course details...</span>
       </div>
@@ -71,14 +71,14 @@ export default function CourseDetailsPage() {
 
   if (!course) {
     return (
-      <div className="flex-1 text-center text-gray-500 font-semibold p-12 bg-gray-50 rounded-2xl shadow-lg">
+      <div className="flex-1 text-center text-gray-500 font-semibold p-12 bg-gradient-to-br from-indigo-50 via-blue-50 to-slate-100 rounded-2xl shadow-lg">
         Course not found.
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col md:flex-row min-h-screen bg-gray-100 text-gray-800 font-sans">
+    <div className="flex flex-col md:flex-row min-h-screen bg-gradient-to-br from-indigo-50 via-blue-50 to-slate-100 text-gray-800 font-sans">
       <Sidebar />
       <main className="flex-1 p-6 md:p-12">
         <div className="bg-white p-8 rounded-3xl shadow-2xl border border-gray-100">

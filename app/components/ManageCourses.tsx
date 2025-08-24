@@ -240,7 +240,7 @@ export default function ManageCourses() {
   const visibleSelected = selected.filter((course: DisplayCourse) => !course.courseCode.endsWith('L'));
 
   return (
-    <div className="flex flex-col min-h-screen bg-gray-50 text-gray-800 font-sans w-full">
+    <div className="flex flex-col min-h-screen bg-gradient-to-br from-indigo-50 via-blue-50 to-slate-100 text-gray-800 font-sans w-full">
 
       {/* Details Modal */}
       {isModalOpen && modalCourse && (

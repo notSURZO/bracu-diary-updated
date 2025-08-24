@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import mongoose from 'mongoose';
 import User from '../../../lib/models/User';
 import { connectToDatabase } from '../../../lib/mongodb';
+import { auth } from '@clerk/nextjs/server';
 
 async function ensureDbConnected() {
   await connectToDatabase();
@@ -10,15 +11,27 @@ async function ensureDbConnected() {
 export async function POST(request: Request) {
   try {
     await ensureDbConnected();
+    const { userId } = await auth();
+    
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const body = await request.json();
-    const { targetUserId, currentUserEmail } = body;
+    const { targetUserId } = body;
 
     // Validate required fields
-    if (!targetUserId || !currentUserEmail) {
+    if (!targetUserId) {
       return NextResponse.json(
-        { error: 'Missing targetUserId or currentUserEmail' },
+        { error: 'Missing targetUserId' },
         { status: 400 }
       );
+    }
+
+    // Get current user
+    const currentUser = await User.findOne({ clerkId: userId });
+    if (!currentUser) {
+      return NextResponse.json({ error: 'Current user not found' }, { status: 404 });
     }
 
     // Validate ObjectId format
@@ -47,7 +60,7 @@ export async function POST(request: Request) {
     }
 
     // Check if already connected
-    if (targetUser.connections.includes(currentUserEmail)) {
+    if (targetUser.connections.includes(currentUser.email)) {
       return NextResponse.json(
         { message: 'Already connected with this user' },
         { status: 409 }
@@ -55,7 +68,7 @@ export async function POST(request: Request) {
     }
 
     // Check if connection request already exists
-    if (targetUser.connectionRequests.includes(currentUserEmail)) {
+    if (targetUser.connectionRequests.includes(currentUser.email)) {
       return NextResponse.json(
         { message: 'Connect request already sent' },
         { status: 409 }
@@ -63,7 +76,7 @@ export async function POST(request: Request) {
     }
 
     // Add connection request
-    targetUser.connectionRequests.push(currentUserEmail);
+    targetUser.connectionRequests.push(currentUser.email);
     await targetUser.save();
 
     return NextResponse.json(
