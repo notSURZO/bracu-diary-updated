@@ -1,9 +1,12 @@
-import { connectToDatabase } from "@/lib/mongodb";
-import User from "@/lib/models/User";
+'use client';
+
+import { useState, useEffect } from 'react';
 import { notFound } from "next/navigation";
 import Image from 'next/image';
 import { FaLinkedin, FaTwitter, FaGithub, FaGlobe, FaFacebook, FaInstagram, FaSnapchat, FaYoutube } from 'react-icons/fa';
 import { Mail, UserSquare, Building, Calendar, Droplet, Phone, Home, School, GraduationCap, Users } from 'lucide-react';
+import { useAuth } from '@clerk/nextjs';
+import { toast } from 'react-toastify';
 
 interface ISocialMedia {
   linkedin?: string; github?: string; facebook?: string; instagram?: string;
@@ -11,6 +14,7 @@ interface ISocialMedia {
 }
 interface IEducation { school?: string; college?: string; }
 interface IProfile {
+  _id: string;
   name: string; username: string; email: string; student_ID: string;
   bio: string; address: string; department: string; phone: string;
   picture_url: string; dateOfBirth?: string;
@@ -35,35 +39,123 @@ const themeBgs: { [key: string]: string } = {
   orange: 'bg-orange-50 text-orange-800',
 };
 
-export default async function UserProfilePage({ params }: { params: Promise<{ username: string }> }) {
-  const { username } = await params;
-  await connectToDatabase();
+export default function UserProfilePage({ params }: { params: Promise<{ username: string }> }) {
+  const [profile, setProfile] = useState<IProfile | null>(null);
+  const [isConnected, setIsConnected] = useState<boolean>(false);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [showDisconnectDialog, setShowDisconnectDialog] = useState<boolean>(false);
+  const { userId } = useAuth();
 
-  // Find user by username
-  const userDoc = await User.findOne({ username });
+  useEffect(() => {
+    async function fetchProfileData() {
+      try {
+        const { username } = await params;
+        
+        // Fetch profile data from API
+        const profileResponse = await fetch(`/api/profile/${username}`);
+        if (!profileResponse.ok) {
+          if (profileResponse.status === 404) {
+            notFound();
+          }
+          throw new Error('Failed to fetch profile data');
+        }
+        
+        const profileData: IProfile = await profileResponse.json();
+        setProfile(profileData);
 
-  // If user not found, return 404
-  if (!userDoc) {
-    notFound();
+        // Check if current user is connected to this profile
+        if (userId) {
+          const connectionsResponse = await fetch('/api/my-connections');
+          if (connectionsResponse.ok) {
+            const connections = await connectionsResponse.json();
+            const isConnected = connections.some((conn: any) => conn.email === profileData.email);
+            setIsConnected(isConnected);
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching profile data:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    fetchProfileData();
+  }, [params, userId]);
+
+  const handleConnect = async () => {
+    if (!profile || !userId) return;
+
+    try {
+      setIsLoading(true);
+      
+      const response = await fetch('/api/connect', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          targetUserId: profile._id,
+        }),
+      });
+
+      if (response.ok) {
+        setIsConnected(true);
+        alert('Connection request sent successfully!');
+      } else {
+        const errorData = await response.json();
+        alert(errorData.message || 'Failed to send connection request');
+      }
+    } catch (error) {
+      console.error('Error sending connection request:', error);
+      alert('Failed to send connection request');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleDisconnect = async () => {
+    if (!profile || !userId) return;
+
+    try {
+      setIsLoading(true);
+      
+      const response = await fetch('/api/disconnect', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          friendEmail: profile.email
+        }),
+      });
+
+      if (response.ok) {
+        setIsConnected(false);
+        setShowDisconnectDialog(false);
+        toast.success('Disconnected successfully!');
+      } else {
+        const errorData = await response.json();
+        alert(errorData.error || 'Failed to disconnect');
+      }
+    } catch (error) {
+      console.error('Error disconnecting:', error);
+      alert('Failed to disconnect');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="w-full min-h-screen bg-slate-100 p-4 sm:p-6 lg:p-8 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-gray-900"></div>
+      </div>
+    );
   }
 
-  const profile: IProfile = {
-    name: userDoc.name || "Unknown",
-    username: userDoc.username || "Not set",
-    email: userDoc.email || "Not set",
-    student_ID: userDoc.student_ID || "",
-    bio: userDoc.bio || "",
-    address: userDoc.address || "",
-    department: userDoc.department || "",
-    phone: userDoc.phone || "",
-    picture_url: userDoc.picture_url || "/logo.svg",
-    dateOfBirth: userDoc.dateOfBirth ? new Date(userDoc.dateOfBirth).toISOString().split('T')[0] : '',
-    bloodGroup: userDoc.bloodGroup || "",
-    socialMedia: userDoc.socialMedia || {},
-    education: userDoc.education || {},
-    connections: userDoc.connections || [],
-    theme_color: userDoc.theme_color || "blue",
-  };
+  if (!profile) {
+    return notFound();
+  }
 
   const SocialLink = ({ href, icon: Icon, label }: { href?: string; icon: React.ElementType; label: string }) => {
     if (!href) return null;
@@ -109,9 +201,32 @@ export default async function UserProfilePage({ params }: { params: Promise<{ us
           </div>
 
           <div className="w-full md:w-1/3 text-center md:text-right mt-4 md:mt-0">
-            <div className="flex items-center justify-center md:justify-end gap-2 text-gray-600">
-              <Users size={16} />
-              <span>{profile.connections?.length || 0} Connections</span>
+            <div className="flex items-center justify-center md:justify-end gap-4">
+              <div className="flex items-center gap-2 text-gray-600">
+                <Users size={16} />
+                <span>{profile.connections?.length || 0} Connections</span>
+              </div>
+              {userId && (
+                <div className="ml-4">
+                  {isConnected ? (
+                    <button
+                      onClick={() => setShowDisconnectDialog(true)}
+                      disabled={isLoading}
+                      className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg font-medium disabled:opacity-50"
+                    >
+                      {isLoading ? 'Loading...' : 'Connected'}
+                    </button>
+                  ) : (
+                    <button
+                      onClick={handleConnect}
+                      disabled={isLoading}
+                      className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg font-medium disabled:opacity-50"
+                    >
+                      {isLoading ? 'Loading...' : 'Send Request'}
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -166,6 +281,33 @@ export default async function UserProfilePage({ params }: { params: Promise<{ us
           </div>
         </div>
       </div>
+
+      {/* Disconnect Confirmation Dialog */}
+      {showDisconnectDialog && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-lg shadow-xl max-w-md w-full mx-4">
+            <h3 className="text-lg font-semibold mb-4">Confirm Disconnect</h3>
+            <p className="text-gray-600 mb-6">
+              Are you sure you want to disconnect from {profile.name}?
+            </p>
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => setShowDisconnectDialog(false)}
+                className="px-4 py-2 text-gray-600 hover:text-gray-800"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDisconnect}
+                disabled={isLoading}
+                className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded disabled:opacity-50"
+              >
+                {isLoading ? 'Disconnecting...' : 'Disconnect'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

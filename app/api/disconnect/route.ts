@@ -27,16 +27,20 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Friend not found' }, { status: 404 });
     }
 
-    // Check if the users are connected
-    if (!currentUser.connections.includes(friendEmail) || !friend.connections.includes(currentUser.email)) {
-      return NextResponse.json({ error: 'Users are not connected' }, { status: 400 });
+    // Remove friendEmail from currentUser's connections if it exists
+    if (currentUser.connections.includes(friendEmail)) {
+      currentUser.connections = currentUser.connections.filter((email: string) => email !== friendEmail);
     }
 
-    // Remove friendEmail from currentUser's connections
-    currentUser.connections = currentUser.connections.filter((email: string) => email !== friendEmail);
+    // Remove currentUser's email from friend's connections if it exists
+    if (friend.connections.includes(currentUser.email)) {
+      friend.connections = friend.connections.filter((email: string) => email !== currentUser.email);
+    }
 
-    // Remove currentUser's email from friend's connections
-    friend.connections = friend.connections.filter((email: string) => email !== currentUser.email);
+    // If no connections were removed from either side, return an error
+    if (!currentUser.isModified() && !friend.isModified()) {
+      return NextResponse.json({ error: 'Users are not connected' }, { status: 400 });
+    }
 
     await currentUser.save();
     await friend.save();
