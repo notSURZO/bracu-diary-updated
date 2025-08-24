@@ -1,338 +1,313 @@
-"use client";
+'use client';
 
-import { useEffect, useState } from "react";
-import { useUser } from "@clerk/nextjs";
-import { Info, Phone, Home, Loader2, Edit, GraduationCap } from 'lucide-react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect } from 'react';
+import { notFound } from "next/navigation";
+import Image from 'next/image';
+import { FaLinkedin, FaTwitter, FaGithub, FaGlobe, FaFacebook, FaInstagram, FaSnapchat, FaYoutube } from 'react-icons/fa';
+import { Mail, UserSquare, Building, Calendar, Droplet, Phone, Home, School, GraduationCap, Users } from 'lucide-react';
+import { useAuth } from '@clerk/nextjs';
+import { toast } from 'react-toastify';
 
-// Define a type for the user profile to ensure type safety
+interface ISocialMedia {
+  linkedin?: string; github?: string; facebook?: string; instagram?: string;
+  snapchat?: string; twitter?: string; website?: string; youtube?: string;
+}
+interface IEducation { school?: string; college?: string; }
 interface IProfile {
-  name: string;
-  username: string;
-  email: string;
-  student_ID: string;
-  bio: string;
-  address: string;
-  department: string;
-  phone: string;
-  picture_url: string;
+  _id: string;
+  name: string; username: string; email: string; student_ID: string;
+  bio: string; address: string; department: string; phone: string;
+  picture_url: string; dateOfBirth?: string;
+  bloodGroup?: string; socialMedia?: ISocialMedia; education?: IEducation;
+  connections?: string[];
+  theme_color?: string;
 }
 
-export default function ProfilePage() {
-  const { user: clerkUser, isLoaded } = useUser();
+const themes: { [key: string]: string } = {
+  blue: 'from-blue-500 to-indigo-600',
+  purple: 'from-purple-500 to-violet-600',
+  green: 'from-green-500 to-emerald-600',
+  pink: 'from-pink-500 to-rose-600',
+  orange: 'from-orange-500 to-amber-600',
+};
+
+const themeBgs: { [key: string]: string } = {
+  blue: 'bg-blue-50 text-blue-800',
+  purple: 'bg-purple-50 text-purple-800',
+  green: 'bg-green-50 text-green-800',
+  pink: 'bg-pink-50 text-pink-800',
+  orange: 'bg-orange-50 text-orange-800',
+};
+
+export default function UserProfilePage({ params }: { params: Promise<{ username: string }> }) {
   const [profile, setProfile] = useState<IProfile | null>(null);
-  const [editMode, setEditMode] = useState(false);
-  const [form, setForm] = useState<Partial<IProfile>>({});
-  const [loading, setLoading] = useState(false);
-  const [initialLoading, setInitialLoading] = useState(true);
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
-
-  const router = useRouter();
-
-  // Function to fetch the user profile from the API
-  const fetchProfile = async () => {
-    setInitialLoading(true);
-    setError("");
-    try {
-      const email = clerkUser?.primaryEmailAddress?.emailAddress;
-      if (!email) {
-        throw new Error("User email not found.");
-      }
-      
-      const res = await fetch(`/api/profile/user?email=${encodeURIComponent(email)}`);
-      
-      if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(errorData.message || "Failed to fetch profile");
-      }
-      
-      const data = await res.json();
-      
-      if (data.user) {
-        setProfile(data.user);
-        setForm(data.user);
-      }
-    } catch (e: any) {
-      console.error("Error fetching profile:", e);
-      setError(e.message);
-    } finally {
-      setInitialLoading(false);
-    }
-  };
+  const [isConnected, setIsConnected] = useState<boolean>(false);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [showDisconnectDialog, setShowDisconnectDialog] = useState<boolean>(false);
+  const { userId } = useAuth();
 
   useEffect(() => {
-    if (isLoaded && clerkUser) {
-      fetchProfile();
-    } else if (isLoaded && !clerkUser) {
-      setInitialLoading(false);
-    }
-  }, [isLoaded, clerkUser]);
+    async function fetchProfileData() {
+      try {
+        const { username } = await params;
+        
+        // Fetch profile data from API
+        const profileResponse = await fetch(`/api/profile/${username}`);
+        if (!profileResponse.ok) {
+          if (profileResponse.status === 404) {
+            notFound();
+          }
+          throw new Error('Failed to fetch profile data');
+        }
+        
+        const profileData: IProfile = await profileResponse.json();
+        setProfile(profileData);
 
-  // Handle changes to the form inputs
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
-  };
-
-  // Handle form submission for profile updates
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!clerkUser) {
-      setError("User not authenticated");
-      return;
+        // Check if current user is connected to this profile
+        if (userId) {
+          const connectionsResponse = await fetch('/api/my-connections');
+          if (connectionsResponse.ok) {
+            const connections = await connectionsResponse.json();
+            const isConnected = connections.some((conn: any) => conn.email === profileData.email);
+            setIsConnected(isConnected);
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching profile data:', error);
+      } finally {
+        setIsLoading(false);
+      }
     }
-    
-    setLoading(true);
-    setError("");
-    setSuccess("");
-    
+
+    fetchProfileData();
+  }, [params, userId]);
+
+  const handleConnect = async () => {
+    if (!profile || !userId) return;
+
     try {
-      const res = await fetch("/api/profile/update", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+      setIsLoading(true);
+      
+      const response = await fetch('/api/connect', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
         body: JSON.stringify({
-          clerkId: clerkUser.id,
-          ...form,
+          targetUserId: profile._id,
         }),
       });
-      
-      if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(errorData.message || "Failed to update profile");
+
+      if (response.ok) {
+        setIsConnected(true);
+        alert('Connection request sent successfully!');
+      } else {
+        const errorData = await response.json();
+        alert(errorData.message || 'Failed to send connection request');
       }
-      
-      const data = await res.json();
-      
-      if (data.user) {
-        setSuccess("Profile updated successfully!");
-        setEditMode(false);
-        setProfile(data.user);
-      }
-    } catch (e: any) {
-      console.error("Error updating profile:", e);
-      setError(e.message);
+    } catch (error) {
+      console.error('Error sending connection request:', error);
+      alert('Failed to send connection request');
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
 
-  if (initialLoading) {
+  const handleDisconnect = async () => {
+    if (!profile || !userId) return;
+
+    try {
+      setIsLoading(true);
+      
+      const response = await fetch('/api/disconnect', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          friendEmail: profile.email
+        }),
+      });
+
+      if (response.ok) {
+        setIsConnected(false);
+        setShowDisconnectDialog(false);
+        toast.success('Disconnected successfully!');
+      } else {
+        const errorData = await response.json();
+        alert(errorData.error || 'Failed to disconnect');
+      }
+    } catch (error) {
+      console.error('Error disconnecting:', error);
+      alert('Failed to disconnect');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  if (isLoading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-indigo-50 to-blue-50">
-        <div className="flex items-center space-x-2 text-indigo-600">
-          <Loader2 className="h-8 w-8 animate-spin" />
-          <div className="text-2xl font-bold">Loading your profile...</div>
-        </div>
+      <div className="w-full min-h-screen bg-slate-100 p-4 sm:p-6 lg:p-8 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-gray-900"></div>
       </div>
     );
   }
 
-  if (error || !profile) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-indigo-50 to-blue-50">
-        <div className="text-xl font-semibold text-red-600 bg-white p-6 rounded-lg shadow-md">
-          {error || "Profile not found. Please try again."}
-        </div>
-      </div>
-    );
+  if (!profile) {
+    return notFound();
   }
+
+  const SocialLink = ({ href, icon: Icon, label }: { href?: string; icon: React.ElementType; label: string }) => {
+    if (!href) return null;
+    let finalHref = href;
+    if (label.toLowerCase() === 'instagram') finalHref = `https://instagram.com/${href}`;
+    if (label.toLowerCase() === 'snapchat') finalHref = `https://snapchat.com/add/${href}`;
+
+    return (
+      <a href={finalHref} target="_blank" rel="noopener noreferrer" aria-label={label} className="opacity-70 hover:opacity-100 transition-opacity">
+        <Icon size={24} />
+      </a>
+    );
+  };
+
+  const currentThemeClass = themes[profile.theme_color || 'blue'];
+  const currentThemeBgClass = themeBgs[profile.theme_color || 'blue'];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50 to-blue-50">
-      <div className="p-6">
-        <div className="w-full bg-white rounded-3xl shadow-2xl overflow-hidden">
-          {/* Header Section */}
-          <div className="relative">
-            {/* Background Header */}
-            <div className="h-48 md:h-64 bg-gradient-to-r from-blue-600 to-indigo-500"></div>
-            {/* Avatar Section, now outside the header div to create the overlap */}
-            <div className="absolute -bottom-24 md:-bottom-28 left-1/2 transform -translate-x-1/2">
-              <img
-                src={profile.picture_url || "https://placehold.co/224x224/e5e7eb/4b5563?text=Avatar"}
-                alt="Avatar"
-                className="w-48 h-48 md:w-56 md:h-56 rounded-full border-8 border-white shadow-lg object-cover"
-              />
+    <div className="w-full min-h-screen bg-gradient-to-br from-indigo-50 via-blue-50 to-slate-100 p-4 sm:p-6 lg:p-8">
+      <div className="relative bg-white rounded-2xl shadow-lg">
+        <div className={`h-40 bg-gradient-to-r ${currentThemeClass} rounded-t-2xl`}></div>
+
+        <div className="absolute top-40 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10">
+          <div className="relative h-40 w-40 sm:h-48 sm:w-48 rounded-full border-4 border-white shadow-md">
+            <Image
+              src={profile.picture_url}
+              alt="Avatar"
+              fill
+              className="object-cover rounded-full"
+            />
+          </div>
+        </div>
+
+        <div className="flex flex-col md:flex-row items-center justify-between pt-28 pb-8 px-6 sm:px-8">
+          <div className="w-full md:w-1/3 text-center md:text-left">
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">{profile.name}</h1>
+            <p className="font-semibold text-gray-600 mt-1">@{profile.username}</p>
+            <div className="text-base font-semibold text-gray-600 mt-3 space-x-3">
+              <span>{profile.student_ID}</span>
+              <span className="font-light text-gray-400">•</span>
+              <span>{profile.department || 'N/A'}</span>
             </div>
           </div>
 
-          <div className="mt-24 md:mt-32 p-8"> {/* Adjusted padding at the top */}
-            <div className="flex justify-center md:justify-between items-start mb-6 text-center md:text-left flex-wrap">
-              <div className="w-full md:w-auto">
-                <h1 className="text-4xl font-extrabold text-gray-900">{profile.name || "User Name"}</h1>
-                <p className="text-gray-600 mt-1 text-lg">@{profile.username || "username"}</p>
+          <div className="w-full md:w-1/3 text-center md:text-right mt-4 md:mt-0">
+            <div className="flex items-center justify-center md:justify-end gap-4">
+              <div className="flex items-center gap-2 text-gray-600">
+                <Users size={16} />
+                <span>{profile.connections?.length || 0} Connections</span>
               </div>
-              <div className="mt-4 md:mt-0">
-                {!editMode && (
-                  <button
-                    className="bg-indigo-600 text-white px-6 py-2 rounded-full hover:bg-indigo-700 transition duration-300 transform hover:scale-105 shadow-md flex items-center space-x-2"
-                    onClick={() => setEditMode(true)}
-                  >
-                    <Edit size={18} />
-                    <span>Edit Profile</span>
-                  </button>
-                )}
-              </div>
+              {userId && (
+                <div className="ml-4">
+                  {isConnected ? (
+                    <button
+                      onClick={() => setShowDisconnectDialog(true)}
+                      disabled={isLoading}
+                      className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg font-medium disabled:opacity-50"
+                    >
+                      {isLoading ? 'Loading...' : 'Connected'}
+                    </button>
+                  ) : (
+                    <button
+                      onClick={handleConnect}
+                      disabled={isLoading}
+                      className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg font-medium disabled:opacity-50"
+                    >
+                      {isLoading ? 'Loading...' : 'Send Request'}
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
-
-            {success && (
-              <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded-lg mb-4" role="alert">
-                <p>{success}</p>
-              </div>
-            )}
-            {error && (
-              <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg mb-4" role="alert">
-                <p>{error}</p>
-              </div>
-            )}
-
-            {editMode ? (
-              <div className="mt-8 space-y-6">
-                <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-1">Name</label>
-                    <input
-                      className="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 transition duration-200"
-                      name="name"
-                      value={form.name || ''}
-                      onChange={handleChange}
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-1">Username</label>
-                    <input
-                      className="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 transition duration-200"
-                      name="username"
-                      value={form.username || ''}
-                      onChange={handleChange}
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-1">Email</label>
-                    <input
-                      className="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 transition duration-200"
-                      name="email"
-                      value={form.email || ''}
-                      onChange={handleChange}
-                      required
-                      type="email"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-1">Student ID</label>
-                    <input
-                      className="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 transition duration-200"
-                      name="student_ID"
-                      value={form.student_ID || ''}
-                      onChange={handleChange}
-                      required
-                    />
-                  </div>
-                  <div className="md:col-span-2">
-                    <label className="block text-sm font-semibold text-gray-700 mb-1">Bio</label>
-                    <textarea
-                      className="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 transition duration-200"
-                      name="bio"
-                      value={form.bio || ''}
-                      onChange={handleChange}
-                      rows={4}
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-1">Address</label>
-                    <input
-                      className="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 transition duration-200"
-                      name="address"
-                      value={form.address || ''}
-                      onChange={handleChange}
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-1">Department</label>
-                    <input
-                      className="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 transition duration-200"
-                      name="department"
-                      value={form.department || ''}
-                      onChange={handleChange}
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-1">Phone</label>
-                    <input
-                      className="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 transition duration-200"
-                      name="phone"
-                      value={form.phone || ''}
-                      onChange={handleChange}
-                    />
-                  </div>
-                  <div className="md:col-span-2 flex gap-4 mt-4">
-                    <button
-                      type="submit"
-                      className="bg-indigo-600 text-white px-8 py-3 rounded-xl hover:bg-indigo-700 transition duration-300 transform hover:scale-105 flex items-center justify-center space-x-2"
-                      disabled={loading}
-                    >
-                      {loading && <Loader2 className="h-5 w-5 animate-spin" />}
-                      <span>{loading ? "Saving..." : "Save"}</span>
-                    </button>
-                    <button
-                      type="button"
-                      className="bg-gray-300 text-gray-700 px-8 py-3 rounded-xl hover:bg-gray-400 transition duration-300 transform hover:scale-105"
-                      onClick={() => setEditMode(false)}
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                </form>
-              </div>
-            ) : (
-              <div className="mt-8 space-y-8">
-                <div className="flex items-start gap-4">
-                  <Info className="text-3xl text-indigo-600 flex-shrink-0" />
-                  <div>
-                    <h2 className="text-xl font-semibold text-gray-900">About</h2>
-                    <p className="text-gray-600 mt-2">{profile.bio || "Add a bio here"}</p>
-                  </div>
-                </div>
-                <div className="flex items-start gap-4">
-                  <Phone className="text-3xl text-indigo-600 flex-shrink-0" />
-                  <div>
-                    <h2 className="text-xl font-semibold text-gray-900">Contact Information</h2>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-2 text-gray-600">
-                      <div>
-                        <p className="font-medium">Email</p>
-                        <p>{profile.email || "user@example.com"}</p>
-                      </div>
-                      <div>
-                        <p className="font-medium">Phone</p>
-                        <p>{profile.phone || "123-456-7890"}</p>
-                      </div>
-                      <div className="sm:col-span-2">
-                        <p className="font-medium">Address</p>
-                        <p>{profile.address || "City, Country"}</p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                <div className="flex items-start gap-4 bg-gray-100 p-6 rounded-2xl shadow-inner">
-                  <GraduationCap className="text-3xl text-indigo-600 flex-shrink-0" />
-                  <div>
-                    <h2 className="text-xl font-bold text-gray-900">University Details</h2>
-                    <div className="mt-3 flex flex-col md:flex-row gap-4 text-gray-700">
-                      <div>
-                        <p className="font-medium">Student ID: <span className="text-lg">{profile.student_ID || "N/A"}</span></p>
-                      </div>
-                      <div>
-                        <p className="font-medium">Department: <span className="text-lg">{profile.department || "N/A"}</span></p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
           </div>
         </div>
       </div>
+
+      <div className="mt-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-1 space-y-6">
+            <div className={`p-6 rounded-2xl shadow-lg ${currentThemeBgClass}`}>
+              <h3 className="font-bold text-lg mb-3">About</h3>
+              <p className="text-sm opacity-80">{profile.bio || "No bio information provided."}</p>
+            </div>
+            <div className={`p-6 rounded-2xl shadow-lg ${currentThemeBgClass}`}>
+              <h3 className="font-bold text-lg mb-4">On The Web</h3>
+              <div className="flex flex-wrap gap-5">
+                <SocialLink href={profile.socialMedia?.website} icon={FaGlobe} label="Website" />
+                <SocialLink href={profile.socialMedia?.linkedin} icon={FaLinkedin} label="LinkedIn" />
+                <SocialLink href={profile.socialMedia?.github} icon={FaGithub} label="GitHub" />
+                <SocialLink href={profile.socialMedia?.youtube} icon={FaYoutube} label="YouTube" />
+                <SocialLink href={profile.socialMedia?.twitter} icon={FaTwitter} label="Twitter" />
+                <SocialLink href={profile.socialMedia?.facebook} icon={FaFacebook} label="Facebook" />
+                <SocialLink href={profile.socialMedia?.instagram} icon={FaInstagram} label="Instagram" />
+                <SocialLink href={profile.socialMedia?.snapchat} icon={FaSnapchat} label="Snapchat" />
+              </div>
+            </div>
+            <div className={`p-6 rounded-2xl shadow-lg ${currentThemeBgClass}`}>
+              <h3 className="font-bold text-lg mb-4">University Details</h3>
+              <div className="space-y-4 text-sm sm:text-base">
+                <div className="flex items-center gap-4"><Mail className="flex-shrink-0"/><span className="font-semibold w-24">Email:</span> <span className="opacity-80">{profile.email}</span></div>
+                <div className="flex items-center gap-4"><UserSquare className="flex-shrink-0"/><span className="font-semibold w-24">Student ID:</span> <span className="opacity-80">{profile.student_ID}</span></div>
+                <div className="flex items-center gap-4"><Building className="flex-shrink-0"/><span className="font-semibold w-24">Department:</span> <span className="opacity-80">{profile.department || 'N/A'}</span></div>
+              </div>
+            </div>
+          </div>
+          <div className="lg:col-span-2 flex flex-col gap-6">
+            <div className={`p-6 rounded-2xl shadow-lg flex-1 ${currentThemeBgClass}`}>
+              <h3 className="font-bold text-lg mb-4">Details</h3>
+              <div className="space-y-4 text-sm sm:text-base">
+                <div className="flex items-center gap-4"><Calendar className="flex-shrink-0"/><span className="font-semibold w-24">Born:</span> <span className="opacity-80">{profile.dateOfBirth ? new Date(profile.dateOfBirth).toLocaleDateString() : 'N/A'}</span></div>
+                <div className="flex items-center gap-4"><Droplet className="flex-shrink-0"/><span className="font-semibold w-24">Blood Group:</span> <span className="opacity-80">{profile.bloodGroup || 'N/A'}</span></div>
+                <div className="flex items-center gap-4"><Phone className="flex-shrink-0"/><span className="font-semibold w-24">Phone:</span> <span className="opacity-80">{profile.phone || 'N/A'}</span></div>
+                <div className="flex items-center gap-4"><Home className="flex-shrink-0"/><span className="font-semibold w-24">Address:</span> <span className="opacity-80">{profile.address || 'N/A'}</span></div>
+              </div>
+            </div>
+            <div className={`p-6 rounded-2xl shadow-lg flex-1 ${currentThemeBgClass}`}>
+              <h3 className="font-bold text-lg mb-4">Education</h3>
+              <div className="space-y-4 text-sm sm:text-base">
+                <div className="flex items-center gap-4"><School className="flex-shrink-0"/><span className="font-semibold w-24">School:</span> <span className="opacity-80">{profile.education?.school || 'N/A'}</span></div>
+                <div className="flex items-center gap-4"><GraduationCap className="flex-shrink-0"/><span className="font-semibold w-24">College:</span> <span className="opacity-80">{profile.education?.college || 'N/A'}</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Disconnect Confirmation Dialog */}
+      {showDisconnectDialog && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-lg shadow-xl max-w-md w-full mx-4">
+            <h3 className="text-lg font-semibold mb-4">Confirm Disconnect</h3>
+            <p className="text-gray-600 mb-6">
+              Are you sure you want to disconnect from {profile.name}?
+            </p>
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => setShowDisconnectDialog(false)}
+                className="px-4 py-2 text-gray-600 hover:text-gray-800"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDisconnect}
+                disabled={isLoading}
+                className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded disabled:opacity-50"
+              >
+                {isLoading ? 'Disconnecting...' : 'Disconnect'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
