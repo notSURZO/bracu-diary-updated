@@ -1,9 +1,11 @@
 'use client';
 
 import { useEffect, useState, useRef, useCallback } from 'react';
-import { useParams, usePathname } from 'next/navigation';
+import { useParams, usePathname, useRouter } from 'next/navigation';
 import { useUser } from '@clerk/nextjs';
 import { format } from 'date-fns';
+import { toast, ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 interface Deadline {
   _id: string;
@@ -37,7 +39,9 @@ export default function ManageDeadlinesPage() {
   const { courseId } = useParams();
   const { user } = useUser();
   const pathname = usePathname();
+  const router = useRouter();
   const [deadlines, setDeadlines] = useState<Deadline[]>([]);
+  const [missedDeadlines, setMissedDeadlines] = useState<Deadline[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<'all' | 'theory' | 'lab'>('all');
   const [showModal, setShowModal] = useState(false);
@@ -69,28 +73,24 @@ export default function ManageDeadlinesPage() {
 
   useEffect(() => {
     if (courseId && user && selectedSection) {
+      setLoading(true);
       fetchDeadlines();
     }
   }, [courseId, user, selectedSection, filter]);
 
   useEffect(() => {
-    // Generate a unique key for this page to store scroll position
     const scrollKey = `scroll-position-${pathname}`;
-
-    // Restore scroll position when component mounts
     const savedScrollPosition = sessionStorage.getItem(scrollKey);
     if (savedScrollPosition && scrollContainerRef.current) {
       scrollContainerRef.current.scrollTop = parseInt(savedScrollPosition, 10);
     }
 
-    // Save scroll position on scroll
     const handleScroll = () => {
       if (scrollContainerRef.current) {
         sessionStorage.setItem(scrollKey, scrollContainerRef.current.scrollTop.toString());
       }
     };
 
-    // Save scroll position before unload
     const handleBeforeUnload = () => {
       if (scrollContainerRef.current) {
         sessionStorage.setItem(scrollKey, scrollContainerRef.current.scrollTop.toString());
@@ -183,20 +183,34 @@ export default function ManageDeadlinesPage() {
     try {
       if (!selectedSection) {
         setDeadlines([]);
-        setLoading(false);
+        setMissedDeadlines([]);
         return;
       }
+
+      const currentSection = selectedSection;
+      const currentFilter = filter;
       
       const response = await fetch(
-        `/api/get-deadlines?courseId=${courseId}&section=${selectedSection}&type=${filter}`,
-        { cache: 'no-store' } // Prevent caching to ensure fresh data
+        `/api/get-deadlines?courseId=${courseId}&section=${currentSection}&type=${currentFilter}`,
+        { cache: 'no-store' }
       );
       const data = await response.json();
-      
-      setDeadlines(data.deadlines || []);
+      const allDeadlines = data.deadlines || [];
+      const now = new Date();
+
+      const upcoming = allDeadlines.filter((d: Deadline) => new Date(d.lastDate) >= now);
+      const missed = allDeadlines.filter((d: Deadline) => new Date(d.lastDate) < now && !d.completed);
+
+      if (currentSection === selectedSection && currentFilter === filter) {
+        setDeadlines(upcoming);
+        setMissedDeadlines(missed);
+      }
     } catch (error) {
       console.error('Error fetching deadlines:', error);
-      setDeadlines([]);
+      if (selectedSection === selectedSection && filter === filter) {
+        setDeadlines([]);
+        setMissedDeadlines([]);
+      }
     } finally {
       setLoading(false);
     }
@@ -257,27 +271,86 @@ export default function ManageDeadlinesPage() {
   const handleToggleComplete = async (deadline: Deadline) => {
     if (!user) return;
 
-    try {
-      const response = await fetch('/api/update-deadline', {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          deadlineId: deadline._id || deadline.id,
-          userId: user.id,
-          completed: !deadline.completed
-        }),
-      });
+    if (!deadline.completed) {
+      // Show confirmation toast when marking as completed
+      toast(
+        <div>
+          <p>Are you sure you have completed the deadline?</p>
+          <div className="flex justify-end space-x-2 mt-2">
+            <button
+              className="px-3 py-1 bg-gray-200 text-gray-800 rounded hover:bg-gray-300"
+              onClick={() => toast.dismiss()}
+            >
+              No
+            </button>
+            <button
+              className="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700"
+              onClick={async () => {
+                try {
+                  const response = await fetch('/api/update-deadline', {
+                    method: 'PATCH',
+                    headers: {
+                      'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                      deadlineId: deadline._id || deadline.id,
+                      userId: user.id,
+                      completed: true
+                    }),
+                  });
 
-      if (response.ok) {
-        fetchDeadlines();
-      } else {
-        const errorData = await response.json();
-        console.error('Failed to update deadline:', errorData.error);
+                  if (response.ok) {
+                    toast.dismiss();
+                    await fetchDeadlines();
+router.push(`/marks-calculation/${course?._id}`);
+                  } else {
+                    const errorData = await response.json();
+                    console.error('Failed to update deadline:', errorData.error);
+                    toast.error('Failed to update deadline');
+                  }
+                } catch (error) {
+                  console.error('Error updating deadline:', error);
+                  toast.error('Error updating deadline');
+                }
+              }}
+            >
+              Yes
+            </button>
+          </div>
+        </div>,
+        {
+          autoClose: false,
+          closeButton: false,
+          draggable: false,
+          position: 'top-center',
+        }
+      );
+    } else {
+      // If marking as incomplete, proceed without confirmation
+      try {
+        const response = await fetch('/api/update-deadline', {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            deadlineId: deadline._id || deadline.id,
+            userId: user.id,
+            completed: false
+          }),
+        });
+
+        if (response.ok) {
+          fetchDeadlines();
+        } else {
+          const errorData = await response.json();
+          console.error('Failed to update deadline:', errorData.error);
+          toast.error('Failed to update deadline');
+        }
+      } catch (error) {
+        console.error('Error updating deadline:', error);
+        toast.error('Error updating deadline');
       }
-    } catch (error) {
-      console.error('Error updating deadline:', error);
     }
   };
 
@@ -300,13 +373,15 @@ export default function ManageDeadlinesPage() {
       });
 
       if (response.ok) {
-        await fetchDeadlines(); // Ensure fresh data is fetched
+        await fetchDeadlines();
       } else {
         const errorData = await response.json();
         console.error('Failed to update vote:', errorData.error);
+        toast.error('Failed to update vote');
       }
     } catch (error) {
       console.error('Error updating vote:', error);
+      toast.error('Error updating vote');
     }
   };
 
@@ -328,9 +403,11 @@ export default function ManageDeadlinesPage() {
       } else {
         const errorData = await response.json();
         console.error('Failed to delete deadline:', errorData.error);
+        toast.error('Failed to delete deadline');
       }
     } catch (error) {
       console.error('Error deleting deadline:', error);
+      toast.error('Error deleting deadline');
     }
   };
 
@@ -365,7 +442,7 @@ export default function ManageDeadlinesPage() {
     const deadlineId = deadline._id || deadline.id;
     setSelectedDeadline(selectedDeadline && (selectedDeadline._id === deadlineId || selectedDeadline.id === deadlineId) ? null : deadline);
   };
-
+  
   if (loading) {
     return (
       <div className="flex justify-center items-center h-64">
@@ -374,13 +451,117 @@ export default function ManageDeadlinesPage() {
     );
   }
 
+  const DeadlineCard = ({ deadline, isMissed }: { deadline: Deadline, isMissed?: boolean }) => {
+    const { date, time } = formatDateTime(deadline.lastDate);
+    const hasVotedAgree = user?.id ? (deadline.agrees ?? []).includes(user.id) : false;
+    const hasVotedDisagree = user?.id ? (deadline.disagrees ?? []).includes(user.id) : false;
+    const cardBgColor = isMissed ? 'bg-red-50' : (deadline.completed ? 'bg-green-50' : 'bg-white');
+
+    return (
+      <div 
+        key={deadline._id || deadline.id} 
+        className={`border rounded-lg p-4 hover:shadow-md transition-shadow relative ${cardBgColor}`}
+      >
+        <div className="flex justify-between items-start">
+          <div className="flex-1">
+            <div className="flex items-center space-x-2">
+              <h3 className="text-lg font-medium text-gray-900">{deadline.title || 'Untitled Deadline'}</h3>
+              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                deadline.type === 'theory' 
+                  ? 'bg-blue-100 text-blue-800' 
+                  : 'bg-green-100 text-green-800'
+              }`}>
+                {deadline.type === 'theory' ? 'Theory' : (deadline.type === 'lab' ? 'Lab' : 'Unknown')}
+              </span>
+              {user && deadline.createdBy === user.id && (
+                <button
+                  onClick={() => confirmDelete(deadline)}
+                  className="px-5 py-3 bg-red-500 text-white rounded-md hover:bg-red-700 text-sm font-medium"
+                >
+                  Delete Your Reminded Deadline
+                </button>
+              )}
+            </div>
+            <p className="mt-1 text-sm text-gray-600">{truncateText(deadline.details || 'No details provided')}</p>
+            <div className="mt-2 flex items-center space-x-2">
+              <label className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  checked={deadline.completed}
+                  onChange={() => handleToggleComplete(deadline)}
+                  className="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300 rounded"
+                />
+                <span className="text-sm text-gray-600">Completed</span>
+              </label>
+              <button
+                onClick={() => toggleDetails(deadline)}
+                className="px-3 py-1 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 text-sm"
+              >
+                {selectedDeadline && (selectedDeadline._id === (deadline._id || deadline.id) || selectedDeadline.id === (deadline._id || deadline.id)) ? 'Hide Details' : 'Details'}
+              </button>
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={() => handleAgreeDisagree(deadline._id || deadline.id, 'agree')}
+                  className={`px-3 py-1 rounded-md text-sm font-medium ${
+                    hasVotedAgree
+                      ? 'bg-green-600 text-white hover:bg-green-700'
+                      : 'bg-gray-100 text-green-800 hover:bg-green-200'
+                  }`}
+                >
+                  👍 Upvote ({deadline.agrees.length})
+                </button>
+                <button
+                  onClick={() => handleAgreeDisagree(deadline._id || deadline.id, 'disagree')}
+                  className={`px-3 py-1 rounded-md text-sm font-medium ${
+                    hasVotedDisagree
+                      ? 'bg-red-600 text-white hover:bg-red-700'
+                      : 'bg-gray-100 text-red-800 hover:bg-red-200'
+                  }`}
+                >
+                  👎 Downvote ({deadline.disagrees.length})
+                </button>
+              </div>
+            </div>
+          </div>
+          <div className="text-right">
+            <h3>Due:</h3>
+            <p className="text-sm font-medium text-gray-900">{date}</p>
+            <p className="text-sm text-gray-500">{time}</p>
+          </div>
+        </div>
+        {selectedDeadline && (selectedDeadline._id === (deadline._id || deadline.id) || selectedDeadline.id === (deadline._id || deadline.id)) && (
+          <div className="mt-4 pt-4 border-t border-gray-200">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-medium text-gray-900">Details:</h3>
+            </div>
+            <p className="text-sm text-gray-600 whitespace-pre-wrap break-words">{deadline.details}</p>
+            {deadline.submissionLink && (
+              <a
+                href={deadline.submissionLink}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-2 text-sm text-blue-600 hover:text-blue-800"
+              >
+                Submission Link →
+              </a>
+            )}
+            <p className="mt-2 text-sm font-medium text-gray-900">Due: {date} at {time}</p>
+            <p className="mt-2 text-sm text-gray-500">Created by: {deadline.createdByName && deadline.createdByStudentId ? `${deadline.createdByName} (${deadline.createdByStudentId})` : 'Unknown'}</p>
+            <p className="mt-2 text-sm text-gray-500">Created at: {formatDateTime(deadline.createdAt).date} at {formatDateTime(deadline.createdAt).time}</p>
+          </div>
+        )}
+      </div>
+    );
+  };
+
   return (
     <div>
+      <ToastContainer />
       <div className="bg-white shadow rounded-lg">
         <div className="px-4 py-5 sm:p-6">
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-xl font-semibold text-gray-900">
-              Upcoming Deadlines {selectedSection && `- Section ${selectedSection}`}
+              Deadlines for {course?.courseCode} {selectedSection && `- Section ${selectedSection}`}
             </h2>
             <div className="flex items-center space-x-4">
               <select
@@ -429,242 +610,140 @@ export default function ManageDeadlinesPage() {
                   )}
               </nav>
           </div>
-
+          
+          <h3 className="text-lg font-semibold text-gray-800 mb-4">Upcoming Deadlines</h3>
           {deadlines.length === 0 ? (
             <div className="text-center py-12">
-              <svg
-                className="mx-auto h-12 w-12 text-gray-400"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
-                />
-              </svg>
-              <h3 className="mt-2 text-sm font-medium text-gray-900">No upcoming deadlines</h3>
-              <p className="mt-1 text-sm text-gray-500">
-                Get started by adding a new deadline.
-              </p>
+               <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+                <h3 className="mt-2 text-sm font-medium text-gray-900">No upcoming deadlines</h3>
+                <p className="mt-1 text-sm text-gray-500">
+                  Add a new deadline to get started.
+                </p>
             </div>
           ) : (
             <div ref={scrollContainerRef} className="space-y-4 overflow-y-auto" style={{ maxHeight: 'calc(100vh - 200px)' }}>
-              {deadlines.map((deadline) => {
-                const { date, time } = formatDateTime(deadline.lastDate);
-                const hasVotedAgree = user?.id ? (deadline.agrees ?? []).includes(user.id) : false;
-                const hasVotedDisagree = user?.id ? (deadline.disagrees ?? []).includes(user.id) : false;
-                return (
-                  <div 
-                    key={deadline._id || deadline.id} 
-                    className={`border rounded-lg p-4 hover:shadow-md transition-shadow relative ${deadline.completed ? 'bg-green-50' : 'bg-white'}`}
-                  >
-                    <div className="flex justify-between items-start">
-                      <div className="flex-1">
-                        <div className="flex items-center space-x-2">
-                          <h3 className="text-lg font-medium text-gray-900">{deadline.title || 'Untitled Deadline'}</h3>
-                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                            deadline.type === 'theory' 
-                              ? 'bg-blue-100 text-blue-800' 
-                              : 'bg-green-100 text-green-800'
-                          }`}>
-                            {deadline.type === 'theory' ? 'Theory' : (deadline.type === 'lab' ? 'Lab' : 'Unknown')}
-                          </span>
-                          {user && deadline.createdBy === user.id && (
-                            <button
-                              onClick={() => confirmDelete(deadline)}
-                              className="px-5 py-3 bg-red-500 text-white rounded-md hover:bg-red-700 text-sm font-medium"
-                            >
-                              Delete Your Reminded Deadline
-                            </button>
-                          )}
-                        </div>
-                        <p className="mt-1 text-sm text-gray-600">{truncateText(deadline.details || 'No details provided')}</p>
-                        <div className="mt-2 flex items-center space-x-2">
-                          <label className="flex items-center space-x-2">
-                            <input
-                              type="checkbox"
-                              checked={deadline.completed}
-                              onChange={() => handleToggleComplete(deadline)}
-                              className="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300 rounded"
-                            />
-                            <span className="text-sm text-gray-600">Completed</span>
-                          </label>
-                          <button
-                            onClick={() => toggleDetails(deadline)}
-                            className="px-3 py-1 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 text-sm"
-                          >
-                            {selectedDeadline && (selectedDeadline._id === (deadline._id || deadline.id) || selectedDeadline.id === (deadline._id || deadline.id)) ? 'Hide Details' : 'Details'}
-                          </button>
-                          <div className="flex items-center space-x-2">
-                            <button
-                              onClick={() => handleAgreeDisagree(deadline._id || deadline.id, 'agree')}
-                              className={`px-3 py-1 rounded-md text-sm font-medium ${
-                                hasVotedAgree
-                                  ? 'bg-green-600 text-white hover:bg-green-700'
-                                  : 'bg-gray-100 text-green-800 hover:bg-green-200'
-                              }`}
-                            >
-                              👍 Upvote ({deadline.agrees.length})
-                            </button>
-                            <button
-                              onClick={() => handleAgreeDisagree(deadline._id || deadline.id, 'disagree')}
-                              className={`px-3 py-1 rounded-md text-sm font-medium ${
-                                hasVotedDisagree
-                                  ? 'bg-red-600 text-white hover:bg-red-700'
-                                  : 'bg-gray-100 text-red-800 hover:bg-red-200'
-                              }`}
-                            >
-                             👎 Downvote ({deadline.disagrees.length})
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <h3>Due:</h3>
-                        <p className="text-sm font-medium text-gray-900">{date}</p>
-                        <p className="text-sm text-gray-500">{time}</p>
-                      </div>
-                    </div>
-                    {selectedDeadline && (selectedDeadline._id === (deadline._id || deadline.id) || selectedDeadline.id === (deadline._id || deadline.id)) && (
-                      <div className="mt-4 pt-4 border-t border-gray-200">
-                        <div className="flex justify-between items-center mb-4">
-                          <h3 className="text-lg font-medium text-gray-900">Details:</h3>
-                        </div>
-                        <p className="text-sm text-gray-600 whitespace-pre-wrap break-words">{deadline.details}</p>
-                        {deadline.submissionLink && (
-                          <a
-                            href={deadline.submissionLink}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="mt-2 text-sm text-blue-600 hover:text-blue-800"
-                          >
-                            Submission Link →
-                          </a>
-                        )}
-                        <p className="mt-2 text-sm font-medium text-gray-900">Due: {date} at {time}</p>
-                        <p className="mt-2 text-sm text-gray-500">Created by: {deadline.createdByName && deadline.createdByStudentId ? `${deadline.createdByName} (${deadline.createdByStudentId})` : 'Unknown'}</p>
-                        <p className="mt-2 text-sm text-gray-500">Created at: {formatDateTime(deadline.createdAt).date} at {formatDateTime(deadline.createdAt).time}</p>
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
+              {deadlines.map((deadline) => (
+                <DeadlineCard key={deadline._id || deadline.id} deadline={deadline} />
+              ))}
             </div>
           )}
+
+          <div className="mt-12">
+            <h3 className="text-lg font-semibold text-gray-800 mb-4">Missed Deadlines</h3>
+            {missedDeadlines.length === 0 ? (
+              <div className="text-center py-12">
+                <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <h3 className="mt-2 text-sm font-medium text-gray-900">No missed deadlines</h3>
+                <p className="mt-1 text-sm text-gray-500">
+                  You're all caught up!
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {missedDeadlines.map((deadline) => (
+                  <DeadlineCard key={deadline._id || deadline.id} deadline={deadline} isMissed={true} />
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
       {showModal && (
         <div className="fixed inset-0 bg-gray-600 bg-opacity-50 backdrop-blur-sm overflow-y-auto h-full w-full z-50">
           <div ref={modalRef} className="relative top-20 mx-auto p-5 border w-full max-w-md shadow-lg rounded-md bg-white">
-            <div className="mt-3">
+            <div className="mt-3 text-center">
               <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg font-medium text-gray-900">Add New Deadline</h3>
+                <h3 className="text-lg leading-6 font-medium text-gray-900">Add New Deadline</h3>
                 <button
                   onClick={() => {
                     setShowModal(false);
                     setError(null);
                   }}
-                  className="text-gray-400 hover:text-gray-500"
+                  className="text-gray-400 hover:text-gray-600"
                 >
-                  <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
+                  <span className="text-2xl">&times;</span>
                 </button>
               </div>
-              
-              <form onSubmit={handleSubmit} className="space-y-4">
-                {error && (
-                  <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-2 rounded relative" role="alert">
-                    <span className="block sm:inline">{error}</span>
-                  </div>
-                )}
+              <form onSubmit={handleSubmit} className="mt-2 text-left space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Type</label>
                   <select
+                    name="type"
                     value={formData.type}
-                    onChange={(e) => setFormData({...formData, type: e.target.value as 'theory' | 'lab'})}
+                    onChange={(e) => setFormData({ ...formData, type: e.target.value as 'theory' | 'lab' })}
                     className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                   >
                     <option value="theory">Theory</option>
                     {hasLab && <option value="lab">Lab</option>}
                   </select>
                 </div>
-
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Title</label>
                   <input
                     type="text"
-                    required
+                    name="title"
                     value={formData.title}
-                    onChange={(e) => setFormData({...formData, title: e.target.value})}
+                    onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                    required
                     className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                   />
                 </div>
-
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Details</label>
                   <textarea
-                    required
+                    name="details"
                     value={formData.details}
-                    onChange={(e) => setFormData({...formData, details: e.target.value})}
-                    rows={3}
+                    onChange={(e) => setFormData({ ...formData, details: e.target.value })}
+                    rows={4}
                     className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                  />
+                  ></textarea>
                 </div>
-
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Submission Link (Optional)</label>
                   <input
                     type="url"
+                    name="submissionLink"
                     value={formData.submissionLink}
-                    onChange={(e) => setFormData({...formData, submissionLink: e.target.value})}
+                    onChange={(e) => setFormData({ ...formData, submissionLink: e.target.value })}
                     className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                   />
                 </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">Last Date</label>
+                <div className="flex space-x-4">
+                  <div className="flex-1">
+                    <label className="block text-sm font-medium text-gray-700">Due Date</label>
                     <input
                       type="date"
-                      required
+                      name="lastDate"
                       value={formData.lastDate}
-                      onChange={(e) => setFormData({...formData, lastDate: e.target.value})}
+                      onChange={(e) => setFormData({ ...formData, lastDate: e.target.value })}
+                      required
                       className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                     />
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">Time</label>
+                  <div className="flex-1">
+                    <label className="block text-sm font-medium text-gray-700">Due Time</label>
                     <input
                       type="time"
-                      required
+                      name="time"
                       value={formData.time}
-                      onChange={(e) => setFormData({...formData, time: e.target.value})}
+                      onChange={(e) => setFormData({ ...formData, time: e.target.value })}
+                      required
                       className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                     />
                   </div>
                 </div>
-
-                <div className="flex justify-end space-x-3">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowModal(false);
-                      setError(null);
-                    }}
-                    className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50"
-                  >
-                    Cancel
-                  </button>
+                {error && <p className="text-red-500 text-sm">{error}</p>}
+                <div className="items-center px-4 py-3">
                   <button
                     type="submit"
-                    className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                    className="px-4 py-2 bg-blue-600 text-white text-base font-medium rounded-md w-full shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
-                    Add Deadline
+                    Submit Deadline
                   </button>
                 </div>
               </form>
@@ -674,54 +753,31 @@ export default function ManageDeadlinesPage() {
       )}
 
       {showDeleteModal && deleteDeadline && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 backdrop-blur-sm overflow-y-auto h-full w-full z-50 flex justify-center items-center">
-          <div className="relative p-5 border w-full max-w-md shadow-lg rounded-md bg-white">
-            <div className="mt-3">
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg font-medium text-gray-900">Delete Deadline</h3>
-                <button
-                  onClick={() => {
-                    setShowDeleteModal(false);
-                    setDeleteDeadline(null);
-                  }}
-                  className="text-gray-400 hover:text-gray-500"
-                >
-                  <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
+          <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex items-center justify-center">
+              <div className="bg-white p-6 rounded-lg shadow-xl">
+                  <h3 className="text-lg font-medium text-gray-900">Confirm Deletion</h3>
+                  <p className="mt-2 text-sm text-gray-600">
+                      Are you sure you want to delete the deadline: "{deleteDeadline.title}"?
+                  </p>
+                  <div className="mt-4 flex justify-end space-x-2">
+                      <button
+                          onClick={() => {
+                            setShowDeleteModal(false);
+                            setDeleteDeadline(null);
+                          }}
+                          className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300"
+                      >
+                          Cancel
+                      </button>
+                      <button
+                          onClick={() => handleDeleteDeadline(deleteDeadline)}
+                          className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700"
+                      >
+                          Confirm Delete
+                      </button>
+                  </div>
               </div>
-              
-              <div className="mb-6">
-                <p className="text-sm text-gray-600">
-                  Are you sure you want to delete the deadline "<span className="font-medium text-gray-900">{deleteDeadline.title}</span>"?
-                </p>
-                <p className="text-sm text-gray-500 mt-2">
-                  This action cannot be undone.
-                </p>
-              </div>
-
-              <div className="flex justify-end space-x-3">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowDeleteModal(false);
-                    setDeleteDeadline(null);
-                  }}
-                  className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={() => handleDeleteDeadline(deleteDeadline)}
-                  className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 text-sm font-medium"
-                >
-                  Delete
-                </button>
-              </div>
-            </div>
           </div>
-        </div>
       )}
     </div>
   );

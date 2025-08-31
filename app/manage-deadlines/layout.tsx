@@ -17,6 +17,7 @@ interface Course {
   examDay?: string;
   hasLab: boolean;
   link: string;
+  originalCourseId?: string;
 }
 
 export default function ManageDeadlinesLayout({ children }: { children: React.ReactNode }) {
@@ -37,12 +38,20 @@ export default function ManageDeadlinesLayout({ children }: { children: React.Re
   useEffect(() => {
     const pathParts = pathname.split('/');
     const courseIdFromPath = pathParts[pathParts.length - 1];
-    if (courseIdFromPath && courseIdFromPath !== 'manage-deadlines') {
+    
+    if (courseIdFromPath && courseIdFromPath !== 'manage-deadlines' && courses.some(course => 
+      course._id === courseIdFromPath || course.originalCourseId === courseIdFromPath
+    )) {
       setSelectedCourse(courseIdFromPath);
+    } else if (courses.length > 0 && !selectedCourse) {
+      // Select first course if no valid courseId in URL
+      const firstCourseId = courses[0].originalCourseId || courses[0]._id;
+      setSelectedCourse(firstCourseId);
+      router.push(`/manage-deadlines/${firstCourseId}`);
     }
-  }, [pathname]);
+  }, [pathname, courses, router]);
 
-  // Restore scroll position on mount
+  // Restore scroll position
   useEffect(() => {
     if (!scrollContainerRef.current || !selectedCourse || courses.length === 0) return;
 
@@ -56,7 +65,7 @@ export default function ManageDeadlinesLayout({ children }: { children: React.Re
     }
   }, [courses, selectedCourse, pathname]);
 
-  // Save scroll position on scroll and before unmount
+  // Save scroll position
   useEffect(() => {
     const scrollContainer = scrollContainerRef.current;
     if (!scrollContainer) return;
@@ -91,7 +100,9 @@ export default function ManageDeadlinesLayout({ children }: { children: React.Re
         setCourses(validCourses);
         
         if (!selectedCourse && validCourses.length > 0) {
-          handleCourseSelect(validCourses[0]._id);
+          const firstCourseId = validCourses[0].originalCourseId || validCourses[0]._id;
+          setSelectedCourse(firstCourseId);
+          router.push(`/manage-deadlines/${firstCourseId}`);
         }
       } else {
         setCourses([]);
@@ -104,11 +115,12 @@ export default function ManageDeadlinesLayout({ children }: { children: React.Re
   };
 
   const handleCourseSelect = (courseId: string) => {
-    setSelectedCourse(courseId);
-    // Clear scroll position for the new course
+    const course = courses.find(c => c._id === courseId);
+    const routingCourseId = course?.originalCourseId || courseId;
+    setSelectedCourse(routingCourseId);
     const scrollKey = `scroll-position-${pathname}`;
     localStorage.removeItem(scrollKey);
-    router.push(`/manage-deadlines/${courseId}`);
+    router.push(`/manage-deadlines/${routingCourseId}`);
   };
 
   if (loading) {
@@ -143,7 +155,7 @@ export default function ManageDeadlinesLayout({ children }: { children: React.Re
                     key={course._id}
                     onClick={() => handleCourseSelect(course._id)}
                     className={`inline-block py-4 px-3 border-b-2 font-medium text-sm ${
-                      selectedCourse === course._id
+                      selectedCourse === (course.originalCourseId || course._id)
                         ? 'border-blue-500 text-blue-600'
                         : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                     }`}

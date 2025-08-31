@@ -1,0 +1,288 @@
+'use client';
+
+import { useEffect, useState, useMemo, useCallback } from 'react';
+import { useParams, useRouter } from 'next/navigation';
+
+// --- TYPE DEFINITIONS ---
+interface Mark {
+  deadlineId: string;
+  obtained: number;
+  outOf: number;
+}
+interface CourseMarks {
+  quiz: Mark[];
+  assignment: Mark[];
+  mid: Mark[];
+  final: Mark[];
+}
+interface Deadline {
+  _id: string;
+  id: string;
+  title: string;
+}
+interface MarksDistribution {
+    quiz: string; assignment: string; mid: string; final: string;
+    quizNminus1: string; assignmentNminus1: string;
+}
+interface CourseDetails {
+    _id: string;
+    theoryMarksDistribution: MarksDistribution[];
+    labmarksDistribution: MarksDistribution[];
+}
+
+// --- CALCULATION HELPER ---
+const calculateFinalMark = (marks: Mark[], nMinusOne: boolean, weight: number): number => {
+    if (marks.length === 0 || !weight) return 0;
+  
+    let marksToConsider = [...marks];
+    
+    if (nMinusOne && marks.length > 1) {
+      const marksWithPercentage = marks.map(m => ({ ...m, percentage: (m.obtained / m.outOf) * 100 }));
+      marksWithPercentage.sort((a, b) => a.percentage - b.percentage);
+      const lowestMarkDeadlineId = marksWithPercentage[0].deadlineId;
+      marksToConsider = marks.filter(m => m.deadlineId !== lowestMarkDeadlineId);
+    }
+  
+    if (marksToConsider.length === 0) return 0;
+  
+    const totalObtained = marksToConsider.reduce((sum, m) => sum + m.obtained, 0);
+    const totalOutOf = marksToConsider.reduce((sum, m) => sum + m.outOf, 0);
+    
+    if (totalOutOf === 0) return 0;
+  
+    return (totalObtained / totalOutOf) * weight;
+};
+
+// --- COMPONENT FOR DISPLAYING A SECTION (THEORY/LAB) ---
+const MarksSection = ({ title, deadlines, marks, distribution, courseId, onMarksUpdated }: any) => {
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [selectedDeadline, setSelectedDeadline] = useState<Deadline | null>(null);
+    const [markData, setMarkData] = useState({ type: 'quiz', obtained: '', outOf: '' });
+
+    const openModal = (deadline: Deadline) => {
+        setSelectedDeadline(deadline);
+        // Pre-fill form with existing data if available
+        const allMarks = [...marks.quiz, ...marks.assignment, ...marks.mid, ...marks.final];
+        const existingMark = allMarks.find(m => m.deadlineId === deadline.id);
+        if (existingMark) {
+            setMarkData({ type: 'quiz', obtained: String(existingMark.obtained), outOf: String(existingMark.outOf) });
+        } else {
+            setMarkData({ type: 'quiz', obtained: '', outOf: '' });
+        }
+        setIsModalOpen(true);
+    };
+
+    const handleMarkSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!selectedDeadline) return;
+    
+        await fetch('/api/user-marks', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            courseId,
+            deadlineId: selectedDeadline.id,
+            type: markData.type,
+            obtained: parseFloat(markData.obtained),
+            outOf: parseFloat(markData.outOf)
+          }),
+        });
+        
+        onMarksUpdated(); // Callback to refresh data on the parent
+        setIsModalOpen(false);
+    };
+
+    const calculatedMarks = useMemo(() => {
+        if (!distribution) return {};
+        return {
+            quiz: calculateFinalMark(marks.quiz, distribution.quizNminus1 === 'Yes', parseFloat(distribution.quiz)),
+            assignment: calculateFinalMark(marks.assignment, distribution.assignmentNminus1 === 'Yes', parseFloat(distribution.assignment)),
+            mid: calculateFinalMark(marks.mid, false, parseFloat(distribution.mid)),
+            final: calculateFinalMark(marks.final, false, parseFloat(distribution.final)),
+        }
+    }, [marks, distribution]);
+
+    const totalMarks = Object.values(calculatedMarks).reduce((sum: number, mark: any) => sum + (mark || 0), 0);
+
+    return (
+        <div className="bg-white p-6 rounded-lg shadow-md space-y-6">
+            <h2 className="text-xl font-semibold text-gray-800 border-b pb-2">{title} Marks</h2>
+            
+            <div>
+                <h3 className="text-lg font-medium text-gray-700 mb-2">Pending Mark Updates</h3>
+                <div className="space-y-2 max-h-60 overflow-y-auto pr-2">
+                    {deadlines.length > 0 ? deadlines.map((d: Deadline) => (
+                        <div key={d.id} className="flex justify-between items-center p-3 bg-gray-50 rounded-md">
+                            <span className="text-sm">{d.title}</span>
+                            <button onClick={() => openModal(d)} className="px-3 py-1 bg-blue-100 text-blue-800 text-xs rounded-full hover:bg-blue-200">
+                                Update
+                            </button>
+                        </div>
+                    )) : <p className="text-sm text-gray-500">All marks are up to date.</p>}
+                </div>
+            </div>
+
+            <div>
+                <h3 className="text-lg font-medium text-gray-700 mb-3">Calculated Marks</h3>
+                <div className="space-y-2 text-sm">
+                    {Object.entries(calculatedMarks).map(([key, value]) => (
+                        <div key={key} className="flex justify-between">
+                            <span className="capitalize text-gray-600">{key}:</span>
+                            <span className="font-semibold">{Number(value).toFixed(2)} / {distribution?.[key as keyof MarksDistribution]}%</span>
+                        </div>
+                    ))}
+                    <div className="flex justify-between font-bold text-base pt-2 border-t">
+                        <span>Total:</span>
+                        <span>{totalMarks.toFixed(2)}%</span>
+                    </div>
+                </div>
+            </div>
+            
+            {/* Modal for updating marks */}
+            {isModalOpen && selectedDeadline && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
+                    <div className="bg-white p-8 rounded-lg shadow-xl w-full max-w-md">
+                        <h2 className="text-2xl font-bold mb-4">Update Marks for "{selectedDeadline.title}"</h2>
+                        <form onSubmit={handleMarkSubmit} className="space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700">Type</label>
+                                <select value={markData.type} onChange={e => setMarkData({...markData, type: e.target.value})} className="mt-1 block w-full p-2 border rounded-md">
+                                    <option value="quiz">Quiz</option>
+                                    <option value="assignment">Assignment</option>
+                                    <option value="mid">Mid</option>
+                                    <option value="final">Final</option>
+                                </select>
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700">Obtained</label>
+                                    <input type="number" step="0.01" required value={markData.obtained} onChange={e => setMarkData({...markData, obtained: e.target.value})} className="mt-1 block w-full p-2 border rounded-md" />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700">Out Of</label>
+                                    <input type="number" step="0.01" required value={markData.outOf} onChange={e => setMarkData({...markData, outOf: e.target.value})} className="mt-1 block w-full p-2 border rounded-md" />
+                                </div>
+                            </div>
+                            <div className="flex justify-end space-x-3 pt-4">
+                                <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 bg-gray-200 rounded-md">Cancel</button>
+                                <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded-md">Save</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+}
+
+
+// --- MAIN PAGE COMPONENT ---
+export default function MarksPage() {
+    const { courseId } = useParams<{ courseId: string }>();
+    const router = useRouter();
+    const [finishedDeadlines, setFinishedDeadlines] = useState<{ theory: Deadline[], lab: Deadline[] }>({ theory: [], lab: [] });
+    const [courseMarks, setCourseMarks] = useState<CourseMarks>({ quiz: [], assignment: [], mid: [], final: [] });
+    const [courseDetails, setCourseDetails] = useState<CourseDetails | null>(null);
+    const [loading, setLoading] = useState(true);
+
+    const fetchData = useCallback(async () => {
+        console.log("Course ID from params:", courseId);
+        if (!courseId) return;
+        setLoading(true);
+        try {
+            // First fetch course details to get the original courseId
+            const courseRes = await fetch(`/api/courses-surzo/${courseId}`);
+            let courseData = null;
+            let originalCourseId = courseId;
+
+            if (courseRes.ok) {
+                courseData = await courseRes.json();
+                originalCourseId = courseData._id; // Use the original courseId for API calls
+            } else {
+                console.error("Failed to fetch course details:", courseRes.status);
+                // Don't throw error for course details, just leave it null
+            }
+
+            // Use the original courseId for all other API calls
+            const [deadlinesRes, marksRes] = await Promise.all([
+                fetch(`/api/get-finished-deadlines?courseId=${originalCourseId}`),
+                fetch(`/api/user-marks?courseId=${originalCourseId}`)
+            ]);
+
+            // Handle responses more gracefully - don't throw errors for 404s, just set empty data
+            let deadlinesData = { deadlines: { theory: [], lab: [] } };
+            let marksData = { quiz: [], assignment: [], mid: [], final: [] };
+
+            if (deadlinesRes.ok) {
+                deadlinesData = await deadlinesRes.json();
+            } else if (deadlinesRes.status === 404) {
+                console.log("No deadlines found for course, using empty data");
+            } else {
+                console.error("Unexpected error fetching deadlines:", deadlinesRes.status);
+            }
+
+            if (marksRes.ok) {
+                marksData = await marksRes.json();
+            } else if (marksRes.status === 404) {
+                console.log("No marks found for course, using empty data");
+            } else {
+                console.error("Unexpected error fetching marks:", marksRes.status);
+            }
+
+            console.log("Deadlines data:", deadlinesData);
+            console.log("Marks data:", marksData);
+            console.log("Course data:", courseData);
+
+            // If the courseId param is different from the original courseId, redirect to original
+            if (courseData && courseId !== courseData._id) {
+                router.replace(`/marks-calculation/${courseData._id}`);
+                return; // Don't set state since we're redirecting
+            }
+
+            setFinishedDeadlines(deadlinesData.deadlines || { theory: [], lab: [] });
+            setCourseMarks(marksData);
+            setCourseDetails(courseData);
+        } catch (error) {
+            console.error("Failed to fetch data:", error);
+            // Set empty data on error to prevent the page from breaking
+            setFinishedDeadlines({ theory: [], lab: [] });
+            setCourseMarks({ quiz: [], assignment: [], mid: [], final: [] });
+        } finally {
+            setLoading(false);
+        }
+    }, [courseId]);
+
+    useEffect(() => {
+        fetchData();
+    }, [fetchData]);
+
+    if (loading) return <div className="text-center p-10">Calculating Marks...</div>;
+
+    const theoryDistribution = courseDetails?.theoryMarksDistribution?.[0];
+    const labDistribution = courseDetails?.labmarksDistribution?.[0];
+
+    return (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            {theoryDistribution && (
+                <MarksSection 
+                    title="Theory"
+                    deadlines={finishedDeadlines.theory}
+                    marks={courseMarks}
+                    distribution={theoryDistribution}
+                    courseId={courseId}
+                    onMarksUpdated={fetchData}
+                />
+            )}
+            {labDistribution && (
+                 <MarksSection 
+                    title="Lab"
+                    deadlines={finishedDeadlines.lab}
+                    marks={courseMarks} // Assuming lab marks are stored similarly
+                    distribution={labDistribution}
+                    courseId={courseId}
+                    onMarksUpdated={fetchData}
+                />
+            )}
+        </div>
+    );
+}

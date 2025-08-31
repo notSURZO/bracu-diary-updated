@@ -51,7 +51,7 @@ const navItems = [
     ],
   },
   { name: 'Manage Deadlines', href: '/manage-deadlines', icon: Icons.FaRegClock },
-  { name: 'Marks Calculation', href: '/marks', icon: Icons.FaCalculator },
+  { name: 'Marks Calculation', href: '/marks-calculation', icon: Icons.FaCalculator },
   { name: 'Events', href: '/events', icon: Icons.FaCalendarCheck },
   { name: 'Recent Activities', href: '/activities', icon: Icons.FaChartLine },
 ];
@@ -86,7 +86,7 @@ export default function Sidebar(): React.ReactElement {
       <nav className="p-4">
         <ul>
           {navItems.map((item) => {
-            const isActive = !item.subItems && pathname === item.href;
+            const isActive = !item.subItems && (pathname === item.href || pathname.startsWith(`${item.href}/`));
 
             return (
               <li key={item.name} className="mb-2">
