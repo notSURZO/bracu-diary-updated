@@ -46,12 +46,12 @@ export async function GET(req: Request) {
     let deadlines = [];
     
     if (type === 'theory' && sectionData.theory?.deadlines) {
-      deadlines = sectionData.theory.deadlines.filter((d: any) => new Date(d.lastDate) >= new Date()).map((d: any) => ({ ...d, type: 'theory' }));
+      deadlines = sectionData.theory.deadlines.map((d: any) => ({ ...d, type: 'theory' }));
     } else if (type === 'lab' && sectionData.lab?.deadlines) {
-      deadlines = sectionData.lab.deadlines.filter((d: any) => new Date(d.lastDate) >= new Date()).map((d: any) => ({ ...d, type: 'lab' }));
+      deadlines = sectionData.lab.deadlines.map((d: any) => ({ ...d, type: 'lab' }));
     } else {
-      const theoryDeadlines = sectionData.theory?.deadlines?.filter((d: any) => new Date(d.lastDate) >= new Date()).map((d: any) => ({ ...d, type: 'theory' })) || [];
-      const labDeadlines = sectionData.lab?.deadlines?.filter((d: any) => new Date(d.lastDate) >= new Date()).map((d: any) => ({ ...d, type: 'lab' })) || [];
+      const theoryDeadlines = sectionData.theory?.deadlines?.map((d: any) => ({ ...d, type: 'theory' })) || [];
+      const labDeadlines = sectionData.lab?.deadlines?.map((d: any) => ({ ...d, type: 'lab' })) || [];
       deadlines = [...theoryDeadlines, ...labDeadlines];
     }
 

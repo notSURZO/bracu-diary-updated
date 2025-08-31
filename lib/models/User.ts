@@ -18,6 +18,23 @@ export interface IEducation {
   college?: string;
 }
 
+// --- NEW INTERFACES FOR MARKS ---
+// Interface for a single mark entry (e.g., one quiz)
+export interface IMarkEntry {
+  deadlineId: string;
+  obtained: number;
+  outOf: number;
+}
+
+// Interface to hold all marks for a single course
+export interface ICourseMarks {
+  courseId: mongoose.Schema.Types.ObjectId;
+  quiz: IMarkEntry[];
+  assignment: IMarkEntry[];
+  mid: IMarkEntry[];
+  final: IMarkEntry[];
+}
+
 // Main User Interface
 export interface IUser extends Document {
   clerkId: string;
@@ -71,9 +88,11 @@ export interface IUser extends Document {
     createdAt: Date;
     completed: boolean;
   }>;
-
+  // --- ADDED MARKS FIELD ---
+  marks?: ICourseMarks[];
 }
 
+// SocialMediaSchema
 const SocialMediaSchema: Schema = new Schema({
   linkedin: { type: String, default: '' },
   github: { type: String, default: '' },
@@ -92,6 +111,23 @@ const EducationSchema: Schema = new Schema({
 }, { _id: false });
 
 
+// --- NEW SCHEMAS FOR MARKS ---
+const MarkEntrySchema: Schema = new Schema({
+  deadlineId: { type: String, required: true, unique: true },
+  obtained: { type: Number, required: true },
+  outOf: { type: Number, required: true }
+}, { _id: false });
+
+const CourseMarksSchema: Schema = new Schema({
+  courseId: { type: Schema.Types.ObjectId, ref: 'Course', required: true },
+  quiz: [MarkEntrySchema],
+  assignment: [MarkEntrySchema],
+  mid: [MarkEntrySchema],
+  final: [MarkEntrySchema]
+}, { _id: false });
+
+
+// Main UserSchema
 const UserSchema: Schema = new Schema({
   clerkId: { type: String, required: true, unique: true },
   name: { type: String, required: true },
@@ -107,8 +143,6 @@ const UserSchema: Schema = new Schema({
   education: { type: EducationSchema, default: {} },
   address: { type: String, default: '' },
   department: { type: String, default: '' },
-
- 
   connectionRequests: [{ type: String, default: [] }],
   theme_color: { type: String, default: 'blue' },
   createdAt: { type: Date, default: Date.now },
@@ -147,7 +181,12 @@ const UserSchema: Schema = new Schema({
     createdByStudentId: { type: String, required: true },
     createdAt: { type: Date, default: Date.now },
     completed: { type: Boolean, default: false }
-  }]
+  }],
+  // --- ADDED MARKS FIELD TO SCHEMA ---
+  marks: {
+    type: [CourseMarksSchema],
+    default: []
+  }
 });
 
 // Update the updatedAt field before saving

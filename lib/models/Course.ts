@@ -1,5 +1,34 @@
 import mongoose from "mongoose";
 
+const MarksSchema = new mongoose.Schema({
+  quiz: {
+    type: String,
+    default: ''
+  },
+  assignment: {
+    type: String,
+    default: ''
+  },
+  mid: {
+    type: String,
+    default: ''
+  },
+  final: {
+    type: String,
+    default: ''
+  }  ,
+  quizNminus1: {
+    type: String,
+    default: 'No'
+  },
+  assignmentNminus1: {
+    type: String,
+    default: 'No'
+  }
+})
+
+
+
 const DeadlineSchema = new mongoose.Schema({
   id: {
     type: String,
@@ -76,8 +105,10 @@ const ClassDetailsSchema = new mongoose.Schema({
   deadlines: {
     type: [DeadlineSchema],
     default: []
-  }
+  },
+
 });
+
 
 const SectionSchema = new mongoose.Schema({
   section: {
@@ -116,6 +147,14 @@ const CourseSchema = new mongoose.Schema({
     type: [SectionSchema], 
     required: true
   },
+  theoryMarksDistribution: {
+    type: [MarksSchema],
+    default: []
+  },
+  labmarksDistribution: {
+    type: [MarksSchema],
+    default: []
+  }
 });
 
 export default mongoose.models.Course || mongoose.model("Course", CourseSchema);

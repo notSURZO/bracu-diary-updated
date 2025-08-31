@@ -17,6 +17,7 @@ interface Course {
   examDay?: string;
   hasLab: boolean;
   link: string;
+  originalCourseId?: string;
 }
 
 export default function ManageDeadlinesLayout({ children }: { children: React.ReactNode }) {
@@ -27,22 +28,60 @@ export default function ManageDeadlinesLayout({ children }: { children: React.Re
   const router = useRouter();
   const pathname = usePathname();
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const hasPushedInitialRoute = useRef(false); // Prevent multiple router.push calls
 
+  // Fetch user courses
   useEffect(() => {
-    if (user?.emailAddresses?.[0]?.emailAddress) {
-      fetchUserCourses();
-    }
+    if (!user?.emailAddresses?.[0]?.emailAddress) return;
+
+    const fetchUserCourses = async () => {
+      try {
+        const response = await fetch(`/api/user-courses?email=${user.emailAddresses[0].emailAddress}`);
+        const data = await response.json();
+        
+        if (data.enrolledCourses && data.enrolledCourses.length > 0) {
+          const validCourses = data.enrolledCourses.filter((course: Course) => 
+            !course.courseCode.endsWith('L')
+          );
+          setCourses(validCourses);
+        } else {
+          setCourses([]);
+        }
+      } catch (error) {
+        console.error('Error fetching user courses:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchUserCourses();
   }, [user]);
 
+  // Handle course selection and routing
   useEffect(() => {
+    if (loading || !courses.length || hasPushedInitialRoute.current) return;
+
     const pathParts = pathname.split('/');
     const courseIdFromPath = pathParts[pathParts.length - 1];
-    if (courseIdFromPath && courseIdFromPath !== 'manage-deadlines') {
-      setSelectedCourse(courseIdFromPath);
-    }
-  }, [pathname]);
 
-  // Restore scroll position on mount
+    // Check if the URL contains a valid course ID
+    const courseFromPath = courses.find(
+      course => course._id === courseIdFromPath || course.originalCourseId === courseIdFromPath
+    );
+
+    if (courseFromPath) {
+      const routingCourseId = courseFromPath.originalCourseId || courseFromPath._id;
+      setSelectedCourse(routingCourseId);
+    } else {
+      // Default to the first course if no valid course ID in URL
+      const firstCourseId = courses[0].originalCourseId || courses[0]._id;
+      setSelectedCourse(firstCourseId);
+      hasPushedInitialRoute.current = true; // Prevent further pushes
+      router.push(`/manage-deadlines/${firstCourseId}`);
+    }
+  }, [courses, loading, pathname, router]);
+
+  // Restore scroll position
   useEffect(() => {
     if (!scrollContainerRef.current || !selectedCourse || courses.length === 0) return;
 
@@ -56,7 +95,7 @@ export default function ManageDeadlinesLayout({ children }: { children: React.Re
     }
   }, [courses, selectedCourse, pathname]);
 
-  // Save scroll position on scroll and before unmount
+  // Save scroll position
   useEffect(() => {
     const scrollContainer = scrollContainerRef.current;
     if (!scrollContainer) return;
@@ -79,36 +118,13 @@ export default function ManageDeadlinesLayout({ children }: { children: React.Re
     };
   }, [pathname]);
 
-  const fetchUserCourses = async () => {
-    try {
-      const response = await fetch(`/api/user-courses?email=${user?.emailAddresses?.[0]?.emailAddress}`);
-      const data = await response.json();
-      
-      if (data.enrolledCourses && data.enrolledCourses.length > 0) {
-        const validCourses = data.enrolledCourses.filter((course: Course) => 
-          !course.courseCode.endsWith('L')
-        );
-        setCourses(validCourses);
-        
-        if (!selectedCourse && validCourses.length > 0) {
-          handleCourseSelect(validCourses[0]._id);
-        }
-      } else {
-        setCourses([]);
-      }
-    } catch (error) {
-      console.error('Error fetching user courses:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const handleCourseSelect = (courseId: string) => {
-    setSelectedCourse(courseId);
-    // Clear scroll position for the new course
+    const course = courses.find(c => c._id === courseId);
+    const routingCourseId = course?.originalCourseId || courseId;
+    setSelectedCourse(routingCourseId);
     const scrollKey = `scroll-position-${pathname}`;
     localStorage.removeItem(scrollKey);
-    router.push(`/manage-deadlines/${courseId}`);
+    router.push(`/manage-deadlines/${routingCourseId}`);
   };
 
   if (loading) {
@@ -143,7 +159,7 @@ export default function ManageDeadlinesLayout({ children }: { children: React.Re
                     key={course._id}
                     onClick={() => handleCourseSelect(course._id)}
                     className={`inline-block py-4 px-3 border-b-2 font-medium text-sm ${
-                      selectedCourse === course._id
+                      selectedCourse === (course.originalCourseId || course._id)
                         ? 'border-blue-500 text-blue-600'
                         : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                     }`}
