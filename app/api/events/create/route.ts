@@ -39,7 +39,7 @@ export async function POST(req: NextRequest) {
       clubId = user.adminClub;
     }
 
-    const { title, description, date, time, location } = await req.json();
+    const { title, description, date, time, location, tags, imageUrl, imagePath, imageBucket } = await req.json();
 
     // Validate required fields
     if (!title || !description || !date || !time || !location) {
@@ -53,7 +53,20 @@ export async function POST(req: NextRequest) {
       date: new Date(date),
       time: time.trim(),
       location: location.trim(),
-      adminClub: clubId
+      adminClub: clubId,
+      tags: Array.isArray(tags)
+        ? Array.from(
+            new Set(
+              tags
+                .map((t: string) => String(t || '').trim().toLowerCase())
+                .filter(Boolean)
+            )
+          )
+        : []
+      ,
+      imageUrl: (imageUrl || '').trim(),
+      imagePath: (imagePath || '').trim(),
+      imageBucket: (imageBucket || process.env.SUPABASE_BUCKET || process.env.NEXT_PUBLIC_SUPABASE_EVENT_BUCKET || '').toString().trim()
     });
 
     await newEvent.save();

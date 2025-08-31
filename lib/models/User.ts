@@ -54,6 +54,7 @@ export interface IUser extends Document {
   address?: string;
   department?: string;
   theme_color?: string;
+  interests?: string[];
   enrolledCourses: Array<{
     _id: string;
     originalCourseId: string;
@@ -147,6 +148,7 @@ const UserSchema: Schema = new Schema({
   department: { type: String, default: '' },
   connectionRequests: [{ type: String, default: [] }],
   theme_color: { type: String, default: 'blue' },
+  interests: { type: [String], default: [] },
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now },
 
