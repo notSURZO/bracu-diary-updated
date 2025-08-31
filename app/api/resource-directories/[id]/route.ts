@@ -7,7 +7,7 @@ import CourseResourceDirectory from '@/lib/models/CourseResourceDirectory';
 export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
   try {
     await connectToDatabase();
-    const { id } = params;
+  const { id } = await params;
     const dir = await CourseResourceDirectory.findOne({ _id: id, visibility: 'public' }).lean();
     if (!dir) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 

@@ -53,6 +53,8 @@ export interface IUser extends Document {
     link: string;
   }>;
   connections: string[];
+  isAdmin?: boolean;
+  adminClub?: mongoose.Types.ObjectId;
   deadlines?: Array<{
     id: string;
     title: string;
@@ -130,6 +132,8 @@ const UserSchema: Schema = new Schema({
     link: { type: String, required: true }
   }],
   connections: [{ type: String, default: [] }],
+  isAdmin: { type: Boolean, default: false },
+  adminClub: { type: Schema.Types.ObjectId, ref: 'Club' },
   deadlines: [{
     id: { type: String, required: true },
     title: { type: String, required: true },
