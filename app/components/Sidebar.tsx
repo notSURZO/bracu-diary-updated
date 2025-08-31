@@ -51,7 +51,7 @@ const navItems = [
     ],
   },
   { name: 'Manage Deadlines', href: '/manage-deadlines', icon: Icons.FaRegClock },
-  { name: 'Marks Calculation', href: '/marks', icon: Icons.FaCalculator },
+  { name: 'Marks Calculation', href: '/marks-calculation', icon: Icons.FaCalculator },
   { name: 'Events', href: '/events', icon: Icons.FaCalendarCheck },
   { name: 'Recent Activities', href: '/activities', icon: Icons.FaChartLine },
 ];
