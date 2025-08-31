@@ -28,28 +28,58 @@ export default function ManageDeadlinesLayout({ children }: { children: React.Re
   const router = useRouter();
   const pathname = usePathname();
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const hasPushedInitialRoute = useRef(false); // Prevent multiple router.push calls
 
+  // Fetch user courses
   useEffect(() => {
-    if (user?.emailAddresses?.[0]?.emailAddress) {
-      fetchUserCourses();
-    }
+    if (!user?.emailAddresses?.[0]?.emailAddress) return;
+
+    const fetchUserCourses = async () => {
+      try {
+        const response = await fetch(`/api/user-courses?email=${user.emailAddresses[0].emailAddress}`);
+        const data = await response.json();
+        
+        if (data.enrolledCourses && data.enrolledCourses.length > 0) {
+          const validCourses = data.enrolledCourses.filter((course: Course) => 
+            !course.courseCode.endsWith('L')
+          );
+          setCourses(validCourses);
+        } else {
+          setCourses([]);
+        }
+      } catch (error) {
+        console.error('Error fetching user courses:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchUserCourses();
   }, [user]);
 
+  // Handle course selection and routing
   useEffect(() => {
+    if (loading || !courses.length || hasPushedInitialRoute.current) return;
+
     const pathParts = pathname.split('/');
     const courseIdFromPath = pathParts[pathParts.length - 1];
-    
-    if (courseIdFromPath && courseIdFromPath !== 'manage-deadlines' && courses.some(course => 
-      course._id === courseIdFromPath || course.originalCourseId === courseIdFromPath
-    )) {
-      setSelectedCourse(courseIdFromPath);
-    } else if (courses.length > 0 && !selectedCourse) {
-      // Select first course if no valid courseId in URL
+
+    // Check if the URL contains a valid course ID
+    const courseFromPath = courses.find(
+      course => course._id === courseIdFromPath || course.originalCourseId === courseIdFromPath
+    );
+
+    if (courseFromPath) {
+      const routingCourseId = courseFromPath.originalCourseId || courseFromPath._id;
+      setSelectedCourse(routingCourseId);
+    } else {
+      // Default to the first course if no valid course ID in URL
       const firstCourseId = courses[0].originalCourseId || courses[0]._id;
       setSelectedCourse(firstCourseId);
+      hasPushedInitialRoute.current = true; // Prevent further pushes
       router.push(`/manage-deadlines/${firstCourseId}`);
     }
-  }, [pathname, courses, router]);
+  }, [courses, loading, pathname, router]);
 
   // Restore scroll position
   useEffect(() => {
@@ -87,32 +117,6 @@ export default function ManageDeadlinesLayout({ children }: { children: React.Re
       window.removeEventListener('beforeunload', handleBeforeUnload);
     };
   }, [pathname]);
-
-  const fetchUserCourses = async () => {
-    try {
-      const response = await fetch(`/api/user-courses?email=${user?.emailAddresses?.[0]?.emailAddress}`);
-      const data = await response.json();
-      
-      if (data.enrolledCourses && data.enrolledCourses.length > 0) {
-        const validCourses = data.enrolledCourses.filter((course: Course) => 
-          !course.courseCode.endsWith('L')
-        );
-        setCourses(validCourses);
-        
-        if (!selectedCourse && validCourses.length > 0) {
-          const firstCourseId = validCourses[0].originalCourseId || validCourses[0]._id;
-          setSelectedCourse(firstCourseId);
-          router.push(`/manage-deadlines/${firstCourseId}`);
-        }
-      } else {
-        setCourses([]);
-      }
-    } catch (error) {
-      console.error('Error fetching user courses:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleCourseSelect = (courseId: string) => {
     const course = courses.find(c => c._id === courseId);
