@@ -86,7 +86,7 @@ export default function Sidebar(): React.ReactElement {
       <nav className="p-4">
         <ul>
           {navItems.map((item) => {
-            const isActive = !item.subItems && pathname === item.href;
+            const isActive = !item.subItems && (pathname === item.href || pathname.startsWith(`${item.href}/`));
 
             return (
               <li key={item.name} className="mb-2">
