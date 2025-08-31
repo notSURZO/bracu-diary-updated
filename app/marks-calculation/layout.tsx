@@ -8,6 +8,7 @@ import Link from 'next/link';
 interface Course {
   _id: string;
   courseCode: string;
+  originalCourseId?: string;
 }
 
 export default function MarksCalculationLayout({ children }: { children: React.ReactNode }) {
@@ -29,7 +30,7 @@ export default function MarksCalculationLayout({ children }: { children: React.R
         const mainCourses = data.enrolledCourses?.filter((c: any) => !c.courseCode.endsWith('L')) || [];
         setCourses(mainCourses);
         if (!courseIdFromPath && mainCourses.length > 0) {
-          router.replace(`/marks-calculation/${mainCourses[0]._id}`);
+          router.replace(`/marks-calculation/${mainCourses[0].originalCourseId || mainCourses[0]._id}`);
         }
       } catch (error) {
         console.error('Error fetching courses:', error);
@@ -59,9 +60,9 @@ export default function MarksCalculationLayout({ children }: { children: React.R
               {courses.map((course) => (
                 <Link
                   key={course._id}
-                  href={`/marks-calculation/${course._id}`}
+                  href={`/marks-calculation/${course.originalCourseId || course._id}`}
                   className={`shrink-0 py-4 px-3 border-b-2 font-medium text-sm ${
-                    courseIdFromPath === course._id
+                    courseIdFromPath === (course.originalCourseId || course._id)
                       ? 'border-blue-500 text-blue-600'
                       : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                   }`}

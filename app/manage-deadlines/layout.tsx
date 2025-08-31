@@ -17,6 +17,7 @@ interface Course {
   examDay?: string;
   hasLab: boolean;
   link: string;
+  originalCourseId?: string;
 }
 
 export default function ManageDeadlinesLayout({ children }: { children: React.ReactNode }) {
@@ -104,11 +105,13 @@ export default function ManageDeadlinesLayout({ children }: { children: React.Re
   };
 
   const handleCourseSelect = (courseId: string) => {
-    setSelectedCourse(courseId);
+    const course = courses.find(c => c._id === courseId);
+    const routingCourseId = course?.originalCourseId || courseId;
+    setSelectedCourse(routingCourseId);
     // Clear scroll position for the new course
     const scrollKey = `scroll-position-${pathname}`;
     localStorage.removeItem(scrollKey);
-    router.push(`/manage-deadlines/${courseId}`);
+    router.push(`/manage-deadlines/${routingCourseId}`);
   };
 
   if (loading) {
@@ -143,7 +146,7 @@ export default function ManageDeadlinesLayout({ children }: { children: React.Re
                     key={course._id}
                     onClick={() => handleCourseSelect(course._id)}
                     className={`inline-block py-4 px-3 border-b-2 font-medium text-sm ${
-                      selectedCourse === course._id
+                      selectedCourse === (course.originalCourseId || course._id)
                         ? 'border-blue-500 text-blue-600'
                         : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                     }`}

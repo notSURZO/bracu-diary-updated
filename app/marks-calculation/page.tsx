@@ -8,6 +8,7 @@ interface Course {
   _id: string;
   courseCode: string;
   courseName: string;
+  originalCourseId?: string;
   sections: Array<{
     section: string;
     theory: any;
@@ -40,7 +41,7 @@ export default function MarksCalculationRoot() {
         
         // Redirect to the first course instead of setting it locally
         if (validCourses.length > 0) {
-          router.push(`/marks-calculation/${validCourses[0]._id}`);
+          router.push(`/marks-calculation/${validCourses[0].originalCourseId || validCourses[0]._id}`);
         }
       } else {
         setCourses([]);

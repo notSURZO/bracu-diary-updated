@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useMemo, useCallback } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 
 // --- TYPE DEFINITIONS ---
 interface Mark {
@@ -179,6 +179,7 @@ const MarksSection = ({ title, deadlines, marks, distribution, courseId, onMarks
 // --- MAIN PAGE COMPONENT ---
 export default function MarksPage() {
     const { courseId } = useParams<{ courseId: string }>();
+    const router = useRouter();
     const [finishedDeadlines, setFinishedDeadlines] = useState<{ theory: Deadline[], lab: Deadline[] }>({ theory: [], lab: [] });
     const [courseMarks, setCourseMarks] = useState<CourseMarks>({ quiz: [], assignment: [], mid: [], final: [] });
     const [courseDetails, setCourseDetails] = useState<CourseDetails | null>(null);
@@ -189,19 +190,29 @@ export default function MarksPage() {
         if (!courseId) return;
         setLoading(true);
         try {
-            // For all endpoints, use the full courseId (including section) since the APIs
-            // are designed to handle the modified IDs with section numbers
-            const [deadlinesRes, marksRes, courseRes] = await Promise.all([
-                fetch(`/api/get-finished-deadlines?courseId=${courseId}`),
-                fetch(`/api/user-marks?courseId=${courseId}`),
-                fetch(`/api/courses-surzo/${courseId}`)
+            // First fetch course details to get the original courseId
+            const courseRes = await fetch(`/api/courses-surzo/${courseId}`);
+            let courseData = null;
+            let originalCourseId = courseId;
+
+            if (courseRes.ok) {
+                courseData = await courseRes.json();
+                originalCourseId = courseData._id; // Use the original courseId for API calls
+            } else {
+                console.error("Failed to fetch course details:", courseRes.status);
+                // Don't throw error for course details, just leave it null
+            }
+
+            // Use the original courseId for all other API calls
+            const [deadlinesRes, marksRes] = await Promise.all([
+                fetch(`/api/get-finished-deadlines?courseId=${originalCourseId}`),
+                fetch(`/api/user-marks?courseId=${originalCourseId}`)
             ]);
-            
+
             // Handle responses more gracefully - don't throw errors for 404s, just set empty data
             let deadlinesData = { deadlines: { theory: [], lab: [] } };
             let marksData = { quiz: [], assignment: [], mid: [], final: [] };
-            let courseData = null;
-            
+
             if (deadlinesRes.ok) {
                 deadlinesData = await deadlinesRes.json();
             } else if (deadlinesRes.status === 404) {
@@ -209,7 +220,7 @@ export default function MarksPage() {
             } else {
                 console.error("Unexpected error fetching deadlines:", deadlinesRes.status);
             }
-            
+
             if (marksRes.ok) {
                 marksData = await marksRes.json();
             } else if (marksRes.status === 404) {
@@ -217,18 +228,17 @@ export default function MarksPage() {
             } else {
                 console.error("Unexpected error fetching marks:", marksRes.status);
             }
-            
-            if (courseRes.ok) {
-                courseData = await courseRes.json();
-            } else {
-                console.error("Failed to fetch course details:", courseRes.status);
-                // Don't throw error for course details, just leave it null
-            }
-            
+
             console.log("Deadlines data:", deadlinesData);
             console.log("Marks data:", marksData);
             console.log("Course data:", courseData);
-            
+
+            // If the courseId param is different from the original courseId, redirect to original
+            if (courseData && courseId !== courseData._id) {
+                router.replace(`/marks-calculation/${courseData._id}`);
+                return; // Don't set state since we're redirecting
+            }
+
             setFinishedDeadlines(deadlinesData.deadlines || { theory: [], lab: [] });
             setCourseMarks(marksData);
             setCourseDetails(courseData);

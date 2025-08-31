@@ -1,9 +1,11 @@
 'use client';
 
 import { useEffect, useState, useRef, useCallback } from 'react';
-import { useParams, usePathname } from 'next/navigation';
+import { useParams, usePathname, useRouter } from 'next/navigation';
 import { useUser } from '@clerk/nextjs';
 import { format } from 'date-fns';
+import { toast, ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 interface Deadline {
   _id: string;
@@ -37,9 +39,8 @@ export default function ManageDeadlinesPage() {
   const { courseId } = useParams();
   const { user } = useUser();
   const pathname = usePathname();
-  // State for upcoming deadlines
+  const router = useRouter();
   const [deadlines, setDeadlines] = useState<Deadline[]>([]);
-  // NEW: State for missed deadlines
   const [missedDeadlines, setMissedDeadlines] = useState<Deadline[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<'all' | 'theory' | 'lab'>('all');
@@ -70,7 +71,6 @@ export default function ManageDeadlinesPage() {
     }
   }, [courseId, user]);
 
-  // Modified fetchDeadlines to run whenever these dependencies change
   useEffect(() => {
     if (courseId && user && selectedSection) {
       setLoading(true);
@@ -79,23 +79,18 @@ export default function ManageDeadlinesPage() {
   }, [courseId, user, selectedSection, filter]);
 
   useEffect(() => {
-    // Generate a unique key for this page to store scroll position
     const scrollKey = `scroll-position-${pathname}`;
-
-    // Restore scroll position when component mounts
     const savedScrollPosition = sessionStorage.getItem(scrollKey);
     if (savedScrollPosition && scrollContainerRef.current) {
       scrollContainerRef.current.scrollTop = parseInt(savedScrollPosition, 10);
     }
 
-    // Save scroll position on scroll
     const handleScroll = () => {
       if (scrollContainerRef.current) {
         sessionStorage.setItem(scrollKey, scrollContainerRef.current.scrollTop.toString());
       }
     };
 
-    // Save scroll position before unload
     const handleBeforeUnload = () => {
       if (scrollContainerRef.current) {
         sessionStorage.setItem(scrollKey, scrollContainerRef.current.scrollTop.toString());
@@ -184,12 +179,11 @@ export default function ManageDeadlinesPage() {
     }
   };
 
-  // MODIFIED: This function now fetches all deadlines and filters them
   const fetchDeadlines = async () => {
     try {
       if (!selectedSection) {
         setDeadlines([]);
-        setMissedDeadlines([]); // Clear missed deadlines as well
+        setMissedDeadlines([]);
         return;
       }
 
@@ -204,22 +198,18 @@ export default function ManageDeadlinesPage() {
       const allDeadlines = data.deadlines || [];
       const now = new Date();
 
-      // Filter for upcoming deadlines
       const upcoming = allDeadlines.filter((d: Deadline) => new Date(d.lastDate) >= now);
-      
-      // Filter for missed deadlines (due date passed and not completed)
       const missed = allDeadlines.filter((d: Deadline) => new Date(d.lastDate) < now && !d.completed);
 
       if (currentSection === selectedSection && currentFilter === filter) {
         setDeadlines(upcoming);
         setMissedDeadlines(missed);
       }
-
     } catch (error) {
       console.error('Error fetching deadlines:', error);
-      if (selectedSection === selectedSection && filter === filter) { // Always true, but for consistency
+      if (selectedSection === selectedSection && filter === filter) {
         setDeadlines([]);
-        setMissedDeadlines([]); // Clear on error
+        setMissedDeadlines([]);
       }
     } finally {
       setLoading(false);
@@ -267,7 +257,7 @@ export default function ManageDeadlinesPage() {
           time: '',
           completed: false
         });
-        fetchDeadlines(); // Refetch all deadlines
+        fetchDeadlines();
       } else {
         const errorData = await response.json();
         setError(errorData.error || 'Failed to post deadline');
@@ -281,27 +271,86 @@ export default function ManageDeadlinesPage() {
   const handleToggleComplete = async (deadline: Deadline) => {
     if (!user) return;
 
-    try {
-      const response = await fetch('/api/update-deadline', {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          deadlineId: deadline._id || deadline.id,
-          userId: user.id,
-          completed: !deadline.completed
-        }),
-      });
+    if (!deadline.completed) {
+      // Show confirmation toast when marking as completed
+      toast(
+        <div>
+          <p>Are you sure you have completed the deadline?</p>
+          <div className="flex justify-end space-x-2 mt-2">
+            <button
+              className="px-3 py-1 bg-gray-200 text-gray-800 rounded hover:bg-gray-300"
+              onClick={() => toast.dismiss()}
+            >
+              No
+            </button>
+            <button
+              className="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700"
+              onClick={async () => {
+                try {
+                  const response = await fetch('/api/update-deadline', {
+                    method: 'PATCH',
+                    headers: {
+                      'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                      deadlineId: deadline._id || deadline.id,
+                      userId: user.id,
+                      completed: true
+                    }),
+                  });
 
-      if (response.ok) {
-        fetchDeadlines(); // Refetch to update both upcoming and missed lists
-      } else {
-        const errorData = await response.json();
-        console.error('Failed to update deadline:', errorData.error);
+                  if (response.ok) {
+                    toast.dismiss();
+                    await fetchDeadlines();
+router.push(`/marks-calculation/${course?._id}`);
+                  } else {
+                    const errorData = await response.json();
+                    console.error('Failed to update deadline:', errorData.error);
+                    toast.error('Failed to update deadline');
+                  }
+                } catch (error) {
+                  console.error('Error updating deadline:', error);
+                  toast.error('Error updating deadline');
+                }
+              }}
+            >
+              Yes
+            </button>
+          </div>
+        </div>,
+        {
+          autoClose: false,
+          closeButton: false,
+          draggable: false,
+          position: 'top-center',
+        }
+      );
+    } else {
+      // If marking as incomplete, proceed without confirmation
+      try {
+        const response = await fetch('/api/update-deadline', {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            deadlineId: deadline._id || deadline.id,
+            userId: user.id,
+            completed: false
+          }),
+        });
+
+        if (response.ok) {
+          fetchDeadlines();
+        } else {
+          const errorData = await response.json();
+          console.error('Failed to update deadline:', errorData.error);
+          toast.error('Failed to update deadline');
+        }
+      } catch (error) {
+        console.error('Error updating deadline:', error);
+        toast.error('Error updating deadline');
       }
-    } catch (error) {
-      console.error('Error updating deadline:', error);
     }
   };
 
@@ -324,13 +373,15 @@ export default function ManageDeadlinesPage() {
       });
 
       if (response.ok) {
-        await fetchDeadlines(); // Refetch to ensure vote counts are fresh
+        await fetchDeadlines();
       } else {
         const errorData = await response.json();
         console.error('Failed to update vote:', errorData.error);
+        toast.error('Failed to update vote');
       }
     } catch (error) {
       console.error('Error updating vote:', error);
+      toast.error('Error updating vote');
     }
   };
 
@@ -348,13 +399,15 @@ export default function ManageDeadlinesPage() {
       if (response.ok) {
         setShowDeleteModal(false);
         setDeleteDeadline(null);
-        fetchDeadlines(); // Refetch to remove the deleted deadline
+        fetchDeadlines();
       } else {
         const errorData = await response.json();
         console.error('Failed to delete deadline:', errorData.error);
+        toast.error('Failed to delete deadline');
       }
     } catch (error) {
       console.error('Error deleting deadline:', error);
+      toast.error('Error deleting deadline');
     }
   };
 
@@ -398,13 +451,10 @@ export default function ManageDeadlinesPage() {
     );
   }
 
-  // Common JSX for a deadline card to avoid repetition
   const DeadlineCard = ({ deadline, isMissed }: { deadline: Deadline, isMissed?: boolean }) => {
     const { date, time } = formatDateTime(deadline.lastDate);
     const hasVotedAgree = user?.id ? (deadline.agrees ?? []).includes(user.id) : false;
     const hasVotedDisagree = user?.id ? (deadline.disagrees ?? []).includes(user.id) : false;
-    
-    // Determine background color
     const cardBgColor = isMissed ? 'bg-red-50' : (deadline.completed ? 'bg-green-50' : 'bg-white');
 
     return (
@@ -504,9 +554,9 @@ export default function ManageDeadlinesPage() {
     );
   };
 
-
   return (
     <div>
+      <ToastContainer />
       <div className="bg-white shadow rounded-lg">
         <div className="px-4 py-5 sm:p-6">
           <div className="flex justify-between items-center mb-6">
@@ -561,11 +611,16 @@ export default function ManageDeadlinesPage() {
               </nav>
           </div>
           
-          {/* Upcoming Deadlines Section */}
           <h3 className="text-lg font-semibold text-gray-800 mb-4">Upcoming Deadlines</h3>
           {deadlines.length === 0 ? (
             <div className="text-center py-12">
-              {/* ... No upcoming deadlines message ... */}
+               <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+                <h3 className="mt-2 text-sm font-medium text-gray-900">No upcoming deadlines</h3>
+                <p className="mt-1 text-sm text-gray-500">
+                  Add a new deadline to get started.
+                </p>
             </div>
           ) : (
             <div ref={scrollContainerRef} className="space-y-4 overflow-y-auto" style={{ maxHeight: 'calc(100vh - 200px)' }}>
@@ -575,7 +630,6 @@ export default function ManageDeadlinesPage() {
             </div>
           )}
 
-          {/* NEW: Missed Deadlines Section */}
           <div className="mt-12">
             <h3 className="text-lg font-semibold text-gray-800 mb-4">Missed Deadlines</h3>
             {missedDeadlines.length === 0 ? (
@@ -599,19 +653,130 @@ export default function ManageDeadlinesPage() {
         </div>
       </div>
 
-      {/* MODAL for Add/Edit remains the same */}
       {showModal && (
         <div className="fixed inset-0 bg-gray-600 bg-opacity-50 backdrop-blur-sm overflow-y-auto h-full w-full z-50">
           <div ref={modalRef} className="relative top-20 mx-auto p-5 border w-full max-w-md shadow-lg rounded-md bg-white">
-            {/* ... Modal content is unchanged ... */}
+            <div className="mt-3 text-center">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg leading-6 font-medium text-gray-900">Add New Deadline</h3>
+                <button
+                  onClick={() => {
+                    setShowModal(false);
+                    setError(null);
+                  }}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <span className="text-2xl">&times;</span>
+                </button>
+              </div>
+              <form onSubmit={handleSubmit} className="mt-2 text-left space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Type</label>
+                  <select
+                    name="type"
+                    value={formData.type}
+                    onChange={(e) => setFormData({ ...formData, type: e.target.value as 'theory' | 'lab' })}
+                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="theory">Theory</option>
+                    {hasLab && <option value="lab">Lab</option>}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Title</label>
+                  <input
+                    type="text"
+                    name="title"
+                    value={formData.title}
+                    onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                    required
+                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Details</label>
+                  <textarea
+                    name="details"
+                    value={formData.details}
+                    onChange={(e) => setFormData({ ...formData, details: e.target.value })}
+                    rows={4}
+                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                  ></textarea>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Submission Link (Optional)</label>
+                  <input
+                    type="url"
+                    name="submissionLink"
+                    value={formData.submissionLink}
+                    onChange={(e) => setFormData({ ...formData, submissionLink: e.target.value })}
+                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+                <div className="flex space-x-4">
+                  <div className="flex-1">
+                    <label className="block text-sm font-medium text-gray-700">Due Date</label>
+                    <input
+                      type="date"
+                      name="lastDate"
+                      value={formData.lastDate}
+                      onChange={(e) => setFormData({ ...formData, lastDate: e.target.value })}
+                      required
+                      className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+                  <div className="flex-1">
+                    <label className="block text-sm font-medium text-gray-700">Due Time</label>
+                    <input
+                      type="time"
+                      name="time"
+                      value={formData.time}
+                      onChange={(e) => setFormData({ ...formData, time: e.target.value })}
+                      required
+                      className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+                </div>
+                {error && <p className="text-red-500 text-sm">{error}</p>}
+                <div className="items-center px-4 py-3">
+                  <button
+                    type="submit"
+                    className="px-4 py-2 bg-blue-600 text-white text-base font-medium rounded-md w-full shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    Submit Deadline
+                  </button>
+                </div>
+              </form>
+            </div>
           </div>
         </div>
       )}
 
-      {/* MODAL for Delete Confirmation remains the same */}
       {showDeleteModal && deleteDeadline && (
           <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex items-center justify-center">
-              {/* ... Delete modal content is unchanged ... */}
+              <div className="bg-white p-6 rounded-lg shadow-xl">
+                  <h3 className="text-lg font-medium text-gray-900">Confirm Deletion</h3>
+                  <p className="mt-2 text-sm text-gray-600">
+                      Are you sure you want to delete the deadline: "{deleteDeadline.title}"?
+                  </p>
+                  <div className="mt-4 flex justify-end space-x-2">
+                      <button
+                          onClick={() => {
+                            setShowDeleteModal(false);
+                            setDeleteDeadline(null);
+                          }}
+                          className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300"
+                      >
+                          Cancel
+                      </button>
+                      <button
+                          onClick={() => handleDeleteDeadline(deleteDeadline)}
+                          className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700"
+                      >
+                          Confirm Delete
+                      </button>
+                  </div>
+              </div>
           </div>
       )}
     </div>
