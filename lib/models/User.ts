@@ -177,8 +177,8 @@ const UserSchema: Schema = new Schema({
     section: { type: String, required: true },
     type: { type: String, enum: ['theory', 'lab'], required: true },
     createdBy: { type: String, required: true },
-    createdByName: { type: String, required: true },
-    createdByStudentId: { type: String, required: true },
+    createdByName: { type: String, default: 'Unknown' },
+    createdByStudentId: { type: String, default: 'Unknown' },
     createdAt: { type: Date, default: Date.now },
     completed: { type: Boolean, default: false }
   }],
