@@ -126,6 +126,17 @@ export default function AdminDashboardPage() {
     }
   };
 
+  // Combine event date and time into a single Date for accurate comparison
+  const eventDateTime = (dateString: string, timeString: string) => {
+    const d = new Date(dateString);
+    // Expecting HH:mm from form; default to 00:00 if missing
+    const [hStr = '0', mStr = '0'] = (timeString || '00:00').split(':');
+    const h = Number(hStr) || 0;
+    const m = Number(mStr) || 0;
+    d.setHours(h, m, 0, 0);
+    return d;
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-blue-50 to-slate-100">
       <div className="container mx-auto px-4 py-8">
@@ -174,7 +185,7 @@ export default function AdminDashboardPage() {
                 <div className="ml-4">
                   <p className="text-sm font-medium text-gray-600">Upcoming Events</p>
                   <p className="text-2xl font-bold text-gray-900">
-                    {events.filter(event => new Date(event.date) >= new Date()).length}
+                    {events.filter(event => eventDateTime(event.date, event.time) >= new Date()).length}
                   </p>
                 </div>
               </div>
@@ -188,7 +199,7 @@ export default function AdminDashboardPage() {
                 <div className="ml-4">
                   <p className="text-sm font-medium text-gray-600">Past Events</p>
                   <p className="text-2xl font-bold text-gray-900">
-                    {events.filter(event => new Date(event.date) < new Date()).length}
+                    {events.filter(event => eventDateTime(event.date, event.time) < new Date()).length}
                   </p>
                 </div>
               </div>
@@ -219,7 +230,7 @@ export default function AdminDashboardPage() {
             ) : (
               <div className="divide-y divide-gray-200">
                 {events.map((event) => {
-                  const isUpcoming = new Date(event.date) >= new Date();
+                  const isUpcoming = eventDateTime(event.date, event.time) >= new Date();
                   return (
                     <div key={event._id} className="p-6 hover:bg-gray-50 transition-colors">
                       <div className="flex items-start justify-between">
