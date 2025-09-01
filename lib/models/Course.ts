@@ -56,11 +56,11 @@ const DeadlineSchema = new mongoose.Schema({
   },
   createdByName: {
     type: String,
-    required: true
+    default: 'Unknown'
   },
   createdByStudentId: {
     type: String,
-    required: true
+    default: 'Unknown'
   },
   createdAt: {
     type: Date,
