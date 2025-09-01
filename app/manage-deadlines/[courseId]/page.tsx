@@ -484,15 +484,17 @@ router.push(`/marks-calculation/${course?._id}`);
             </div>
             <p className="mt-1 text-sm text-gray-600">{truncateText(deadline.details || 'No details provided')}</p>
             <div className="mt-2 flex items-center space-x-2">
-              <label className="flex items-center space-x-2">
-                <input
-                  type="checkbox"
-                  checked={deadline.completed}
-                  onChange={() => handleToggleComplete(deadline)}
-                  className="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300 rounded"
-                />
-                <span className="text-sm text-gray-600">Completed</span>
-              </label>
+              {!isMissed && (
+                <label className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    checked={deadline.completed}
+                    onChange={() => handleToggleComplete(deadline)}
+                    className="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300 rounded"
+                  />
+                  <span className="text-sm text-gray-600">Completed</span>
+                </label>
+              )}
               <button
                 onClick={() => toggleDetails(deadline)}
                 className="px-3 py-1 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 text-sm"

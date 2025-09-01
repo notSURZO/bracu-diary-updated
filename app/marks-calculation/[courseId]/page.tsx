@@ -2,6 +2,8 @@
 
 import { useEffect, useState, useMemo, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import { toast, ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 // --- TYPE DEFINITIONS ---
 interface Mark {
@@ -59,6 +61,17 @@ const MarksSection = ({ title, deadlines, marks, distribution, courseId, onMarks
     const [selectedDeadline, setSelectedDeadline] = useState<Deadline | null>(null);
     const [markData, setMarkData] = useState({ type: 'quiz', obtained: '', outOf: '' });
 
+    // Separate deadlines into pending and updated based on marks presence
+    const pendingDeadlines = deadlines.filter((d: Deadline) => {
+        const allMarks = [...marks.quiz, ...marks.assignment, ...marks.mid, ...marks.final];
+        return !allMarks.some(m => m.deadlineId === d.id);
+    });
+
+    const updatedDeadlines = deadlines.filter((d: Deadline) => {
+        const allMarks = [...marks.quiz, ...marks.assignment, ...marks.mid, ...marks.final];
+        return allMarks.some(m => m.deadlineId === d.id);
+    });
+
     const openModal = (deadline: Deadline) => {
         setSelectedDeadline(deadline);
         // Pre-fill form with existing data if available
@@ -75,8 +88,8 @@ const MarksSection = ({ title, deadlines, marks, distribution, courseId, onMarks
     const handleMarkSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!selectedDeadline) return;
-    
-        await fetch('/api/user-marks', {
+
+        const response = await fetch('/api/user-marks', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -87,7 +100,13 @@ const MarksSection = ({ title, deadlines, marks, distribution, courseId, onMarks
             outOf: parseFloat(markData.outOf)
           }),
         });
-        
+
+        if (response.ok) {
+            toast.success('Marks updated successfully!');
+        } else {
+            toast.error('Failed to update marks');
+        }
+
         onMarksUpdated(); // Callback to refresh data on the parent
         setIsModalOpen(false);
     };
@@ -111,7 +130,7 @@ const MarksSection = ({ title, deadlines, marks, distribution, courseId, onMarks
             <div>
                 <h3 className="text-lg font-medium text-gray-700 mb-2">Pending Mark Updates</h3>
                 <div className="space-y-2 max-h-60 overflow-y-auto pr-2">
-                    {deadlines.length > 0 ? deadlines.map((d: Deadline) => (
+                    {pendingDeadlines.length > 0 ? pendingDeadlines.map((d: Deadline) => (
                         <div key={d.id} className="flex justify-between items-center p-3 bg-gray-50 rounded-md">
                             <span className="text-sm">{d.title}</span>
                             <button onClick={() => openModal(d)} className="px-3 py-1 bg-blue-100 text-blue-800 text-xs rounded-full hover:bg-blue-200">
@@ -119,6 +138,20 @@ const MarksSection = ({ title, deadlines, marks, distribution, courseId, onMarks
                             </button>
                         </div>
                     )) : <p className="text-sm text-gray-500">All marks are up to date.</p>}
+                </div>
+            </div>
+
+            <div>
+                <h3 className="text-lg font-medium text-gray-700 mb-2">Marks Updated</h3>
+                <div className="space-y-2 max-h-60 overflow-y-auto pr-2">
+                    {updatedDeadlines.length > 0 ? updatedDeadlines.map((d: Deadline) => (
+                        <div key={d.id} className="flex justify-between items-center p-3 bg-green-50 rounded-md">
+                            <span className="text-sm">{d.title}</span>
+                            <button onClick={() => openModal(d)} className="px-3 py-1 bg-yellow-100 text-yellow-800 text-xs rounded-full hover:bg-yellow-200">
+                                Re-update
+                            </button>
+                        </div>
+                    )) : <p className="text-sm text-gray-500">No marks updated yet.</p>}
                 </div>
             </div>
 
@@ -262,27 +295,30 @@ export default function MarksPage() {
     const labDistribution = courseDetails?.labmarksDistribution?.[0];
 
     return (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            {theoryDistribution && (
-                <MarksSection 
-                    title="Theory"
-                    deadlines={finishedDeadlines.theory}
-                    marks={courseMarks}
-                    distribution={theoryDistribution}
-                    courseId={courseId}
-                    onMarksUpdated={fetchData}
-                />
-            )}
-            {labDistribution && (
-                 <MarksSection 
-                    title="Lab"
-                    deadlines={finishedDeadlines.lab}
-                    marks={courseMarks} // Assuming lab marks are stored similarly
-                    distribution={labDistribution}
-                    courseId={courseId}
-                    onMarksUpdated={fetchData}
-                />
-            )}
+        <div>
+            <ToastContainer />
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                {theoryDistribution && (
+                    <MarksSection
+                        title="Theory"
+                        deadlines={finishedDeadlines.theory}
+                        marks={courseMarks}
+                        distribution={theoryDistribution}
+                        courseId={courseId}
+                        onMarksUpdated={fetchData}
+                    />
+                )}
+                {labDistribution && (
+                     <MarksSection
+                        title="Lab"
+                        deadlines={finishedDeadlines.lab}
+                        marks={courseMarks} // Assuming lab marks are stored similarly
+                        distribution={labDistribution}
+                        courseId={courseId}
+                        onMarksUpdated={fetchData}
+                    />
+                )}
+            </div>
         </div>
     );
 }
