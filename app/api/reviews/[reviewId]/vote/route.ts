@@ -6,7 +6,7 @@ import mongoose from 'mongoose';
 export async function POST(request: Request, { params }: { params: { reviewId: string } }) {
   try {
     await connectToDatabase();
-    const { reviewId } = params;
+    const { reviewId } = await params;
     const { userEmail, voteType } = await request.json();
 
     if (!userEmail || !voteType || (voteType !== 'agree' && voteType !== 'disagree') || !mongoose.Types.ObjectId.isValid(reviewId)) {
