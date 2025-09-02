@@ -99,6 +99,7 @@ export default function ConditionalHeader() {
 
   const isConnectionsIconHighlighted = isConnectionsDropdownOpen;
   const isNotificationsIconHighlighted = isNotificationsDropdownOpen;
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   // Debounced search handler
   const handleSearchChange = debounce((value: string) => {
@@ -270,6 +271,7 @@ export default function ConditionalHeader() {
   const handleConnectionsToggleDropdown = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    setMobileNavOpen(false);
     setIsNotificationsDropdownOpen(false);
     setIsConnectionsDropdownOpen((prev) => {
       const newState = !prev;
@@ -288,6 +290,7 @@ export default function ConditionalHeader() {
   const handleNotificationsToggleDropdown = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    setMobileNavOpen(false);
     setIsConnectionsDropdownOpen(false);
     setIsNotificationsDropdownOpen((prev) => {
       const newState = !prev;
@@ -420,21 +423,30 @@ export default function ConditionalHeader() {
 
   return (
     <>
-      <header className="fixed top-0 left-0 right-0 z-50 p-4 flex items-center justify-between  bg-white  shadow-sm">
-        <div className="flex items-center space-x-4">
+      <header className="fixed top-0 left-0 right-0 z-50 p-3 sm:p-4 flex items-center justify-between  bg-white  shadow-sm">
+        <div className="flex items-center space-x-3 sm:space-x-4">
+          <button
+            className="lg:hidden inline-flex items-center justify-center p-2 rounded-md text-gray-700 hover:bg-gray-100"
+            aria-label="Open menu"
+            onClick={() => setMobileNavOpen(true)}
+          >
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M3 6h18v2H3V6zm0 5h18v2H3v-2zm0 5h18v2H3v-2z"/></svg>
+          </button>
           <Link href="/" className="pointer-events-auto">
             <Image
               src="/bracu-diary-logo.svg"
               alt="BRACU Diary Logo"
-              width={270}
-              height={180}
-              className="object-contain"
+              width={200}
+              height={60}
+              className="object-contain h-8 sm:h-10 w-auto"
               priority
             />
           </Link>
-          <SearchBar />
+          <div className="hidden md:block max-w-[480px] w-full">
+            <SearchBar />
+          </div>
         </div>
-        <div className="flex items-center space-x-4">
+        <div className="flex items-center space-x-2 sm:space-x-4">
           <div className="relative flex items-center space-x-2">
             <button
               ref={connectionsButtonRef}
@@ -469,12 +481,18 @@ export default function ConditionalHeader() {
               />
             </button>
             {isConnectionsDropdownOpen && (
-              <div
-                ref={connectionsDropdownRef}
-                className={`absolute top-full right-0 mt-3 w-96 bg-white border border-gray-200 rounded-lg shadow-xl p-0 ${
-                  showConnections ? 'max-h-[80vh]' : 'max-h-[70vh]'
-                } overflow-y-auto z-50`}
-              >
+              <>
+                {/* Mobile backdrop */}
+                <div
+                  className="sm:hidden fixed inset-0 bg-black/30 z-50"
+                  onClick={() => setIsConnectionsDropdownOpen(false)}
+                />
+                <div
+                  ref={connectionsDropdownRef}
+                  className={`fixed inset-x-3 top-16 sm:absolute sm:inset-auto sm:top-full sm:right-0 sm:mt-3 w-auto sm:w-96 max-w-[90vw] bg-white border border-gray-200 rounded-lg shadow-xl p-0 ${
+                    showConnections ? 'max-h-[80vh]' : 'max-h-[70vh]'
+                  } overflow-y-auto z-[60] sm:z-50`}
+                >
                 <div className="bg-gray-50 p-3 border-b border-gray-200 flex justify-between items-center">
                   <h2 className="text-lg font-semibold text-gray-800">Connections</h2>
                   <button
@@ -636,13 +654,20 @@ export default function ConditionalHeader() {
                     )}
                   </>
                 ) : null}
-              </div>
+                </div>
+              </>
             )}
             {isNotificationsDropdownOpen && (
-              <div
-                ref={notificationsDropdownRef}
-                className="absolute top-full right-0 mt-3 w-96 bg-white border border-gray-200 rounded-lg shadow-xl p-0 max-h-[70vh] overflow-y-auto z-50"
-              >
+              <>
+                {/* Mobile backdrop */}
+                <div
+                  className="sm:hidden fixed inset-0 bg-black/30 z-50"
+                  onClick={() => setIsNotificationsDropdownOpen(false)}
+                />
+                <div
+                  ref={notificationsDropdownRef}
+                  className="fixed inset-x-3 top-16 sm:absolute sm:inset-auto sm:top-full sm:right-0 sm:mt-3 w-auto sm:w-96 max-w-[90vw] bg-white border border-gray-200 rounded-lg shadow-xl p-0 max-h-[70vh] overflow-y-auto z-[60] sm:z-50"
+                >
                 <div className="bg-gray-50 p-3 border-b border-gray-200 flex justify-between items-center">
                   <h2 className="text-lg font-semibold text-gray-800">Notifications</h2>
                   <button
@@ -697,13 +722,14 @@ export default function ConditionalHeader() {
                     })}
                   </ul>
                 )}
-              </div>
+                </div>
+              </>
             )}
           </div>
           <AuthButtons />
         </div>
       </header>
-      <Sidebar />
+      <Sidebar mobileOpen={mobileNavOpen} onClose={() => setMobileNavOpen(false)} />
     </>
   );
 }

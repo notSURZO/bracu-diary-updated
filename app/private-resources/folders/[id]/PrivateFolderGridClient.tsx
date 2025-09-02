@@ -299,8 +299,8 @@ export default function PrivateFolderGridClient({ items: initialItems }: { reado
 
   return (
     <div className="overflow-x-auto rounded-lg border border-gray-200 bg-white shadow-sm">
-      <div className="px-4 pt-4">
-        <div className="inline-flex flex-wrap gap-2 rounded-lg bg-gray-50 p-1">
+      <div className="px-4 pt-4 overflow-x-auto">
+        <div className="inline-flex flex-nowrap gap-2 rounded-lg bg-gray-50 p-1">
           {([
             { key: 'ALL', label: 'View all' },
             { key: 'DOCS', label: 'Documents' },

@@ -60,7 +60,12 @@ interface OpenDropdownsState {
   [key: string]: boolean;
 }
 
-export default function Sidebar(): React.ReactElement {
+interface SidebarProps {
+  mobileOpen?: boolean;
+  onClose?: () => void;
+}
+
+export default function Sidebar({ mobileOpen = false, onClose }: SidebarProps): React.ReactElement {
   const [openDropdowns, setOpenDropdowns] = useState<OpenDropdownsState>({});
   const pathname = usePathname();
 
@@ -81,11 +86,10 @@ export default function Sidebar(): React.ReactElement {
     }));
   };
 
-  return (
-    <aside className="fixed top-24 left-0 h-[calc(100vh-4rem)] w-64 bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 z-40 rounded-lg">
-      <nav className="p-4">
-        <ul>
-          {navItems.map((item) => {
+  const NavContent = (
+    <nav className="p-4">
+      <ul>
+        {navItems.map((item) => {
             const isActive = !item.subItems && (pathname === item.href || pathname.startsWith(`${item.href}/`));
 
             return (
@@ -150,8 +154,30 @@ export default function Sidebar(): React.ReactElement {
               </li>
             );
           })}
-        </ul>
-      </nav>
-    </aside>
+      </ul>
+    </nav>
+  );
+
+  return (
+    <>
+      {/* Desktop sidebar */}
+      <aside className="hidden lg:block fixed top-24 left-0 h-[calc(100vh-6rem)] w-64 bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 z-40 rounded-lg">
+        {NavContent}
+      </aside>
+
+      {/* Mobile overlay sidebar */}
+      {mobileOpen && (
+        <div className="lg:hidden fixed inset-0 z-50">
+          <div className="absolute inset-0 bg-black/40" onClick={onClose} />
+          <aside className="absolute left-0 top-0 h-full w-64 bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 shadow-xl">
+            <div className="flex items-center justify-between p-4 border-b">
+              <span className="font-semibold">Menu</span>
+              <button onClick={onClose} className="text-gray-600">✕</button>
+            </div>
+            {NavContent}
+          </aside>
+        </div>
+      )}
+    </>
   );
 }

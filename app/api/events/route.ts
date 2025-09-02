@@ -17,22 +17,47 @@ export async function GET(req: NextRequest) {
     const includePast = (searchParams.get('includePast') || searchParams.get('all')) === 'true';
     const skip = (page - 1) * limit;
     
-    // Get current date for filtering future events
-    const currentDate = new Date();
+    // Get UTC start-of-today for inclusive filtering of today's events
+    const now = new Date();
+    const utcStartOfToday = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
     
     // Fetch events with club information, sorted by date
-    const baseFilter: Record<string, any> = includePast ? {} : { date: { $gte: currentDate } };
+    const baseFilter: Record<string, any> = includePast ? {} : { date: { $gte: utcStartOfToday } };
 
-    const events = await Event.find(baseFilter)
-    .populate('adminClub', 'name') // Include club name
-    .sort({ date: 1, time: 1 }) // Sort by date and time
-    .limit(limit)
-    .skip(skip)
-    .lean(); // Convert to plain objects for better performance
-    
-    // Get total count for pagination
-    const totalEvents = await Event.countDocuments(baseFilter);
-    
+    let events: any[];
+    let totalEvents: number;
+
+    if (includePast) {
+      // Simple paginated query
+      events = await Event.find(baseFilter)
+        .populate('adminClub', 'name')
+        .sort({ date: 1, time: 1 })
+        .limit(limit)
+        .skip(skip)
+        .lean();
+      totalEvents = await Event.countDocuments(baseFilter);
+    } else {
+      // Fetch all today+ events, then apply precise datetime filter and paginate in-memory
+      const all = await Event.find(baseFilter)
+        .populate('adminClub', 'name')
+        .sort({ date: 1, time: 1 })
+        .lean();
+
+      const filtered = all.filter((event: any) => {
+        const d = new Date(event.date);
+        if (event.time) {
+          const [hStr = '0', mStr = '0'] = String(event.time).split(':');
+          const h = parseInt(hStr);
+          const m = parseInt(mStr);
+          if (!Number.isNaN(h)) d.setHours(h, Number.isNaN(m) ? 0 : m, 0, 0);
+        }
+        return d.getTime() >= Date.now();
+      });
+
+      totalEvents = filtered.length;
+      events = filtered.slice(skip, skip + limit);
+    }
+
     // Format events for frontend
     const formattedEvents = events.map(event => {
       const img = event.imageUrl || (event.imageBucket && event.imagePath ? getPublicObjectUrl(event.imageBucket, event.imagePath) : '');

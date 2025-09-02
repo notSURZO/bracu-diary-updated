@@ -43,12 +43,14 @@ export default async function PrivateResourcesPage({ searchParams }: { readonly 
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900">Private Course Resources</h1>
         <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-2 min-w-0 w-full sm:w-auto">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 min-w-0 w-full sm:w-auto">
             <div className="w-full sm:min-w-[280px] sm:w-[560px] max-w-full">
               <SearchInput placeholder="Search course code or folder title" />
             </div>
-            <CreateDirectoryModal isPrivate={true} />
-            <ConnectionsDropdown />
+            <div className="flex gap-2">
+              <CreateDirectoryModal isPrivate={true} />
+              <ConnectionsDropdown />
+            </div>
           </div>
           <div className="flex items-center">
             <SortSelect />

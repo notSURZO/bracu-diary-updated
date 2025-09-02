@@ -99,8 +99,8 @@ const ReviewForm = ({ courseId, onReviewPosted }: { courseId: string, onReviewPo
   };
 
   return (
-    <div className="bg-gray-50 p-6 rounded-2xl shadow-inner border border-gray-200">
-      <h3 className="text-xl font-bold text-blue-700 mb-4">Write a Review</h3>
+    <div className="bg-gray-50 p-4 sm:p-6 rounded-2xl shadow-inner border border-gray-200">
+      <h3 className="text-lg sm:text-xl font-bold text-blue-700 mb-3 sm:mb-4">Write a Review</h3>
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
         <div>
           <label className="block text-gray-700 font-semibold mb-1">Rating</label>
@@ -108,7 +108,7 @@ const ReviewForm = ({ courseId, onReviewPosted }: { courseId: string, onReviewPo
             {[1, 2, 3, 4, 5].map((star) => (
               <span
                 key={star}
-                className={`cursor-pointer text-3xl transition-colors duration-200 ${
+                className={`cursor-pointer text-2xl sm:text-3xl transition-colors duration-200 ${
                   star <= rating ? 'text-yellow-400' : 'text-gray-300'
                 }`}
                 onClick={() => setRating(star)}
@@ -124,7 +124,7 @@ const ReviewForm = ({ courseId, onReviewPosted }: { courseId: string, onReviewPo
             id="reviewText"
             value={reviewText}
             onChange={(e) => setReviewText(e.target.value)}
-            className="w-full p-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-400 focus:border-transparent transition"
+            className="w-full p-2 sm:p-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-400 focus:border-transparent transition"
             rows={4}
             placeholder="Share your thoughts on this course..."
             maxLength={500}
@@ -132,7 +132,7 @@ const ReviewForm = ({ courseId, onReviewPosted }: { courseId: string, onReviewPo
         </div>
         <button
           type="submit"
-          className="bg-blue-600 text-white font-bold py-3 rounded-lg hover:bg-blue-700 transition disabled:bg-blue-300"
+          className="bg-blue-600 text-white font-bold py-2 sm:py-3 rounded-lg hover:bg-blue-700 transition disabled:bg-blue-300"
           disabled={isSubmitting || !rating || !reviewText || !userEmail}
         >
           {isSubmitting ? "Submitting..." : "Submit Review"}
@@ -177,7 +177,7 @@ const ReviewItem = ({ review, userEmail, onVote, onDelete }: { review: IReview, 
   }
 
   return (
-    <div className="bg-white p-6 rounded-2xl shadow-md border border-gray-200 relative">
+    <div className="bg-white p-4 sm:p-6 rounded-2xl shadow-md border border-gray-200 relative">
        {isOwner && (
         <button
           onClick={handleDeleteClick}
@@ -187,15 +187,15 @@ const ReviewItem = ({ review, userEmail, onVote, onDelete }: { review: IReview, 
           <FaTrash size={18} />
         </button>
       )}
-      <div className="flex items-center gap-4 mb-4">
+      <div className="flex items-center gap-3 sm:gap-4 mb-4">
         <img
           src={reviewer?.picture_url || '/default-avatar.png'}
           alt={reviewer?.name || "User"}
-          className="w-12 h-12 rounded-full border-2 border-blue-400 object-cover"
+          className="w-10 h-10 sm:w-12 sm:h-12 rounded-full border-2 border-blue-400 object-cover"
         />
         <div>
-          <p className="font-bold text-gray-800">{reviewer?.name || "Anonymous User"}</p>
-          <p className="text-sm text-gray-500">
+          <p className="font-bold text-gray-800 text-sm sm:text-base">{reviewer?.name || "Anonymous User"}</p>
+          <p className="text-xs sm:text-sm text-gray-500">
             {new Date(review.createdAt).toLocaleDateString()}
           </p>
         </div>
@@ -203,11 +203,11 @@ const ReviewItem = ({ review, userEmail, onVote, onDelete }: { review: IReview, 
       <div className="mb-4">
         <StarRating rating={review.rating} />
       </div>
-      <p className="text-gray-700 leading-relaxed break-words">{review.reviewText}</p>
-      <div className="mt-4 flex items-center gap-4 text-sm font-semibold">
+      <p className="text-gray-700 leading-relaxed break-words text-sm sm:text-base">{review.reviewText}</p>
+      <div className="mt-4 flex items-center gap-3 sm:gap-4 text-xs sm:text-sm font-semibold">
         <button
           onClick={() => handleVote('agree')}
-          className={`px-4 py-1 rounded-full transition-colors ${
+          className={`px-3 sm:px-4 py-1 rounded-full transition-colors ${
             review.agrees.includes(userEmail)
               ? 'bg-green-500 text-white'
               : 'bg-gray-200 text-gray-600 hover:bg-green-100'
@@ -217,7 +217,7 @@ const ReviewItem = ({ review, userEmail, onVote, onDelete }: { review: IReview, 
         </button>
         <button
           onClick={() => handleVote('disagree')}
-          className={`px-4 py-1 rounded-full transition-colors ${
+          className={`px-3 sm:px-4 py-1 rounded-full transition-colors ${
             review.disagrees.includes(userEmail)
               ? 'bg-red-500 text-white'
               : 'bg-gray-200 text-gray-600 hover:bg-red-100'
@@ -357,18 +357,20 @@ export default function CourseReviewsPage() {
     <div className="flex flex-col md:flex-row min-h-screen bg-gradient-to-br from-indigo-50 via-blue-50 to-slate-100 text-gray-800 font-sans">
       <Sidebar />
       <ToastContainer position="top-right" autoClose={5000} hideProgressBar={false} />
-      <main className="flex-1 p-6 md:p-12">
-        {/* === UI UPDATE STARTS HERE === */}
-        <div className="flex flex-col lg:flex-row justify-between lg:items-center gap-4 mb-6 border-b-4 border-blue-300 pb-3">
-            <h1 className="font-bold text-blue-800 text-3xl md:text-4xl">
+      <main className="flex-1 w-full">
+        <div className="container mx-auto px-4 sm:px-6 md:px-8 py-6 md:py-8">
+        {/* Header + Sort */}
+        <div className="flex flex-col lg:flex-row justify-between lg:items-center gap-3 sm:gap-4 mb-4 sm:mb-6 border-b-4 border-blue-300 pb-3">
+            <h1 className="font-bold text-blue-800 text-2xl sm:text-3xl md:text-4xl">
               {courseDetails ? `${courseDetails.courseCode} - ${courseDetails.courseName}` : 'Course Reviews'}
             </h1>
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="overflow-x-auto -mx-1 sm:mx-0">
+              <div className="flex flex-nowrap items-center gap-2 px-1">
               {sortOptions.map((option) => (
                 <button
                   key={option.key}
                   onClick={() => setSortBy(option.key)}
-                  className={`flex items-center gap-2 px-3 py-1.5 text-sm font-semibold rounded-full border transition-all duration-200 ${
+                  className={`flex items-center gap-2 px-3 py-1.5 text-xs sm:text-sm font-semibold rounded-full border transition-all duration-200 ${
                     sortBy === option.key
                       ? 'bg-blue-600 text-white border-blue-600 shadow'
                       : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-100'
@@ -378,9 +380,9 @@ export default function CourseReviewsPage() {
                   <span>{option.label}</span>
                 </button>
               ))}
+              </div>
             </div>
         </div>
-        {/* === UI UPDATE ENDS HERE === */}
         
         {loading ? (
           <div className="flex items-center justify-center p-12">
@@ -388,7 +390,7 @@ export default function CourseReviewsPage() {
             <span className="ml-4 text-blue-500 font-semibold">Loading reviews...</span>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8 mb-10 md:mb-12">
             {reviews.length > 0 ? (
               reviews.map(review => (
                 <ReviewItem key={review._id} review={review} userEmail={userEmail} onVote={handleVote} onDelete={handleDelete} />
@@ -402,6 +404,7 @@ export default function CourseReviewsPage() {
         {courseDetails && (
           <ReviewForm courseId={courseId} onReviewPosted={() => fetchCourseAndReviews(sortBy)} />
         )}
+        </div>
       </main>
     </div>
   );

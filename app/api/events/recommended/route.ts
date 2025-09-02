@@ -26,8 +26,9 @@ export async function GET(req: NextRequest) {
     const page = parseInt(searchParams.get('page') || '1');
     const skip = (page - 1) * limit;
 
-    const currentDate = new Date();
-    currentDate.setHours(0, 0, 0, 0);
+    // Use UTC start-of-today so events scheduled "today" aren't dropped by timezone offsets
+    const now = new Date();
+    const utcStartOfToday = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
 
     const interests = (user.interests || []).map((x: any) => String(x || '').trim()).filter(Boolean);
 
@@ -42,19 +43,30 @@ export async function GET(req: NextRequest) {
     // Build case-insensitive matchers for tags
     const patterns = interests.map((i: string) => new RegExp(`^${i.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i'));
 
-    const events = await Event.find({
-      date: { $gte: currentDate },
+    const all = await Event.find({
+      date: { $gte: utcStartOfToday },
       tags: { $in: patterns },
     })
       .populate('adminClub', 'name')
       .sort({ date: 1, time: 1 })
-      .limit(limit)
-      .skip(skip)
       .lean();
+    
+    // Apply precise upcoming filter using date + time
+    const upcoming = all.filter((event: any) => {
+      const d = new Date(event.date);
+      if (event.time) {
+        const [hStr = '0', mStr = '0'] = String(event.time).split(':');
+        const h = parseInt(hStr);
+        const m = parseInt(mStr);
+        if (!Number.isNaN(h)) d.setHours(h, Number.isNaN(m) ? 0 : m, 0, 0);
+      }
+      return d.getTime() >= Date.now();
+    });
 
-    const totalEvents = await Event.countDocuments({ date: { $gte: currentDate }, tags: { $in: patterns } });
+    const totalEvents = upcoming.length;
+    const pageItems = upcoming.slice(skip, skip + limit);
 
-    const formattedEvents = events.map((event: any) => {
+    const formattedEvents = pageItems.map((event: any) => {
       const img = event.imageUrl || (event.imageBucket && event.imagePath ? getPublicObjectUrl(event.imageBucket, event.imagePath) : '');
       return {
         _id: event._id,

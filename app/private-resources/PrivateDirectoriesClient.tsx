@@ -92,7 +92,7 @@ export default function PrivateDirectoriesClient({ items }: { readonly items: Pr
   }
 
   return (
-    <div className="grid gap-6 justify-start justify-items-center [grid-template-columns:repeat(auto-fill,minmax(280px,1fr))]">
+    <div className="grid gap-5 sm:gap-6 justify-start justify-items-center [grid-template-columns:repeat(auto-fill,minmax(240px,1fr))] sm:[grid-template-columns:repeat(auto-fill,minmax(280px,1fr))]">
       {visible.map((d) => (
         <FolderTile
           key={d._id}
