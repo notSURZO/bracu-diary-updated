@@ -31,6 +31,7 @@ interface Deadline {
   courseName: string;
   section: string;
   type: 'theory' | 'lab';
+  category?: 'Quiz' | 'Assignment' | 'Mid' | 'Final';
   createdBy: string;
   createdByName: string;
   createdByStudentId: string;

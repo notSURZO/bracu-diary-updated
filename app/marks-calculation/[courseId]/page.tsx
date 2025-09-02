@@ -134,7 +134,8 @@ const MarksSection = ({ title, deadlines, marks, distribution, courseId, onMarks
                 <div className="space-y-2 max-h-60 overflow-y-auto pr-2">
                     {pendingDeadlines.length > 0 ? pendingDeadlines.map((d: Deadline) => (
                         <div key={d.id} className="flex justify-between items-center p-3 bg-gray-50 rounded-md">
-                            <span className="text-sm">{d.title}</span>
+                            <span className="text-sm"><b>{d.category}</b>: {d.title}</span>
+                            
                             <button onClick={() => openModal(d)} className="px-3 py-1 bg-blue-100 text-blue-800 text-xs rounded-full hover:bg-blue-200">
                                 Update
                             </button>
@@ -148,7 +149,7 @@ const MarksSection = ({ title, deadlines, marks, distribution, courseId, onMarks
                 <div className="space-y-2 max-h-60 overflow-y-auto pr-2">
                     {updatedDeadlines.length > 0 ? updatedDeadlines.map((d: Deadline) => (
                         <div key={d.id} className="flex justify-between items-center p-3 bg-green-50 rounded-md">
-                            <span className="text-sm">{d.title}</span>
+                            <span className="text-sm"><b>{d.category}</b>: {d.title}</span>
                             <button onClick={() => openModal(d)} className="px-3 py-1 bg-yellow-100 text-yellow-800 text-xs rounded-full hover:bg-yellow-200">
                                 Re-update
                             </button>
