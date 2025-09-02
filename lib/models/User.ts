@@ -85,6 +85,7 @@ export interface IUser extends Document {
     courseName: string;
     section: string;
     type: 'theory' | 'lab';
+    category?: 'Quiz' | 'Assignment' | 'Mid' | 'Final';
     createdBy: string;
     createdByName: string;
     createdByStudentId: string;
@@ -182,6 +183,7 @@ const UserSchema: Schema = new Schema({
     courseName: { type: String, required: true },
     section: { type: String, required: true },
     type: { type: String, enum: ['theory', 'lab'], required: true },
+    category: { type: String, enum: ['Quiz', 'Assignment', 'Mid', 'Final'] },
     createdBy: { type: String, required: true },
     createdByName: { type: String, default: 'Unknown' },
     createdByStudentId: { type: String, default: 'Unknown' },

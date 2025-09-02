@@ -6,6 +6,7 @@ import { useUser } from '@clerk/nextjs';
 import { format } from 'date-fns';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import { DeadlineCategory } from '../../../lib/types';
 
 interface Deadline {
   _id: string;
@@ -19,6 +20,7 @@ interface Deadline {
   createdByStudentId?: string;
   createdAt: string;
   type?: 'theory' | 'lab';
+  category?: 'Quiz' | 'Assignment' | 'Mid' | 'Final';
   agrees: string[];
   disagrees: string[];
   completed: boolean;
@@ -32,6 +34,18 @@ interface Course {
     section: string;
     theory: any;
     lab?: any;
+  }>;
+  theoryMarksDistribution: Array<{
+    quiz: string;
+    assignment: string;
+    mid: string;
+    final: string;
+  }>;
+  labmarksDistribution: Array<{
+    quiz: string;
+    assignment: string;
+    mid: string;
+    final: string;
   }>;
 }
 
@@ -57,6 +71,7 @@ export default function ManageDeadlinesPage() {
 
   const [formData, setFormData] = useState({
     type: 'theory' as 'theory' | 'lab',
+    category: 'Quiz' as 'Quiz' | 'Assignment' | 'Mid' | 'Final',
     title: '',
     details: '',
     submissionLink: '',
@@ -159,22 +174,22 @@ export default function ManageDeadlinesPage() {
       const data = await response.json();
       
       if (!data || !data.sections) {
-        setCourse({ _id: '', courseCode: '', courseName: '', sections: [] });
-        setHasLab(false);
-        return;
-      }
-      
-      setCourse(data);
-      
-      const hasAnyLab = Array.isArray(data.sections) && 
-                       data.sections.some((s: any) => s && s.lab);
-      setHasLab(Boolean(hasAnyLab));
-      
-      if (Array.isArray(data.sections) && data.sections.length > 0) {
-        setSelectedSection(data.sections[0]?.section || '');
-      }
+      setCourse({ _id: '', courseCode: '', courseName: '', sections: [], theoryMarksDistribution: [], labmarksDistribution: [] });
+      setHasLab(false);
+      return;
+    }
+    
+    setCourse(data);
+    
+    const hasAnyLab = Array.isArray(data.sections) && 
+                     data.sections.some((s: any) => s && s.lab);
+    setHasLab(Boolean(hasAnyLab));
+    
+    if (Array.isArray(data.sections) && data.sections.length > 0) {
+      setSelectedSection(data.sections[0]?.section || '');
+    }
     } catch (error) {
-      setCourse({ _id: '', courseCode: '', courseName: '', sections: [] });
+      setCourse({ _id: '', courseCode: '', courseName: '', sections: [], theoryMarksDistribution: [], labmarksDistribution: [] });
       setHasLab(false);
     }
   };
@@ -237,6 +252,7 @@ export default function ManageDeadlinesPage() {
           originalCourseId: course._id,
           section: selectedSection,
           type: formData.type,
+          category: formData.category,
           title: formData.title,
           details: formData.details,
           submissionLink: formData.submissionLink,
@@ -250,6 +266,7 @@ export default function ManageDeadlinesPage() {
         setSelectedDeadline(null);
         setFormData({
           type: 'theory',
+          category: 'Quiz',
           title: '',
           details: '',
           submissionLink: '',
@@ -467,12 +484,17 @@ router.push(`/marks-calculation/${course?._id}`);
             <div className="flex items-center space-x-2">
               <h3 className="text-lg font-medium text-gray-900">{deadline.title || 'Untitled Deadline'}</h3>
               <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                deadline.type === 'theory' 
-                  ? 'bg-blue-100 text-blue-800' 
+                deadline.type === 'theory'
+                  ? 'bg-blue-100 text-blue-800'
                   : 'bg-green-100 text-green-800'
               }`}>
                 {deadline.type === 'theory' ? 'Theory' : (deadline.type === 'lab' ? 'Lab' : 'Unknown')}
               </span>
+              {deadline.category && (
+                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                  {deadline.category}
+                </span>
+              )}
               {user && deadline.createdBy === user.id && (
                 <button
                   onClick={() => confirmDelete(deadline)}
@@ -682,6 +704,34 @@ router.push(`/marks-calculation/${course?._id}`);
                   >
                     <option value="theory">Theory</option>
                     {hasLab && <option value="lab">Lab</option>}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Deadline Category</label>
+                  <select
+                    name="category"
+                    value={formData.category}
+                    onChange={(e) => setFormData({ ...formData, category: e.target.value as 'Quiz' | 'Assignment' | 'Mid' | 'Final' })}
+                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    {(() => {
+                      const distribution = formData.type === 'theory' ? course?.theoryMarksDistribution?.[0] : course?.labmarksDistribution?.[0];
+                      const options = [];
+                      if (distribution) {
+                        if (distribution.quiz && distribution.quiz !== '') options.push(<option key="Quiz" value="Quiz">Quiz</option>);
+                        if (distribution.assignment && distribution.assignment !== '') options.push(<option key="Assignment" value="Assignment">Assignment</option>);
+                        if (distribution.mid && distribution.mid !== '') options.push(<option key="Mid" value="Mid">Mid</option>);
+                        if (distribution.final && distribution.final !== '') options.push(<option key="Final" value="Final">Final</option>);
+                      }
+                      return options.length > 0 ? options : (
+                        <>
+                          <option value="Quiz">Quiz</option>
+                          <option value="Assignment">Assignment</option>
+                          <option value="Mid">Mid</option>
+                          <option value="Final">Final</option>
+                        </>
+                      );
+                    })()}
                   </select>
                 </div>
                 <div>

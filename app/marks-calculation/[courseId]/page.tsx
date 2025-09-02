@@ -21,6 +21,7 @@ interface Deadline {
   _id: string;
   id: string;
   title: string;
+  category?: 'Quiz' | 'Assignment' | 'Mid' | 'Final';
 }
 interface MarksDistribution {
     quiz: string; assignment: string; mid: string; final: string;
@@ -77,10 +78,11 @@ const MarksSection = ({ title, deadlines, marks, distribution, courseId, onMarks
         // Pre-fill form with existing data if available
         const allMarks = [...marks.quiz, ...marks.assignment, ...marks.mid, ...marks.final];
         const existingMark = allMarks.find(m => m.deadlineId === deadline.id);
+        const deadlineCategory = deadline.category || 'Quiz';
         if (existingMark) {
-            setMarkData({ type: 'quiz', obtained: String(existingMark.obtained), outOf: String(existingMark.outOf) });
+            setMarkData({ type: deadlineCategory, obtained: String(existingMark.obtained), outOf: String(existingMark.outOf) });
         } else {
-            setMarkData({ type: 'quiz', obtained: '', outOf: '' });
+            setMarkData({ type: deadlineCategory, obtained: '', outOf: '' });
         }
         setIsModalOpen(true);
     };
@@ -179,12 +181,12 @@ const MarksSection = ({ title, deadlines, marks, distribution, courseId, onMarks
                         <form onSubmit={handleMarkSubmit} className="space-y-4">
                             <div>
                                 <label className="block text-sm font-medium text-gray-700">Type</label>
-                                <select value={markData.type} onChange={e => setMarkData({...markData, type: e.target.value})} className="mt-1 block w-full p-2 border rounded-md">
-                                    <option value="quiz">Quiz</option>
-                                    <option value="assignment">Assignment</option>
-                                    <option value="mid">Mid</option>
-                                    <option value="final">Final</option>
-                                </select>
+                                <input
+                                    type="text"
+                                    value={markData.type}
+                                    readOnly
+                                    className="mt-1 block w-full p-2 border rounded-md bg-gray-100"
+                                />
                             </div>
                             <div className="grid grid-cols-2 gap-4">
                                 <div>

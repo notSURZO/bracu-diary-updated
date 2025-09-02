@@ -14,18 +14,19 @@ export async function POST(req: Request) {
     await connectToDatabase();
     
     const body = await req.json();
-    const { 
-      courseId, 
-      originalCourseId, 
-      section, 
-      type, 
-      title, 
+    const {
+      courseId,
+      originalCourseId,
+      section,
+      type,
+      category,
+      title,
       details,
-      submissionLink, 
+      submissionLink,
       lastDate
     } = body;
 
-    if (!courseId || !originalCourseId || !section || !type || !title || !details || !lastDate) {
+    if (!courseId || !originalCourseId || !section || !type || !category || !title || !details || !lastDate) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
@@ -66,6 +67,7 @@ export async function POST(req: Request) {
       createdByStudentId: user.student_ID,
       createdAt: new Date(),
       type,
+      category,
       agrees: [],
       disagrees: []
     };
@@ -113,6 +115,7 @@ export async function POST(req: Request) {
       courseName: course.courseName,
       section,
       type,
+      category,
       createdBy: deadline.createdBy,
       createdByName: deadline.createdByName,
       createdByStudentId: deadline.createdByStudentId,
