@@ -7,7 +7,6 @@ import { format } from 'date-fns';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
-
 interface Deadline {
   _id: string;
   id: string;
@@ -118,13 +117,23 @@ export default function ManageDeadlinesPage() {
       window.addEventListener('beforeunload', handleBeforeUnload);
     }
 
+    // Ensure scroll position is maintained after state changes
+    const maintainScroll = () => {
+      if (scrollContainerRef.current && savedScrollPosition) {
+        scrollContainerRef.current.scrollTop = parseInt(savedScrollPosition, 10);
+      }
+    };
+
+    // Trigger scroll restoration on state changes
+    requestAnimationFrame(maintainScroll);
+
     return () => {
       if (container) {
         container.removeEventListener('scroll', handleScroll);
       }
       window.removeEventListener('beforeunload', handleBeforeUnload);
     };
-  }, [pathname]);
+  }, [pathname, selectedDeadline]);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -174,20 +183,20 @@ export default function ManageDeadlinesPage() {
       const data = await response.json();
       
       if (!data || !data.sections) {
-      setCourse({ _id: '', courseCode: '', courseName: '', sections: [], theoryMarksDistribution: [], labmarksDistribution: [] });
-      setHasLab(false);
-      return;
-    }
+        setCourse({ _id: '', courseCode: '', courseName: '', sections: [], theoryMarksDistribution: [], labmarksDistribution: [] });
+        setHasLab(false);
+        return;
+      }
     
-    setCourse(data);
+      setCourse(data);
     
-    const hasAnyLab = Array.isArray(data.sections) && 
-                     data.sections.some((s: any) => s && s.lab);
-    setHasLab(Boolean(hasAnyLab));
+      const hasAnyLab = Array.isArray(data.sections) && 
+                       data.sections.some((s: any) => s && s.lab);
+      setHasLab(Boolean(hasAnyLab));
     
-    if (Array.isArray(data.sections) && data.sections.length > 0) {
-      setSelectedSection(data.sections[0]?.section || '');
-    }
+      if (Array.isArray(data.sections) && data.sections.length > 0) {
+        setSelectedSection(data.sections[0]?.section || '');
+      }
     } catch (error) {
       setCourse({ _id: '', courseCode: '', courseName: '', sections: [], theoryMarksDistribution: [], labmarksDistribution: [] });
       setHasLab(false);
@@ -289,7 +298,6 @@ export default function ManageDeadlinesPage() {
     if (!user) return;
 
     if (!deadline.completed) {
-      // Show confirmation toast when marking as completed
       toast(
         <div>
           <p>Are you sure you have completed the deadline?</p>
@@ -319,7 +327,7 @@ export default function ManageDeadlinesPage() {
                   if (response.ok) {
                     toast.dismiss();
                     await fetchDeadlines();
-router.push(`/marks-calculation/${course?._id}`);
+                    router.push(`/marks-calculation/${course?._id}`);
                   } else {
                     const errorData = await response.json();
                     console.error('Failed to update deadline:', errorData.error);
@@ -343,7 +351,6 @@ router.push(`/marks-calculation/${course?._id}`);
         }
       );
     } else {
-      // If marking as incomplete, proceed without confirmation
       try {
         const response = await fetch('/api/update-deadline', {
           method: 'PATCH',
@@ -458,12 +465,16 @@ router.push(`/marks-calculation/${course?._id}`);
   const toggleDetails = (deadline: Deadline) => {
     const currentScroll = scrollContainerRef.current?.scrollTop || 0;
     const deadlineId = deadline._id || deadline.id;
-    setSelectedDeadline(selectedDeadline && (selectedDeadline._id === deadlineId || selectedDeadline.id === deadlineId) ? null : deadline);
-    setTimeout(() => {
+    setSelectedDeadline(
+      selectedDeadline && (selectedDeadline._id === deadlineId || selectedDeadline.id === deadlineId)
+        ? null
+        : deadline
+    );
+    requestAnimationFrame(() => {
       if (scrollContainerRef.current) {
         scrollContainerRef.current.scrollTop = currentScroll;
       }
-    }, 0);
+    });
   };
   
   if (loading) {
@@ -503,7 +514,7 @@ router.push(`/marks-calculation/${course?._id}`);
                 {deadline.type === 'theory' ? 'Theory' : (deadline.type === 'lab' ? 'Lab' : 'Unknown')}
               </span>
               {deadline.category && (
-                <span className={`inline-flex items-center px-2.5 py-0.5  text-xs font-medium ${categoryColors[deadline.category]}`}>
+                <span className={`inline-flex items-center px-2.5 py-0.5 text-xs font-medium ${categoryColors[deadline.category]}`}>
                   {deadline.category}
                 </span>
               )}
@@ -531,7 +542,10 @@ router.push(`/marks-calculation/${course?._id}`);
               </label>
             )}
             <button
-              onClick={() => toggleDetails(deadline)}
+              onClick={(e) => {
+                e.preventDefault();
+                toggleDetails(deadline);
+              }}
               className="px-3 py-1.5 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 text-sm font-medium transition-colors"
             >
               {selectedDeadline && (selectedDeadline._id === (deadline._id || deadline.id) || selectedDeadline.id === (deadline._id || deadline.id)) ? 'Hide Details' : 'View Details'}
@@ -865,8 +879,3 @@ router.push(`/marks-calculation/${course?._id}`);
     </div>
   );
 }
-
-
-
-
-
