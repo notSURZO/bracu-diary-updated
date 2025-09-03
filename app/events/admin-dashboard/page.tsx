@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+
 import { useUser } from '@clerk/nextjs';
 import Link from 'next/link';
 import { FaCalendarPlus, FaArrowLeft, FaEye, FaEdit, FaTrash, FaPlus } from 'react-icons/fa';
@@ -23,8 +23,6 @@ export default function AdminDashboardPage() {
   const [events, setEvents] = useState<Event[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
-  const [clubName, setClubName] = useState('');
-  const router = useRouter();
   const { isSignedIn, user } = useUser();
 
   // Check admin status and fetch events on component mount
@@ -44,12 +42,26 @@ export default function AdminDashboardPage() {
             const eventsResponse = await fetch('/api/events/my-events');
             if (eventsResponse.ok) {
               const eventsData = await eventsResponse.json();
-              setEvents(eventsData.events || []);
+              if (eventsData.success) {
+                setEvents(eventsData.events || []);
+              } else {
+                console.error('Failed to fetch events:', eventsData.message);
+                toast.error(eventsData.message || 'Failed to fetch events');
+              }
+            } else {
+              const errorData = await eventsResponse.json();
+              console.error('Failed to fetch events:', errorData.message);
+              toast.error(errorData.message || 'Failed to fetch events');
             }
           }
+        } else {
+          const errorData = await userResponse.json();
+          console.error('Failed to check admin status:', errorData.message);
+          toast.error(errorData.message || 'Failed to check admin status');
         }
       } catch (error) {
         console.error('Error checking admin status:', error);
+        toast.error('An error occurred while loading the dashboard');
       } finally {
         setIsLoading(false);
       }
@@ -135,6 +147,38 @@ export default function AdminDashboardPage() {
     const m = Number(mStr) || 0;
     d.setHours(h, m, 0, 0);
     return d;
+  };
+
+  // Handle event deletion
+  const handleDeleteEvent = async (eventId: string, eventTitle: string) => {
+    const confirmed = window.confirm(
+      `Are you sure you want to delete "${eventTitle}"? This action cannot be undone.`
+    );
+
+    if (!confirmed) return;
+
+    try {
+      const response = await fetch(`/api/events/${eventId}`, {
+        method: 'DELETE',
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        toast.success('Event deleted successfully');
+        // Refresh the events list
+        const eventsResponse = await fetch('/api/events/my-events');
+        if (eventsResponse.ok) {
+          const eventsData = await eventsResponse.json();
+          setEvents(eventsData.events || []);
+        }
+      } else {
+        toast.error(data.message || 'Failed to delete event');
+      }
+    } catch (error) {
+      console.error('Error deleting event:', error);
+      toast.error('Failed to delete event');
+    }
   };
 
   return (
@@ -255,13 +299,25 @@ export default function AdminDashboardPage() {
                           </div>
                         </div>
                         <div className="flex items-center gap-2 ml-4">
-                          <button className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors">
+                          <Link
+                            href={`/events/view/${event._id}`}
+                            className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors"
+                            title="View Event Details"
+                          >
                             <FaEye className="w-4 h-4" />
-                          </button>
-                          <button className="p-2 text-orange-600 hover:bg-orange-100 rounded-lg transition-colors">
+                          </Link>
+                          <Link
+                            href={`/events/edit/${event._id}`}
+                            className="p-2 text-orange-600 hover:bg-orange-100 rounded-lg transition-colors"
+                            title="Edit Event"
+                          >
                             <FaEdit className="w-4 h-4" />
-                          </button>
-                          <button className="p-2 text-red-600 hover:bg-red-100 rounded-lg transition-colors">
+                          </Link>
+                          <button 
+                            onClick={() => handleDeleteEvent(event._id, event.title)}
+                            className="p-2 text-red-600 hover:bg-red-100 rounded-lg transition-colors"
+                            title="Delete Event"
+                          >
                             <FaTrash className="w-4 h-4" />
                           </button>
                         </div>
