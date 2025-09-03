@@ -6,7 +6,7 @@ import mongoose from 'mongoose';
 export async function DELETE(request: Request, { params }: { params: { reviewId: string } }) {
   try {
     await connectToDatabase();
-    const { reviewId } = params;
+    const { reviewId } = await params;
     const { userEmail } = await request.json(); // Get userEmail for verification
 
     if (!userEmail || !mongoose.Types.ObjectId.isValid(reviewId)) {

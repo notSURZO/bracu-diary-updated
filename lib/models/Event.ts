@@ -7,6 +7,10 @@ export interface IEvent extends Document {
   time: string;
   location: string;
   adminClub: mongoose.Types.ObjectId;
+  tags?: string[];
+  imageUrl?: string;
+  imagePath?: string;
+  imageBucket?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -40,7 +44,12 @@ const EventSchema: Schema = new Schema({
     type: Schema.Types.ObjectId, 
     ref: 'Club', 
     required: true 
-  }
+  },
+  tags: { type: [String], default: [] }
+  ,
+  imageUrl: { type: String, default: '' },
+  imagePath: { type: String, default: '' },
+  imageBucket: { type: String, default: '' }
 }, { 
   timestamps: true 
 });

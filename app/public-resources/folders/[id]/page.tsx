@@ -184,7 +184,7 @@ export default async function FolderPage({ params, searchParams }: Readonly<{ pa
       {subdirectories.length > 0 && (
         <div className="mb-6">
           <div className="text-sm font-semibold text-gray-700 mb-2">Subfolders</div>
-          <div className="grid gap-5 justify-center justify-items-center [grid-template-columns:repeat(auto-fit,minmax(320px,1fr))]">
+          <div className="grid gap-5 justify-center justify-items-center [grid-template-columns:repeat(auto-fit,minmax(260px,1fr))] sm:[grid-template-columns:repeat(auto-fit,minmax(300px,1fr))]">
             {(() => {
               const ordered = [...subdirectories].toSorted((a, b) => (a.subdirectoryType || '').localeCompare(b.subdirectoryType || ''));
               return ordered.map((sd) => (

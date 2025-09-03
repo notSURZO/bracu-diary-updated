@@ -244,11 +244,11 @@ export default function Schedule() {
   }
 
   return (
-    <div className="flex flex-col gap-12">
-      <h2 className="text-4xl md:text-6xl font-extrabold text-blue-900 text-center tracking-tight mt-8 md:mt-12 lg:mt-16">
+    <div className="flex flex-col gap-8 sm:gap-10 md:gap-12">
+      <h2 className="text-2xl sm:text-4xl md:text-5xl font-extrabold text-blue-900 text-center tracking-tight mt-4 sm:mt-8 md:mt-12">
         Schedule of Summer 2025
       </h2>
-      <div className="flex justify-center mt-4 mb-2">
+      <div className="flex justify-center mt-2 sm:mt-4 mb-2">
         <button
           onClick={handleDownloadPDF}
           className="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-bold py-2 px-6 rounded-lg shadow-md transition-colors duration-200"
@@ -256,14 +256,14 @@ export default function Schedule() {
           Schedule Download
         </button>
       </div>
-      <div id="schedule-container" className="flex flex-col gap-10">
+      <div id="schedule-container" className="flex flex-col gap-8 sm:gap-10">
         {/* Theory Class Schedule Section */}
-        <div className="bg-white p-4 sm:p-6 lg:p-8 rounded-none sm:rounded-3xl shadow-2xl border-t sm:border border-gray-100">
+        <div className="bg-white p-3 sm:p-6 lg:p-8 rounded-none sm:rounded-3xl shadow-2xl border-t sm:border border-gray-100">
           <h3 className="font-bold text-blue-800 text-2xl md:text-2xl mb-6 pb-4 border-b-2 border-blue-300 flex items-center">
             <span className="inline-block mr-4 text-blue-500 text-4xl"></span>Theory Class Schedule
           </h3>
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200 text-lg">
+          <div className="overflow-x-auto -mx-2 sm:mx-0">
+            <table className="min-w-full divide-y divide-gray-200 text-sm md:text-base">
               <thead className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white">
                 <tr>
                   <th scope="col" className="px-4 md:px-6 py-4 text-left text-sm md:text-base font-bold uppercase tracking-wider">
@@ -279,17 +279,17 @@ export default function Schedule() {
               <tbody className="bg-white divide-y divide-gray-100">
                 {getUniqueTimeSlots(classSchedule).map(timeSlot => (
                   <tr key={timeSlot} className="hover:bg-blue-50 transition-colors duration-200">
-                    <td className="px-4 md:px-6 py-4 whitespace-nowrap text-base md:text-lg font-semibold text-gray-800 bg-gray-50">
+                    <td className="px-2 md:px-6 py-3 whitespace-nowrap text-sm md:text-lg font-semibold text-gray-800 bg-gray-50">
                       {timeSlot}
                     </td>
                     {daysOrder.map(day => (
-                      <td key={day} className="px-4 md:px-6 py-4 text-sm text-gray-700">
+                      <td key={day} className="px-2 md:px-6 py-3 text-xs sm:text-sm text-gray-700 align-top">
                         {groupClassesByDayAndTime(classSchedule)[day] && groupClassesByDayAndTime(classSchedule)[day][timeSlot] ? (
                           groupClassesByDayAndTime(classSchedule)[day][timeSlot].map((course, index) => (
-                            <div key={index} className="bg-blue-100/70 p-3 rounded-lg shadow-sm mb-2 last:mb-0 border border-blue-200">
-                              <p className="font-bold text-blue-800 text-sm md:text-base">{course.courseCode} - {course.section.padStart(2, '0')}</p>
-                              <p className="text-xs md:text-sm text-blue-600 mt-1">{course.faculty}</p>
-                              <p className="text-xs md:text-sm text-blue-600 mt-1"><span className="font-semibold">Room:</span> {course.details}</p>
+                            <div key={index} className="bg-blue-100/70 p-2 sm:p-3 rounded-lg shadow-sm mb-2 last:mb-0 border border-blue-200">
+                              <p className="font-bold text-blue-800 text-xs sm:text-sm md:text-base">{course.courseCode} - {course.section.padStart(2, '0')}</p>
+                              <p className="text-[10px] sm:text-xs md:text-sm text-blue-600 mt-1">{course.faculty}</p>
+                              <p className="text-[10px] sm:text-xs md:text-sm text-blue-600 mt-1"><span className="font-semibold">Room:</span> {course.details}</p>
                             </div>
                           ))
                         ) : (
@@ -310,8 +310,8 @@ export default function Schedule() {
             <h2 className="font-bold text-blue-800 text-3xl md:text-2xl mb-6 pb-4 border-b-2 border-blue-300 flex items-center">
               <span className="inline-block mr-4 text-blue-500 text-4xl"></span>Lab Class Schedule
             </h2>
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200 text-lg">
+          <div className="overflow-x-auto -mx-2 sm:mx-0">
+            <table className="min-w-full divide-y divide-gray-200 text-sm md:text-base">
                 <thead className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white">
                   <tr>
                     <th scope="col" className="px-4 md:px-6 py-4 text-left text-sm md:text-base font-bold uppercase tracking-wider">
@@ -327,17 +327,17 @@ export default function Schedule() {
                 <tbody className="bg-white divide-y divide-gray-100">
                   {getUniqueTimeSlots(labSchedule).map(timeSlot => (
                     <tr key={timeSlot} className="hover:bg-blue-50 transition-colors duration-200">
-                      <td className="px-4 md:px-6 py-4 whitespace-nowrap text-base md:text-lg font-semibold text-gray-800 bg-gray-50">
+                      <td className="px-2 md:px-6 py-3 whitespace-nowrap text-sm md:text-lg font-semibold text-gray-800 bg-gray-50">
                         {timeSlot}
                       </td>
                       {daysOrder.map(day => (
-                        <td key={day} className="px-4 md:px-6 py-4 text-sm text-gray-700">
+                        <td key={day} className="px-2 md:px-6 py-3 text-xs sm:text-sm text-gray-700 align-top">
                           {groupClassesByDayAndTime(labSchedule)[day] && groupClassesByDayAndTime(labSchedule)[day][timeSlot] ? (
                             groupClassesByDayAndTime(labSchedule)[day][timeSlot].map((course, index) => (
-                              <div key={index} className="bg-blue-100/70 p-3 rounded-lg shadow-sm mb-2 last:mb-0 border border-blue-200">
-                                <p className="font-bold text-blue-800 text-sm md:text-base">{course.courseCode} - {course.section.padStart(2, '0')}</p>
-                                <p className="text-xs md:text-sm text-blue-600 mt-1">{course.faculty}</p>
-                                <p className="text-xs md:text-sm text-blue-600 mt-1"><span className="font-semibold">Room:</span> {course.details}</p>
+                              <div key={index} className="bg-blue-100/70 p-2 sm:p-3 rounded-lg shadow-sm mb-2 last:mb-0 border border-blue-200">
+                                <p className="font-bold text-blue-800 text-xs sm:text-sm md:text-base">{course.courseCode} - {course.section.padStart(2, '0')}</p>
+                                <p className="text-[10px] sm:text-xs md:text-sm text-blue-600 mt-1">{course.faculty}</p>
+                                <p className="text-[10px] sm:text-xs md:text-sm text-blue-600 mt-1"><span className="font-semibold">Room:</span> {course.details}</p>
                               </div>
                             ))
                           ) : (
@@ -354,15 +354,15 @@ export default function Schedule() {
         )}
 
         {/* Exam Schedule Section - Simplified and changed UI */}
-        <div className="bg-white p-4 sm:p-6 lg:p-8 rounded-none sm:rounded-3xl shadow-2xl border-t sm:border border-gray-100 mb-8 md:mb-12 lg:mb-16">
+        <div className="bg-white p-3 sm:p-6 lg:p-8 rounded-none sm:rounded-3xl shadow-2xl border-t sm:border border-gray-100 mb-8 md:mb-12 lg:mb-16">
           <h2 className="font-bold text-purple-800 text-3xl md:text-2xl mb-6 pb-4 border-b-2 border-purple-300 flex items-center">
             <span className="inline-block mr-4 text-purple-500 text-4xl"></span> Exam Schedule
           </h2>
           {examSchedule.length === 0 ? (
             <p className="text-gray-500 font-medium p-4 text-base md:text-lg">No exams scheduled for your enrolled courses.</p>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200 text-lg">
+            <div className="overflow-x-auto -mx-2 sm:mx-0">
+              <table className="min-w-full divide-y divide-gray-200 text-sm md:text-base">
                 <thead className="bg-gradient-to-r from-purple-600 to-indigo-600 text-white">
                   <tr>
                     <th scope="col" className="px-4 md:px-6 py-4 text-left text-sm md:text-base font-bold uppercase tracking-wider">
@@ -379,13 +379,13 @@ export default function Schedule() {
                 <tbody className="bg-white divide-y divide-gray-100">
                   {examSchedule.map(course => (
                     <tr key={course._id} className="hover:bg-purple-50 transition-colors duration-200">
-                      <td className="px-4 md:px-6 py-4 whitespace-nowrap text-sm text-gray-800">
+                      <td className="px-2 md:px-6 py-3 whitespace-nowrap text-xs sm:text-sm text-gray-800">
                         {course.courseCode}
                       </td>
-                      <td className="px-4 md:px-6 py-4 whitespace-nowrap text-sm text-gray-800">
+                      <td className="px-2 md:px-6 py-3 whitespace-nowrap text-xs sm:text-sm text-gray-800">
                         {course.courseName}
                       </td>
-                      <td className="px-4 md:px-6 py-4 whitespace-nowrap text-sm font-semibold text-purple-600">
+                      <td className="px-2 md:px-6 py-3 whitespace-nowrap text-xs sm:text-sm font-semibold text-purple-600">
                         {course.examDay}
                       </td>
                     </tr>
