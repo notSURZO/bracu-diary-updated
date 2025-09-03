@@ -27,11 +27,11 @@ export async function GET(
     
     // Try to populate adminClub separately to avoid population errors
     let clubName = 'Unknown Club';
-    if (event.adminClub) {
+    if ((event as any).adminClub) {
       try {
         const Club = (await import('@/lib/models/Club')).default;
-        const club = await Club.findById(event.adminClub).select('name').lean();
-        clubName = club?.name || 'Unknown Club';
+        const club = await Club.findById((event as any).adminClub).select('name').lean();
+        clubName = (club as any)?.name || 'Unknown Club';
       } catch (populateError) {
         console.error('Error populating club:', populateError);
         clubName = 'Unknown Club';
@@ -215,8 +215,33 @@ export async function DELETE(
       return NextResponse.json({ message: 'Access denied. You can only delete events from your club.' }, { status: 403 });
     }
 
-    // Delete the event
+    // Store image info before deleting the event
+    const imagePath = event.imagePath;
+    const imageBucket = event.imageBucket;
+
+    // Delete the event from database
     await Event.findByIdAndDelete(params.eventId);
+
+    // Clean up the image from Supabase storage if it exists
+    if (imagePath && imageBucket) {
+      try {
+        const { getSupabaseAdmin } = await import('@/lib/storage/supabase');
+        const supabase = getSupabaseAdmin();
+        const { error: deleteError } = await supabase.storage
+          .from(imageBucket)
+          .remove([imagePath]);
+        
+        if (deleteError) {
+          console.error('Failed to delete image from storage:', deleteError);
+          // Don't fail the request if image deletion fails
+        } else {
+          console.log('Successfully deleted image from storage:', imagePath);
+        }
+      } catch (imageError) {
+        console.error('Error cleaning up image:', imageError);
+        // Don't fail the request if image cleanup fails
+      }
+    }
 
     return NextResponse.json({ 
       success: true, 

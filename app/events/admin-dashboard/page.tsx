@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 
 import { useUser } from '@clerk/nextjs';
 import Link from 'next/link';
-import { FaCalendarPlus, FaArrowLeft, FaEye, FaEdit, FaTrash, FaPlus } from 'react-icons/fa';
+import { FaCalendarPlus, FaArrowLeft, FaEye, FaEdit, FaTrash, FaPlus, FaUsers } from 'react-icons/fa';
 import { toast } from 'react-toastify';
 import { format } from 'date-fns';
 
@@ -17,6 +17,7 @@ interface Event {
   location: string;
   createdAt: string;
   updatedAt: string;
+  registrationCount?: number;
 }
 
 export default function AdminDashboardPage() {
@@ -296,6 +297,10 @@ export default function AdminDashboardPage() {
                               {formatDate(event.date)} at {formatTime(event.time)}
                             </span>
                             <span>📍 {event.location}</span>
+                            <span className="flex items-center">
+                              <FaUsers className="w-4 h-4 mr-1" />
+                              {event.registrationCount || 0} registered
+                            </span>
                           </div>
                         </div>
                         <div className="flex items-center gap-2 ml-4">
@@ -305,6 +310,13 @@ export default function AdminDashboardPage() {
                             title="View Event Details"
                           >
                             <FaEye className="w-4 h-4" />
+                          </Link>
+                          <Link
+                            href={`/events/registrations/${event._id}`}
+                            className="p-2 text-green-600 hover:bg-green-100 rounded-lg transition-colors"
+                            title="View Registrations"
+                          >
+                            <FaUsers className="w-4 h-4" />
                           </Link>
                           <Link
                             href={`/events/edit/${event._id}`}
