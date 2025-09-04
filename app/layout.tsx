@@ -37,7 +37,7 @@ export default function RootLayout({
         <body className="flex flex-col min-h-screen" suppressHydrationWarning>
           <ConditionalHeader />
           {/* Added responsive padding-top to account for mobile header height */}
-          <main className="flex-grow pt-44 md:pt-24 lg:pl-64">{children}</main>
+          <main className="flex-grow pt-48 md:pt-24 lg:pl-64">{children}</main>
           <ToastContainer
             position="top-right"
             autoClose={3000}
