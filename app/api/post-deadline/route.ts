@@ -127,8 +127,12 @@ export async function POST(req: Request) {
       if (!enrolledUser.deadlines) {
         enrolledUser.deadlines = [];
       }
-      enrolledUser.deadlines.push(userDeadline);
-      await enrolledUser.save();
+      // Check if deadline already exists to prevent duplicates
+      const existingDeadline = enrolledUser.deadlines.find((d: any) => d.id === userDeadline.id);
+      if (!existingDeadline) {
+        enrolledUser.deadlines.push(userDeadline);
+        await enrolledUser.save();
+      }
     }
 
     return NextResponse.json({ success: true, deadline }, { status: 201 });
