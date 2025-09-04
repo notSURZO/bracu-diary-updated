@@ -539,7 +539,7 @@ export default function ConditionalHeader() {
                 alt="BRACU Diary Logo"
                 width={200}
                 height={60}
-                className="object-contain h-8 sm:h-10 w-auto"
+                className="object-contain h-8 sm:h-15 w-auto"
                 priority
               />
             </Link>
