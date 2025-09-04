@@ -5,10 +5,12 @@ import { useEffect, useState } from "react";
 
 interface Props {
   _id: string;
-  courseCode: string;
+  courseCode?: string; // Optional for subfolders
   title: string;
-  updatedAt: string;
+  updatedAt?: string; // Optional for subfolders
   variant: "public" | "private";
+  subdirectoryType?: "theory" | "lab"; // For subfolders
+  isSubfolder?: boolean; // Flag to indicate if this is a subfolder
 }
 
 // Compute on client after mount to avoid hydration mismatch from Date.now()
@@ -37,10 +39,10 @@ function useTimeAgo(dateString: string) {
   return text;
 }
 
-export default function FolderTile({ _id, courseCode, title, updatedAt, variant }: Readonly<Props>) {
+export default function FolderTile({ _id, courseCode, title, updatedAt, variant, subdirectoryType, isSubfolder = false }: Readonly<Props>) {
   const href = `/${variant}-resources/folders/${_id}`;
-  const rel = useTimeAgo(updatedAt);
-  const isoTitle = new Date(updatedAt).toISOString();
+  const rel = useTimeAgo(updatedAt || "");
+  const isoTitle = updatedAt ? new Date(updatedAt).toISOString() : "";
   return (
     <Link
       href={href}
@@ -115,18 +117,33 @@ export default function FolderTile({ _id, courseCode, title, updatedAt, variant 
         </div>
       </div>
 
-      {/* Caption with neutral code pill above title */}
+      {/* Caption with course code pill (for main folders) or subfolder type indicator */}
       <div className="mt-3 text-center">
-        <div className="mx-auto inline-flex items-center rounded-md bg-gray-100 px-2.5 py-0.5 text-[13px] font-mono font-bold uppercase tracking-wider text-gray-900">
-          {courseCode}
-        </div>
+        {!isSubfolder && courseCode && (
+          <div className="mx-auto inline-flex items-center rounded-md bg-gray-100 px-2.5 py-0.5 text-[13px] font-mono font-bold uppercase tracking-wider text-gray-900">
+            {courseCode}
+          </div>
+        )}
+        {isSubfolder && subdirectoryType && (
+          <div className={`mx-auto inline-flex items-center rounded-md px-2.5 py-0.5 text-[12px] font-semibold uppercase tracking-wider ${
+            subdirectoryType === 'theory' 
+              ? 'bg-blue-100 text-blue-700' 
+              : 'bg-green-100 text-green-700'
+          }`}>
+            {subdirectoryType}
+          </div>
+        )}
         {/* Reserve two lines of height to prevent jumping */}
-        <div className="mt-1 min-h-[2.6em] line-clamp-2 text-[0.95rem] font-semibold leading-snug text-gray-900 group-hover:text-gray-950" title={title}>
+        <div className={`min-h-[2.6em] line-clamp-2 font-semibold leading-snug text-gray-900 group-hover:text-gray-950 ${
+          isSubfolder ? 'mt-1 text-[1.05rem]' : 'mt-1 text-[0.95rem]'
+        }`} title={title}>
           {title}
         </div>
-        <div className="mt-0.5 text-[11px] text-gray-500" title={isoTitle} suppressHydrationWarning>
-          {rel ? `Updated ${rel}` : "\u00A0"}
-        </div>
+        {!isSubfolder && updatedAt && (
+          <div className="mt-0.5 text-[11px] text-gray-500" title={isoTitle} suppressHydrationWarning>
+            {rel ? `Updated ${rel}` : "\u00A0"}
+          </div>
+        )}
       </div>
     </Link>
   );

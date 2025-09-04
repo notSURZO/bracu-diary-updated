@@ -7,7 +7,7 @@ import UploadModal from "@/app/components/resources/UploadModal";
 import CompressModal from "@/app/components/resources/CompressModal";
 import SearchInput from "@/app/components/resources/SearchInput";
 import FolderGridClient from "./FolderGridClient";
-import SubfolderTile from "@/app/components/resources/SubfolderTile";
+import FolderTile from "@/app/components/resources/FolderTile";
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -188,12 +188,13 @@ export default async function FolderPage({ params, searchParams }: Readonly<{ pa
             {(() => {
               const ordered = [...subdirectories].toSorted((a, b) => (a.subdirectoryType || '').localeCompare(b.subdirectoryType || ''));
               return ordered.map((sd) => (
-                <SubfolderTile
+                <FolderTile
                   key={sd._id}
                   _id={sd._id}
                   title={sd.title}
                   subdirectoryType={sd.subdirectoryType}
                   variant="public"
+                  isSubfolder={true}
                 />
               ));
             })()}
