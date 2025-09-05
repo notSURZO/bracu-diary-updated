@@ -11,7 +11,7 @@ import SearchInput from "@/app/components/resources/SearchInput";
 import PrivateFolderGridClient, { PrivateResourceItem } from "./PrivateFolderGridClient";
 import PrivateFolderHeader from "./PrivateFolderHeader";
 import { getConnectionIds } from "@/lib/connections";
-import SubfolderTile from "@/app/components/resources/SubfolderTile";
+import FolderTile from "@/app/components/resources/FolderTile";
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -245,12 +245,13 @@ export default async function PrivateFolderPage({ params, searchParams }: Readon
             {(() => {
               const ordered = [...subdirectories].toSorted((a, b) => (a.subdirectoryType || '').localeCompare(b.subdirectoryType || ''));
               return ordered.map((sd) => (
-                <SubfolderTile
+                <FolderTile
                   key={sd._id}
                   _id={sd._id}
                   title={sd.title}
                   subdirectoryType={sd.subdirectoryType}
                   variant="private"
+                  isSubfolder={true}
                 />
               ));
             })()}
