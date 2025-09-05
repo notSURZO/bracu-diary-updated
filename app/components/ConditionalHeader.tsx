@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useUser } from '@clerk/nextjs';
 import SearchBar from './SearchBar';
 import Image from 'next/image';
@@ -87,6 +87,7 @@ export default function ConditionalHeader() {
   const [connections, setConnections] = useState<Connection[]>([]);
   const [filteredConnections, setFilteredConnections] = useState<Connection[]>([]);
   const [deadlines, setDeadlines] = useState<Deadline[]>([]);
+  const [studyInvites, setStudyInvites] = useState<Array<{ _id: string; roomSlug: string; hostName: string; createdAt: string }>>([]);
   const [connectionSearchQuery, setConnectionSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -98,7 +99,7 @@ export default function ConditionalHeader() {
   const pathname = usePathname();
 
   const isConnectionsIconHighlighted = isConnectionsDropdownOpen;
-  const isNotificationsIconHighlighted = isNotificationsDropdownOpen;
+  const isNotificationsIconHighlighted = isNotificationsDropdownOpen || (studyInvites.length > 0);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   // Debounced search handler
@@ -242,22 +243,27 @@ export default function ConditionalHeader() {
     }
   };
 
-  const fetchNotifications = async () => {
+  const fetchNotifications = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     try {
-      const response = await fetch('/api/get-user-deadlines', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: user?.id }),
-      });
-      const data = await response.json();
-      if (response.ok) {
-        setDeadlines(data.deadlines || []);
-      } else {
-        console.error('Error fetching deadlines:', data.error);
-        setError(data.error || 'Failed to fetch deadlines');
-        toast.error(data.error || 'Failed to fetch deadlines');
+      const [deadlinesRes, invitesRes] = await Promise.all([
+        fetch('/api/get-user-deadlines', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId: user?.id }),
+        }),
+        fetch('/api/study-sessions/invites')
+      ]);
+
+      const deadlinesData = await deadlinesRes.json();
+      const invitesData = await invitesRes.json();
+      if (deadlinesRes.ok) setDeadlines(deadlinesData.deadlines || []);
+      if (invitesRes.ok) setStudyInvites((invitesData.invites || []).map((i: any) => ({ _id: String(i._id), roomSlug: i.roomSlug, hostName: i.hostName, createdAt: i.createdAt })));
+      if (!deadlinesRes.ok && !invitesRes.ok) {
+        const errMsg = deadlinesData.error || invitesData.error || 'Failed to fetch notifications';
+        setError(errMsg);
+        toast.error(errMsg);
       }
     } catch (error) {
       console.error('Error fetching deadlines:', error);
@@ -266,7 +272,13 @@ export default function ConditionalHeader() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [user?.id]);
+
+  const debouncedFetchNotifications = useMemo(() => debounce(fetchNotifications, 600), [fetchNotifications]);
+
+  useEffect(() => {
+    return () => debouncedFetchNotifications.cancel();
+  }, [debouncedFetchNotifications]);
 
   const handleConnectionsToggleDropdown = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -297,11 +309,30 @@ export default function ConditionalHeader() {
       if (!newState) {
         setError(null);
       } else {
-        fetchNotifications(); // Fetch notifications on every icon click
+        debouncedFetchNotifications(); // Debounced fetch to avoid rapid repeats
       }
       return newState;
     });
   };
+
+  // Background poll for study invites (lightweight)
+  useEffect(() => {
+    let timer: any;
+    const poll = async () => {
+      try {
+        const res = await fetch('/api/study-sessions/invites');
+        if (res.ok) {
+          const data = await res.json();
+          setStudyInvites((data.invites || []).map((i: any) => ({ _id: String(i._id), roomSlug: i.roomSlug, hostName: i.hostName, createdAt: i.createdAt })));
+        }
+      } catch {}
+    };
+    if (isSignedIn) {
+      poll();
+      timer = setInterval(poll, 15000);
+    }
+    return () => timer && clearInterval(timer);
+  }, [isSignedIn]);
 
   const handleShowRequests = () => {
     setShowRequests(true);
@@ -423,7 +454,7 @@ export default function ConditionalHeader() {
 
   return (
     <>
-      <header className="fixed top-0 left-0 right-0 z-50 p-3 sm:p-4 flex items-center justify-between  bg-white  shadow-sm">
+      <header className="fixed top-0 left-0 right-0 z-50 p-2 sm:p-4 flex items-center justify-between bg-white shadow-sm">
         <div className="flex items-center space-x-3 sm:space-x-4">
           <button
             className="lg:hidden inline-flex items-center justify-center p-2 rounded-md text-gray-700 hover:bg-gray-100"
@@ -438,7 +469,7 @@ export default function ConditionalHeader() {
               alt="BRACU Diary Logo"
               width={200}
               height={60}
-              className="object-contain h-8 sm:h-10 w-auto"
+              className="object-contain h-7 sm:h-10 w-auto"
               priority
             />
           </Link>
@@ -459,9 +490,9 @@ export default function ConditionalHeader() {
               <Image
                 src="/connect-requests.svg"
                 alt="Connection Requests"
-                width={30}
-                height={30}
-                className="hover:opacity-80 transition"
+                width={24}
+                height={24}
+                className="w-5 h-5 sm:w-6 sm:h-6 hover:opacity-80 transition"
               />
             </button>
             <button
@@ -470,15 +501,18 @@ export default function ConditionalHeader() {
               className={`relative cursor-pointer p-2 rounded-full transition-colors flex items-center justify-center ${
                 isNotificationsIconHighlighted ? 'bg-gray-200 border border-gray-400' : 'hover:bg-gray-100'
               }`}
-              style={{ width: '40px', height: '40px' }}
+              
             >
               <Image
                 src="/bell-icon.svg"
                 alt="Notifications"
                 width={24}
                 height={24}
-                className="hover:opacity-80 transition"
+                className="w-5 h-5 sm:w-6 sm:h-6 hover:opacity-80 transition"
               />
+              {studyInvites.length > 0 && (
+                <span className="absolute -top-0.5 -right-0.5 inline-flex h-2.5 w-2.5 rounded-full bg-red-500 ring-2 ring-white" />
+              )}
             </button>
             {isConnectionsDropdownOpen && (
               <>
@@ -668,23 +702,94 @@ export default function ConditionalHeader() {
                   ref={notificationsDropdownRef}
                   className="fixed inset-x-3 top-16 sm:absolute sm:inset-auto sm:top-full sm:right-0 sm:mt-3 w-auto sm:w-96 max-w-[90vw] bg-white border border-gray-200 rounded-lg shadow-xl p-0 max-h-[70vh] overflow-y-auto z-[60] sm:z-50"
                 >
-                <div className="bg-gray-50 p-3 border-b border-gray-200 flex justify-between items-center">
-                  <h2 className="text-lg font-semibold text-gray-800">Notifications</h2>
-                  <button
-                    onClick={() => setIsNotificationsDropdownOpen(false)}
-                    className="text-gray-500 hover:text-gray-700 text-xl"
-                  >
-                    &times;
-                  </button>
-                </div>
+                  <div className="bg-gray-50 p-3 border-b border-gray-200 flex justify-between items-center">
+                    <h2 className="text-lg font-semibold text-gray-800">Notifications</h2>
+                    <button
+                      onClick={() => setIsNotificationsDropdownOpen(false)}
+                      className="text-gray-500 hover:text-gray-700 text-xl"
+                    >
+                      &times;
+                    </button>
+                  </div>
                 {isLoading ? (
                   <div className="p-4 text-center text-gray-500">Loading...</div>
                 ) : error ? (
                   <div className="p-4 text-center text-red-500">{error}</div>
                 ) : deadlines.length === 0 ? (
-                  <div className="p-4 text-center text-gray-500">No upcoming deadlines.</div>
+                  <div>
+                    {studyInvites.length > 0 ? (
+                      <ul className="divide-y divide-gray-100">
+                        {studyInvites.map((inv) => (
+                          <li key={inv._id} className="p-3 flex items-center justify-between">
+                            <div>
+                              <p className="font-medium text-gray-800">Group study started by {inv.hostName}</p>
+                              <p className="text-xs text-gray-500">Room: {inv.roomSlug}</p>
+                            </div>
+                            <div className="flex gap-2">
+                              <a
+                                href={`https://meet.jit.si/BRACU-DIARY-${encodeURIComponent(inv.roomSlug)}#config.prejoinPageEnabled=true`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="px-3 py-1 bg-blue-600 text-white rounded-md text-sm hover:bg-blue-700"
+                                onClick={() => setIsNotificationsDropdownOpen(false)}
+                              >
+                                Join
+                              </a>
+                              <button
+                                onClick={async () => {
+                                  try {
+                                    await fetch('/api/study-sessions/dismiss', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ inviteId: inv._id }) });
+                                    setStudyInvites(prev => prev.filter(i => i._id !== inv._id));
+                                  } catch {}
+                                }}
+                                className="px-3 py-1 bg-gray-200 text-gray-700 rounded-md text-sm hover:bg-gray-300"
+                              >
+                                Dismiss
+                              </button>
+                            </div>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <div className="p-4 text-center text-gray-500">No updates.</div>
+                    )}
+                  </div>
                 ) : (
                   <ul className="divide-y divide-gray-100">
+                    {studyInvites.length > 0 && (
+                      <>
+                        {studyInvites.map((inv) => (
+                          <li key={inv._id} className="p-3 flex items-center justify-between bg-blue-50">
+                            <div>
+                              <p className="font-medium text-gray-800">Group study started by {inv.hostName}</p>
+                              <p className="text-xs text-gray-600">Room: {inv.roomSlug}</p>
+                            </div>
+                            <div className="flex gap-2">
+                              <a
+                                href={`https://meet.jit.si/BRACU-DIARY-${encodeURIComponent(inv.roomSlug)}#config.prejoinPageEnabled=true`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="px-3 py-1 bg-blue-600 text-white rounded-md text-sm hover:bg-blue-700"
+                                onClick={() => setIsNotificationsDropdownOpen(false)}
+                              >
+                                Join
+                              </a>
+                              <button
+                                onClick={async () => {
+                                  try {
+                                    await fetch('/api/study-sessions/dismiss', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ inviteId: inv._id }) });
+                                    setStudyInvites(prev => prev.filter(i => i._id !== inv._id));
+                                  } catch {}
+                                }}
+                                className="px-3 py-1 bg-gray-200 text-gray-700 rounded-md text-sm hover:bg-gray-300"
+                              >
+                                Dismiss
+                              </button>
+                            </div>
+                          </li>
+                        ))}
+                      </>
+                    )}
                     {deadlines.map((deadline) => {
                       const { date, time } = formatDateTime(deadline.lastDate);
                       return (

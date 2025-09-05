@@ -55,6 +55,14 @@ export interface IUser extends Document {
   department?: string;
   theme_color?: string;
   interests?: string[];
+  studyInvites?: Array<{
+    _id?: any;
+    roomSlug: string;
+    hostName: string;
+    hostEmail: string;
+    createdAt: Date;
+    active: boolean;
+  }>;
   enrolledCourses: Array<{
     _id: string;
     originalCourseId: string;
@@ -149,6 +157,13 @@ const UserSchema: Schema = new Schema({
   connectionRequests: [{ type: String, default: [] }],
   theme_color: { type: String, default: 'blue' },
   interests: { type: [String], default: [] },
+  studyInvites: [{
+    roomSlug: { type: String, required: true },
+    hostName: { type: String, required: true },
+    hostEmail: { type: String, required: true },
+    createdAt: { type: Date, default: Date.now },
+    active: { type: Boolean, default: true }
+  }],
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now },
 
@@ -201,4 +216,8 @@ UserSchema.pre('save', function (next) {
   next();
 });
 
-export default mongoose.models.User || mongoose.model<IUser>('User', UserSchema);
+// Prevent stale schema during hot-reload
+if (mongoose.models.User) {
+  delete mongoose.models.User;
+}
+export default mongoose.model<IUser>('User', UserSchema);
