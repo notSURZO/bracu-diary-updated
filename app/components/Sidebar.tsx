@@ -164,7 +164,7 @@ export default function Sidebar({ mobileOpen = false, onClose }: SidebarProps): 
   return (
     <>
       {/* Desktop sidebar */}
-      <aside className="hidden lg:block fixed top-24 left-0 h-[calc(100vh-6rem)] w-64 bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 z-40 rounded-lg">
+      <aside className="hidden lg:block fixed top-24 left-0 h-[calc(100vh-6rem)] w-64 bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 z-40 rounded-lg overflow-y-auto">
         {NavContent}
       </aside>
 

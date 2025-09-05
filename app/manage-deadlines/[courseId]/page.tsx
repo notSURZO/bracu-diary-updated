@@ -19,6 +19,7 @@ interface Deadline {
   createdByStudentId?: string;
   createdAt: string;
   type?: 'theory' | 'lab';
+  category?: 'Quiz' | 'Assignment' | 'Mid' | 'Final';
   agrees: string[];
   disagrees: string[];
   completed: boolean;
@@ -32,6 +33,18 @@ interface Course {
     section: string;
     theory: any;
     lab?: any;
+  }>;
+  theoryMarksDistribution: Array<{
+    quiz: string;
+    assignment: string;
+    mid: string;
+    final: string;
+  }>;
+  labmarksDistribution: Array<{
+    quiz: string;
+    assignment: string;
+    mid: string;
+    final: string;
   }>;
 }
 
@@ -57,6 +70,7 @@ export default function ManageDeadlinesPage() {
 
   const [formData, setFormData] = useState({
     type: 'theory' as 'theory' | 'lab',
+    category: 'Quiz' as 'Quiz' | 'Assignment' | 'Mid' | 'Final',
     title: '',
     details: '',
     submissionLink: '',
@@ -103,13 +117,23 @@ export default function ManageDeadlinesPage() {
       window.addEventListener('beforeunload', handleBeforeUnload);
     }
 
+    // Ensure scroll position is maintained after state changes
+    const maintainScroll = () => {
+      if (scrollContainerRef.current && savedScrollPosition) {
+        scrollContainerRef.current.scrollTop = parseInt(savedScrollPosition, 10);
+      }
+    };
+
+    // Trigger scroll restoration on state changes
+    requestAnimationFrame(maintainScroll);
+
     return () => {
       if (container) {
         container.removeEventListener('scroll', handleScroll);
       }
       window.removeEventListener('beforeunload', handleBeforeUnload);
     };
-  }, [pathname]);
+  }, [pathname, selectedDeadline]);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -159,22 +183,22 @@ export default function ManageDeadlinesPage() {
       const data = await response.json();
       
       if (!data || !data.sections) {
-        setCourse({ _id: '', courseCode: '', courseName: '', sections: [] });
+        setCourse({ _id: '', courseCode: '', courseName: '', sections: [], theoryMarksDistribution: [], labmarksDistribution: [] });
         setHasLab(false);
         return;
       }
-      
+    
       setCourse(data);
-      
+    
       const hasAnyLab = Array.isArray(data.sections) && 
                        data.sections.some((s: any) => s && s.lab);
       setHasLab(Boolean(hasAnyLab));
-      
+    
       if (Array.isArray(data.sections) && data.sections.length > 0) {
         setSelectedSection(data.sections[0]?.section || '');
       }
     } catch (error) {
-      setCourse({ _id: '', courseCode: '', courseName: '', sections: [] });
+      setCourse({ _id: '', courseCode: '', courseName: '', sections: [], theoryMarksDistribution: [], labmarksDistribution: [] });
       setHasLab(false);
     }
   };
@@ -237,6 +261,7 @@ export default function ManageDeadlinesPage() {
           originalCourseId: course._id,
           section: selectedSection,
           type: formData.type,
+          category: formData.category,
           title: formData.title,
           details: formData.details,
           submissionLink: formData.submissionLink,
@@ -250,6 +275,7 @@ export default function ManageDeadlinesPage() {
         setSelectedDeadline(null);
         setFormData({
           type: 'theory',
+          category: 'Quiz',
           title: '',
           details: '',
           submissionLink: '',
@@ -272,7 +298,6 @@ export default function ManageDeadlinesPage() {
     if (!user) return;
 
     if (!deadline.completed) {
-      // Show confirmation toast when marking as completed
       toast(
         <div>
           <p>Are you sure you have completed the deadline?</p>
@@ -302,7 +327,7 @@ export default function ManageDeadlinesPage() {
                   if (response.ok) {
                     toast.dismiss();
                     await fetchDeadlines();
-router.push(`/marks-calculation/${course?._id}`);
+                    router.push(`/marks-calculation/${course?._id}`);
                   } else {
                     const errorData = await response.json();
                     console.error('Failed to update deadline:', errorData.error);
@@ -326,7 +351,6 @@ router.push(`/marks-calculation/${course?._id}`);
         }
       );
     } else {
-      // If marking as incomplete, proceed without confirmation
       try {
         const response = await fetch('/api/update-deadline', {
           method: 'PATCH',
@@ -439,8 +463,18 @@ router.push(`/marks-calculation/${course?._id}`);
   };
 
   const toggleDetails = (deadline: Deadline) => {
+    const currentScroll = scrollContainerRef.current?.scrollTop || 0;
     const deadlineId = deadline._id || deadline.id;
-    setSelectedDeadline(selectedDeadline && (selectedDeadline._id === deadlineId || selectedDeadline.id === deadlineId) ? null : deadline);
+    setSelectedDeadline(
+      selectedDeadline && (selectedDeadline._id === deadlineId || selectedDeadline.id === deadlineId)
+        ? null
+        : deadline
+    );
+    requestAnimationFrame(() => {
+      if (scrollContainerRef.current) {
+        scrollContainerRef.current.scrollTop = currentScroll;
+      }
+    });
   };
   
   if (loading) {
@@ -455,101 +489,134 @@ router.push(`/marks-calculation/${course?._id}`);
     const { date, time } = formatDateTime(deadline.lastDate);
     const hasVotedAgree = user?.id ? (deadline.agrees ?? []).includes(user.id) : false;
     const hasVotedDisagree = user?.id ? (deadline.disagrees ?? []).includes(user.id) : false;
-    const cardBgColor = isMissed ? 'bg-red-50' : (deadline.completed ? 'bg-green-50' : 'bg-white');
+    const cardBgColor = isMissed ? 'bg-red-50 border-l-4 border-l-red-500' : (deadline.completed ? 'bg-green-50 border-l-4 border-l-green-500' : 'bg-white border-l-4 border-l-blue-500');
+    const categoryColors = {
+      Quiz: 'bg-yellow-100 text-yellow-800',
+      Assignment: 'bg-yellow-100 text-yellow-800',
+      Mid: 'bg-yellow-100 text-yellow-800',
+      Final: 'bg-yellow-100 text-yellow-800'
+    };
 
     return (
       <div 
         key={deadline._id || deadline.id} 
-        className={`border rounded-lg p-4 hover:shadow-md transition-shadow relative ${cardBgColor}`}
+        className={`border rounded-lg p-5 hover:shadow-md transition-shadow ${cardBgColor}`}
       >
-        <div className="flex justify-between items-start flex-wrap gap-3">
-          <div className="flex-1">
-            <div className="flex items-center space-x-2">
-              <h3 className="text-lg font-medium text-gray-900">{deadline.title || 'Untitled Deadline'}</h3>
+        <div className="flex justify-between items-start mb-3">
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 flex-wrap mb-2">
+              <h3 className="text-lg font-semibold text-gray-900 truncate">{deadline.title || 'Untitled Deadline'}</h3>
               <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                deadline.type === 'theory' 
-                  ? 'bg-blue-100 text-blue-800' 
-                  : 'bg-green-100 text-green-800'
+                deadline.type === 'theory'
+                  ? 'bg-blue-100 text-blue-800'
+                  : 'bg-blue-100 text-blue-800'
               }`}>
                 {deadline.type === 'theory' ? 'Theory' : (deadline.type === 'lab' ? 'Lab' : 'Unknown')}
               </span>
-              {user && deadline.createdBy === user.id && (
-                <button
-                  onClick={() => confirmDelete(deadline)}
-                  className="px-5 py-3 bg-red-500 text-white rounded-md hover:bg-red-700 text-sm font-medium"
-                >
-                  Delete Your Reminded Deadline
-                </button>
+              {deadline.category && (
+                <span className={`inline-flex items-center px-2.5 py-0.5 text-xs font-medium ${categoryColors[deadline.category]}`}>
+                  {deadline.category}
+                </span>
               )}
             </div>
-            <p className="mt-1 text-sm text-gray-600">{truncateText(deadline.details || 'No details provided')}</p>
-            <div className="mt-2 flex items-center flex-wrap gap-2">
-              {!isMissed && (
-                <label className="flex items-center space-x-2">
-                  <input
-                    type="checkbox"
-                    checked={deadline.completed}
-                    onChange={() => handleToggleComplete(deadline)}
-                    className="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300 rounded"
-                  />
-                  <span className="text-sm text-gray-600">Completed</span>
-                </label>
-              )}
-              <button
-                onClick={() => toggleDetails(deadline)}
-                className="px-3 py-1 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 text-sm"
-              >
-                {selectedDeadline && (selectedDeadline._id === (deadline._id || deadline.id) || selectedDeadline.id === (deadline._id || deadline.id)) ? 'Hide Details' : 'Details'}
-              </button>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => handleAgreeDisagree(deadline._id || deadline.id, 'agree')}
-                  className={`px-3 py-1 rounded-md text-sm font-medium ${
-                    hasVotedAgree
-                      ? 'bg-green-600 text-white hover:bg-green-700'
-                      : 'bg-gray-100 text-green-800 hover:bg-green-200'
-                  }`}
-                >
-                  Upvote ({deadline.agrees.length})
-                </button>
-                <button
-                  onClick={() => handleAgreeDisagree(deadline._id || deadline.id, 'disagree')}
-                  className={`px-3 py-1 rounded-md text-sm font-medium ${
-                    hasVotedDisagree
-                      ? 'bg-red-600 text-white hover:bg-red-700'
-                      : 'bg-gray-100 text-red-800 hover:bg-red-200'
-                  }`}
-                >
-                  Downvote ({deadline.disagrees.length})
-                </button>
-              </div>
-            </div>
+            <p className="text-sm text-gray-600 mb-3">{truncateText(deadline.details || 'No details provided', 100)}</p>
           </div>
-          <div className="text-right">
-            <h3>Due:</h3>
-            <p className="text-sm font-medium text-gray-900">{date}</p>
-            <p className="text-sm text-gray-500">{time}</p>
+          <div className="ml-4 text-right min-w-[120px]">
+            <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Due</p>
+            <p className="text-sm font-semibold text-gray-900">{date}</p>
+            <p className="text-xs text-gray-500">{time}</p>
           </div>
         </div>
+
+        <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-gray-100">
+          <div className="flex items-center gap-2">
+            {!isMissed && (
+              <label className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  checked={deadline.completed}
+                  onChange={() => handleToggleComplete(deadline)}
+                  className="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300 rounded"
+                />
+                <span className="text-sm text-gray-600">Completed</span>
+              </label>
+            )}
+            <button
+              onClick={(e) => {
+                e.preventDefault();
+                toggleDetails(deadline);
+              }}
+              className="px-3 py-1.5 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 text-sm font-medium transition-colors"
+            >
+              {selectedDeadline && (selectedDeadline._id === (deadline._id || deadline.id) || selectedDeadline.id === (deadline._id || deadline.id)) ? 'Hide Details' : 'View Details'}
+            </button>
+          </div>
+          
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => handleAgreeDisagree(deadline._id || deadline.id, 'agree')}
+                className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                  hasVotedAgree
+                    ? 'bg-green-600 text-white hover:bg-green-700'
+                    : 'bg-gray-100 text-green-800 hover:bg-green-200'
+                }`}
+              >
+                ✓ ({deadline.agrees.length})
+              </button>
+              <button
+                onClick={() => handleAgreeDisagree(deadline._id || deadline.id, 'disagree')}
+                className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                  hasVotedDisagree
+                    ? 'bg-red-600 text-white hover:bg-red-700'
+                    : 'bg-gray-100 text-red-800 hover:bg-red-200'
+                }`}
+              >
+                ✗ ({deadline.disagrees.length})
+              </button>
+            </div>
+            
+            {user && deadline.createdBy === user.id && (
+              <button
+                onClick={() => confirmDelete(deadline)}
+                className="px-3 py-1.5 bg-red-100 text-red-700 rounded-md hover:bg-red-200 text-sm font-medium transition-colors"
+              >
+                Delete
+              </button>
+            )}
+          </div>
+        </div>
+
         {selectedDeadline && (selectedDeadline._id === (deadline._id || deadline.id) || selectedDeadline.id === (deadline._id || deadline.id)) && (
           <div className="mt-4 pt-4 border-t border-gray-200">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-medium text-gray-900">Details:</h3>
-            </div>
-            <p className="text-sm text-gray-600 whitespace-pre-wrap break-words">{deadline.details}</p>
+            <h4 className="text-sm font-medium text-gray-900 mb-2">Full Details:</h4>
+            <p className="text-sm text-gray-600 whitespace-pre-wrap break-words mb-3">{deadline.details}</p>
+            
             {deadline.submissionLink && (
-              <a
-                href={deadline.submissionLink}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="mt-2 text-sm text-blue-600 hover:text-blue-800"
-              >
-                Submission Link
-              </a>
+              <div className="mb-3">
+                <span className="text-sm font-medium text-gray-700 block mb-1">Submission Link:</span>
+                <a
+                  href={deadline.submissionLink}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-sm text-blue-600 hover:text-blue-800 break-all"
+                >
+                  {deadline.submissionLink}
+                </a>
+              </div>
             )}
-            <p className="mt-2 text-sm font-medium text-gray-900">Due: {date} at {time}</p>
-            <p className="mt-2 text-sm text-gray-500">Created by: {deadline.createdByName && deadline.createdByStudentId ? `${deadline.createdByName} (${deadline.createdByStudentId})` : 'Unknown'}</p>
-            <p className="mt-2 text-sm text-gray-500">Created at: {formatDateTime(deadline.createdAt).date} at {formatDateTime(deadline.createdAt).time}</p>
+            
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+              <div>
+                <span className="font-medium text-gray-700">Due:</span> {date} at {time}
+              </div>
+              <div>
+                <span className="font-medium text-gray-700">Created by:</span> {deadline.createdByName && deadline.createdByStudentId ? `${deadline.createdByName} (${deadline.createdByStudentId})` : 'Unknown'}
+              </div>
+              <div>
+                <span className="font-medium text-gray-700">Created at:</span> {formatDateTime(deadline.createdAt).date} at {formatDateTime(deadline.createdAt).time}
+              </div>
+            </div>
           </div>
         )}
       </div>
@@ -685,6 +752,34 @@ router.push(`/marks-calculation/${course?._id}`);
                   </select>
                 </div>
                 <div>
+                  <label className="block text-sm font-medium text-gray-700">Deadline Category</label>
+                  <select
+                    name="category"
+                    value={formData.category}
+                    onChange={(e) => setFormData({ ...formData, category: e.target.value as 'Quiz' | 'Assignment' | 'Mid' | 'Final' })}
+                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    {(() => {
+                      const distribution = formData.type === 'theory' ? course?.theoryMarksDistribution?.[0] : course?.labmarksDistribution?.[0];
+                      const options = [];
+                      if (distribution) {
+                        if (distribution.quiz && distribution.quiz !== '') options.push(<option key="Quiz" value="Quiz">Quiz</option>);
+                        if (distribution.assignment && distribution.assignment !== '') options.push(<option key="Assignment" value="Assignment">Assignment</option>);
+                        if (distribution.mid && distribution.mid !== '') options.push(<option key="Mid" value="Mid">Mid</option>);
+                        if (distribution.final && distribution.final !== '') options.push(<option key="Final" value="Final">Final</option>);
+                      }
+                      return options.length > 0 ? options : (
+                        <>
+                          <option value="Quiz">Quiz</option>
+                          <option value="Assignment">Assignment</option>
+                          <option value="Mid">Mid</option>
+                          <option value="Final">Final</option>
+                        </>
+                      );
+                    })()}
+                  </select>
+                </div>
+                <div>
                   <label className="block text-sm font-medium text-gray-700">Title</label>
                   <input
                     type="text"
@@ -784,8 +879,3 @@ router.push(`/marks-calculation/${course?._id}`);
     </div>
   );
 }
-
-
-
-
-

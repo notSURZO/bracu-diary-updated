@@ -21,6 +21,7 @@ interface Deadline {
   _id: string;
   id: string;
   title: string;
+  category?: 'Quiz' | 'Assignment' | 'Mid' | 'Final';
 }
 interface MarksDistribution {
     quiz: string; assignment: string; mid: string; final: string;
@@ -60,6 +61,7 @@ const MarksSection = ({ title, deadlines, marks, distribution, courseId, onMarks
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [selectedDeadline, setSelectedDeadline] = useState<Deadline | null>(null);
     const [markData, setMarkData] = useState({ type: 'quiz', obtained: '', outOf: '' });
+    const [includedDeadlines, setIncludedDeadlines] = useState<Record<string, boolean>>({});
 
     // Separate deadlines into pending and updated based on marks presence
     const pendingDeadlines = deadlines.filter((d: Deadline) => {
@@ -67,23 +69,65 @@ const MarksSection = ({ title, deadlines, marks, distribution, courseId, onMarks
         return !allMarks.some(m => m.deadlineId === d.id);
     });
 
-    const updatedDeadlines = deadlines.filter((d: Deadline) => {
-        const allMarks = [...marks.quiz, ...marks.assignment, ...marks.mid, ...marks.final];
-        return allMarks.some(m => m.deadlineId === d.id);
-    });
+    const updatedDeadlines = useMemo(() => {
+        return deadlines.filter((d: Deadline) => {
+            const allMarks = [...marks.quiz, ...marks.assignment, ...marks.mid, ...marks.final];
+            return allMarks.some(m => m.deadlineId === d.id);
+        });
+    }, [deadlines, marks]);
+
+    // Initialize includedDeadlines state when updatedDeadlines change
+    useEffect(() => {
+        const initialIncluded: Record<string, boolean> = {};
+        updatedDeadlines.forEach((d: Deadline) => {
+            initialIncluded[d.id] = true;
+        });
+        setIncludedDeadlines(initialIncluded);
+    }, [updatedDeadlines]);
 
     const openModal = (deadline: Deadline) => {
         setSelectedDeadline(deadline);
         // Pre-fill form with existing data if available
         const allMarks = [...marks.quiz, ...marks.assignment, ...marks.mid, ...marks.final];
         const existingMark = allMarks.find(m => m.deadlineId === deadline.id);
+        const deadlineCategory = deadline.category || 'Quiz';
         if (existingMark) {
-            setMarkData({ type: 'quiz', obtained: String(existingMark.obtained), outOf: String(existingMark.outOf) });
+            setMarkData({ type: deadlineCategory, obtained: String(existingMark.obtained), outOf: String(existingMark.outOf) });
         } else {
-            setMarkData({ type: 'quiz', obtained: '', outOf: '' });
+            setMarkData({ type: deadlineCategory, obtained: '', outOf: '' });
         }
         setIsModalOpen(true);
     };
+
+    // Handler for toggling included deadlines
+    const toggleIncludeDeadline = (deadlineId: string) => {
+        setIncludedDeadlines(prev => ({
+            ...prev,
+            [deadlineId]: !prev[deadlineId],
+        }));
+    };
+
+    // Filter marks based on includedDeadlines
+    const filteredMarks = useMemo(() => {
+        const filterMarks = (marksArray: Mark[]) => marksArray.filter(m => includedDeadlines[m.deadlineId] !== false);
+        return {
+            quiz: filterMarks(marks.quiz),
+            assignment: filterMarks(marks.assignment),
+            mid: filterMarks(marks.mid),
+            final: filterMarks(marks.final),
+        };
+    }, [marks, includedDeadlines]);
+
+    // Calculate marks based on filtered marks
+    const calculatedMarks = useMemo(() => {
+        if (!distribution) return {};
+        return {
+            quiz: calculateFinalMark(filteredMarks.quiz, distribution.quizNminus1 === 'Yes', parseFloat(distribution.quiz)),
+            assignment: calculateFinalMark(filteredMarks.assignment, distribution.assignmentNminus1 === 'Yes', parseFloat(distribution.assignment)),
+            mid: calculateFinalMark(filteredMarks.mid, false, parseFloat(distribution.mid)),
+            final: calculateFinalMark(filteredMarks.final, false, parseFloat(distribution.final)),
+        };
+    }, [filteredMarks, distribution]);
 
     const handleMarkSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -111,15 +155,7 @@ const MarksSection = ({ title, deadlines, marks, distribution, courseId, onMarks
         setIsModalOpen(false);
     };
 
-    const calculatedMarks = useMemo(() => {
-        if (!distribution) return {};
-        return {
-            quiz: calculateFinalMark(marks.quiz, distribution.quizNminus1 === 'Yes', parseFloat(distribution.quiz)),
-            assignment: calculateFinalMark(marks.assignment, distribution.assignmentNminus1 === 'Yes', parseFloat(distribution.assignment)),
-            mid: calculateFinalMark(marks.mid, false, parseFloat(distribution.mid)),
-            final: calculateFinalMark(marks.final, false, parseFloat(distribution.final)),
-        }
-    }, [marks, distribution]);
+
 
     const totalMarks = Object.values(calculatedMarks).reduce((sum: number, mark: any) => sum + (mark || 0), 0);
 
@@ -132,7 +168,8 @@ const MarksSection = ({ title, deadlines, marks, distribution, courseId, onMarks
                 <div className="space-y-2 max-h-60 overflow-y-auto pr-2">
                     {pendingDeadlines.length > 0 ? pendingDeadlines.map((d: Deadline) => (
                         <div key={d.id} className="flex justify-between items-center p-3 bg-gray-50 rounded-md">
-                            <span className="text-sm">{d.title}</span>
+                            <span className="text-sm"><b>{d.category}</b>: {d.title}</span>
+                            
                             <button onClick={() => openModal(d)} className="px-3 py-1 bg-blue-100 text-blue-800 text-xs rounded-full hover:bg-blue-200">
                                 Update
                             </button>
@@ -144,14 +181,22 @@ const MarksSection = ({ title, deadlines, marks, distribution, courseId, onMarks
             <div>
                 <h3 className="text-lg font-medium text-gray-700 mb-2">Marks Updated</h3>
                 <div className="space-y-2 max-h-60 overflow-y-auto pr-2">
-                    {updatedDeadlines.length > 0 ? updatedDeadlines.map((d: Deadline) => (
-                        <div key={d.id} className="flex justify-between items-center p-3 bg-green-50 rounded-md">
-                            <span className="text-sm">{d.title}</span>
-                            <button onClick={() => openModal(d)} className="px-3 py-1 bg-yellow-100 text-yellow-800 text-xs rounded-full hover:bg-yellow-200">
-                                Re-update
-                            </button>
-                        </div>
-                    )) : <p className="text-sm text-gray-500">No marks updated yet.</p>}
+            {updatedDeadlines.length > 0 ? updatedDeadlines.map((d: Deadline) => (
+                <div key={d.id} className="flex justify-between items-center p-3 bg-green-50 rounded-md">
+                    <label className="flex items-center space-x-2">
+                        <input
+                            type="checkbox"
+                            checked={includedDeadlines[d.id] !== false}
+                            onChange={() => toggleIncludeDeadline(d.id)}
+                            className="form-checkbox h-4 w-4 text-blue-600"
+                        />
+                        <span className="text-sm"><b>{d.category}</b>: {d.title}</span>
+                    </label>
+                    <button onClick={() => openModal(d)} className="px-3 py-1 bg-yellow-100 text-yellow-800 text-xs rounded-full hover:bg-yellow-200">
+                        Re-update
+                    </button>
+                </div>
+            )) : <p className="text-sm text-gray-500">No marks updated yet.</p>}
                 </div>
             </div>
 
@@ -179,12 +224,12 @@ const MarksSection = ({ title, deadlines, marks, distribution, courseId, onMarks
                         <form onSubmit={handleMarkSubmit} className="space-y-4">
                             <div>
                                 <label className="block text-sm font-medium text-gray-700">Type</label>
-                                <select value={markData.type} onChange={e => setMarkData({...markData, type: e.target.value})} className="mt-1 block w-full p-2 border rounded-md">
-                                    <option value="quiz">Quiz</option>
-                                    <option value="assignment">Assignment</option>
-                                    <option value="mid">Mid</option>
-                                    <option value="final">Final</option>
-                                </select>
+                                <input
+                                    type="text"
+                                    value={markData.type}
+                                    readOnly
+                                    className="mt-1 block w-full p-2 border rounded-md bg-gray-100"
+                                />
                             </div>
                             <div className="grid grid-cols-2 gap-4">
                                 <div>

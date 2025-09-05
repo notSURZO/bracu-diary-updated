@@ -82,9 +82,10 @@ export async function GET(req: Request) {
         createdBy: actualDeadline.createdBy || '',
         createdByName: actualDeadline.createdByName || creator?.name || 'Unknown',
         createdByStudentId: actualDeadline.createdByStudentId || creator?.student_ID || 'Unknown',
-        agrees: actualDeadline.agrees || [], 
+        agrees: actualDeadline.agrees || [],
         disagrees: actualDeadline.disagrees || [],
         type: actualDeadline.type || 'theory',
+        category: actualDeadline.category || '',
         completed: userDeadline ? userDeadline.completed : false
       };
       
