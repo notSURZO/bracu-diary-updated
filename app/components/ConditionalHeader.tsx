@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useUser } from '@clerk/nextjs';
 import SearchBar from './SearchBar';
 import Image from 'next/image';
@@ -88,6 +88,7 @@ export default function ConditionalHeader() {
   const [connections, setConnections] = useState<Connection[]>([]);
   const [filteredConnections, setFilteredConnections] = useState<Connection[]>([]);
   const [deadlines, setDeadlines] = useState<Deadline[]>([]);
+  const [studyInvites, setStudyInvites] = useState<Array<{ _id: string; roomSlug: string; hostName: string; createdAt: string }>>([]);
   const [connectionSearchQuery, setConnectionSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -100,7 +101,7 @@ export default function ConditionalHeader() {
   const isRagbotPage = pathname === '/ragbot';
 
   const isConnectionsIconHighlighted = isConnectionsDropdownOpen;
-  const isNotificationsIconHighlighted = isNotificationsDropdownOpen;
+  const isNotificationsIconHighlighted = isNotificationsDropdownOpen || (studyInvites.length > 0);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   // Debounced search handler
@@ -244,22 +245,27 @@ export default function ConditionalHeader() {
     }
   };
 
-  const fetchNotifications = async () => {
+  const fetchNotifications = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     try {
-      const response = await fetch('/api/get-user-deadlines', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: user?.id }),
-      });
-      const data = await response.json();
-      if (response.ok) {
-        setDeadlines(data.deadlines || []);
-      } else {
-        console.error('Error fetching deadlines:', data.error);
-        setError(data.error || 'Failed to fetch deadlines');
-        toast.error(data.error || 'Failed to fetch deadlines');
+      const [deadlinesRes, invitesRes] = await Promise.all([
+        fetch('/api/get-user-deadlines', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId: user?.id }),
+        }),
+        fetch('/api/study-sessions/invites')
+      ]);
+
+      const deadlinesData = await deadlinesRes.json();
+      const invitesData = await invitesRes.json();
+      if (deadlinesRes.ok) setDeadlines(deadlinesData.deadlines || []);
+      if (invitesRes.ok) setStudyInvites((invitesData.invites || []).map((i: any) => ({ _id: String(i._id), roomSlug: i.roomSlug, hostName: i.hostName, createdAt: i.createdAt })));
+      if (!deadlinesRes.ok && !invitesRes.ok) {
+        const errMsg = deadlinesData.error || invitesData.error || 'Failed to fetch notifications';
+        setError(errMsg);
+        toast.error(errMsg);
       }
     } catch (error) {
       console.error('Error fetching deadlines:', error);
@@ -268,7 +274,13 @@ export default function ConditionalHeader() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [user?.id]);
+
+  const debouncedFetchNotifications = useMemo(() => debounce(fetchNotifications, 600), [fetchNotifications]);
+
+  useEffect(() => {
+    return () => debouncedFetchNotifications.cancel();
+  }, [debouncedFetchNotifications]);
 
   const handleConnectionsToggleDropdown = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -299,11 +311,30 @@ export default function ConditionalHeader() {
       if (!newState) {
         setError(null);
       } else {
-        fetchNotifications(); // Fetch notifications on every icon click
+        debouncedFetchNotifications(); // Debounced fetch to avoid rapid repeats
       }
       return newState;
     });
   };
+
+  // Background poll for study invites (lightweight)
+  useEffect(() => {
+    let timer: any;
+    const poll = async () => {
+      try {
+        const res = await fetch('/api/study-sessions/invites');
+        if (res.ok) {
+          const data = await res.json();
+          setStudyInvites((data.invites || []).map((i: any) => ({ _id: String(i._id), roomSlug: i.roomSlug, hostName: i.hostName, createdAt: i.createdAt })));
+        }
+      } catch {}
+    };
+    if (isSignedIn) {
+      poll();
+      timer = setInterval(poll, 15000);
+    }
+    return () => timer && clearInterval(timer);
+  }, [isSignedIn]);
 
   const handleShowRequests = () => {
     setShowRequests(true);

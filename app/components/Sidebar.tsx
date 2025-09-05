@@ -24,7 +24,9 @@ const Icons = {
   FaRegClock: getSvgIcon("M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm.5-13H11V7h1.5v3.25L16.25 13l-.75.75L12.5 10.75V7z"),
   FaCalculator: getSvgIcon("M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-8 16H6v-4h5v4zm3 0h-2v-4h2v4zm3 0h-2v-4h2v4zm0-6H6v-4h11v4z"),
   FaCalendarCheck: getSvgIcon("M19 4h-3V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20c0 1.1.89 2 1.99 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V9h14v11zM7 11h2v2H7v-2zm4 0h2v2h-2v-2zm4 0h2v2h-2v-2z"),
-  FaChartLine: getSvgIcon("M16 18H8v-2h8v2zM16 14H8v-2h8v2zM16 10H8V8h8v2zM21 6H3c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm0 14H3V8h18v12z")
+  FaChartLine: getSvgIcon("M16 18H8v-2h8v2zM16 14H8v-2h8v2zM16 10H8V8h8v2zM21 6H3c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm0 14H3V8h18v12z"),
+  // Simple video camera icon
+  FaVideo: getSvgIcon("M3 5h12c1.1 0 2 .9 2 2v10c0 1.1-.9 2-2 2H3c-1.1 0-2-.9-2-2V7c0-1.1.9-2 2-2zm19 2l-5 3.5v3L22 17V7z")
 };
 
 // Navigation data
@@ -53,6 +55,7 @@ const navItems = [
   { name: 'Manage Deadlines', href: '/manage-deadlines', icon: Icons.FaRegClock },
   { name: 'Marks Calculation', href: '/marks-calculation', icon: Icons.FaCalculator },
   { name: 'Events', href: '/events', icon: Icons.FaCalendarCheck },
+  { name: 'Group Study', href: '/study-rooms', icon: Icons.FaVideo },
   { name: 'Recent Activities', href: '/activities', icon: Icons.FaChartLine },
 ];
 
