@@ -24,16 +24,23 @@ interface IProfile {
   theme_color?: string;
 }
 
-// BRAC University color themes
 const themes: { [key: string]: string } = {
-  'brac-blue': 'from-brac-blue to-brac-blue-dark',
-  'brac-gold': 'from-brac-gold to-brac-gold-dark',
+  blue: 'from-blue-500 to-indigo-600',
+  purple: 'from-purple-500 to-violet-600',
+  green: 'from-green-500 to-emerald-600',
+  pink: 'from-pink-500 to-rose-600',
+  orange: 'from-orange-500 to-amber-600',
 };
 
 const themeBgs: { [key: string]: string } = {
-  'brac-blue': 'bg-brac-blue-light text-brac-navy',
-  'brac-gold': 'bg-brac-gold-light text-brac-navy',
+  blue: 'bg-blue-50 text-blue-800',
+  purple: 'bg-purple-50 text-purple-800',
+  green: 'bg-green-50 text-green-800',
+  pink: 'bg-pink-50 text-pink-800',
+  orange: 'bg-orange-50 text-orange-800',
 };
+
+const themeKeys = Object.keys(themes);
 
 export default function ProfilePage() {
   const { user: clerkUser, isLoaded } = useUser();
@@ -98,8 +105,10 @@ export default function ProfilePage() {
   };
 
   const handleThemeChange = () => {
-    const currentTheme = form.theme_color || 'brac-blue';
-    const nextTheme = currentTheme === 'brac-blue' ? 'brac-gold' : 'brac-blue';
+    const currentTheme = form.theme_color || 'blue';
+    const currentIndex = themeKeys.indexOf(currentTheme);
+    const nextIndex = (currentIndex + 1) % themeKeys.length;
+    const nextTheme = themeKeys[nextIndex];
     
     setForm(prev => ({ ...prev, theme_color: nextTheme }));
     if (profile) {
@@ -140,26 +149,8 @@ export default function ProfilePage() {
     }
   };
   
-  if (initialLoading) {
-    return (
-      <div className="flex w-full h-screen bg-gray-50 items-center justify-center">
-        <div className="flex flex-col items-center">
-          <Loader2 className="h-12 w-12 animate-spin text-brac-blue" />
-          <p className="mt-4 text-brac-navy">Loading your profile...</p>
-        </div>
-      </div>
-    );
-  }
-  
-  if (!profile) {
-    return (
-      <div className="flex w-full h-screen items-center justify-center bg-gray-50">
-        <div className="text-xl font-semibold text-brac-navy p-8 rounded-lg shadow-sm bg-white border border-gray-200">
-          Profile not found.
-        </div>
-      </div>
-    );
-  }
+  if (initialLoading) { return (<div className="flex w-full h-screen bg-gradient-to-br from-indigo-50 via-blue-50 to-slate-100 items-center justify-center"><Loader2 className="h-12 w-12 animate-spin text-blue-600" /></div>); }
+  if (!profile) { return (<div className="flex w-full h-screen items-center justify-center"><div className="text-xl font-semibold text-red-600 p-8 rounded-lg shadow-lg bg-white">Profile not found.</div></div>); }
   
   const SocialLink = ({ href, icon: Icon, label }: { href?: string; icon: React.ElementType; label: string }) => {
     if (!href) return null;
@@ -168,322 +159,133 @@ export default function ProfilePage() {
     if (label.toLowerCase() === 'snapchat') finalHref = `https://snapchat.com/add/${href}`;
 
     return (
-        <a href={finalHref} target="_blank" rel="noopener noreferrer" aria-label={label} className="opacity-80 hover:opacity-100 transition-opacity text-brac-navy hover:text-brac-blue">
-            <Icon size={20} />
+        <a href={finalHref} target="_blank" rel="noopener noreferrer" aria-label={label} className="opacity-70 hover:opacity-100 transition-opacity">
+            <Icon size={24} />
         </a>
     );
   };
   
   const activeTheme = editMode ? form.theme_color : profile.theme_color;
-  const currentThemeClass = themes[activeTheme || 'brac-blue'];
-  const currentThemeBgClass = themeBgs[activeTheme || 'brac-blue'];
+  const currentThemeClass = themes[activeTheme || 'blue'];
+  const currentThemeBgClass = themeBgs[activeTheme || 'blue'];
 
   return (
     <>
       <ToastContainer position="bottom-right" autoClose={5000} hideProgressBar={false} />
-      <div className="w-full min-h-screen bg-gray-50 p-4 sm:p-6 lg:p-8">
-        <div className="max-w-6xl mx-auto">
-          {/* Header Section */}
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden mb-8 relative">
-            <div className={`h-40 bg-gradient-to-r ${currentThemeClass} relative`}>
-              <div className="absolute top-6 right-6 flex gap-2 z-20">
-                  {editMode && (
-                    <button 
-                      onClick={handleThemeChange} 
-                      className="flex items-center gap-2 bg-white/20 text-white p-2 rounded-md hover:bg-white/30 transition shadow-sm font-medium backdrop-blur-sm"
-                    >
-                        <Palette size={16} />
-                        <span>Change Theme</span>
-                    </button>
-                  )}
-                  {!editMode ? (
-                  <button 
-                    onClick={() => setEditMode(true)} 
-                    className="flex items-center gap-2 bg-white text-brac-navy px-4 py-2 rounded-md hover:bg-gray-100 transition shadow-sm font-medium"
-                  >
-                      <Edit size={16} /> <span>Edit Profile</span>
+      <div className="w-full min-h-screen bg-gradient-to-br from-indigo-50 via-blue-50 to-slate-100 p-4 sm:p-6 lg:p-8">
+          <div className="relative bg-white rounded-2xl shadow-lg">
+            <div className={`h-40 bg-gradient-to-r ${currentThemeClass} rounded-t-2xl`}></div>
+            
+            <div className="absolute top-6 right-6 flex gap-2 z-20">
+                {editMode && (
+                  <button onClick={handleThemeChange} className="flex items-center gap-2 bg-white/20 text-white p-2 rounded-lg hover:bg-white/30 transition shadow-sm font-semibold backdrop-blur-sm">
+                      <Palette size={16} />
                   </button>
-                  ) : (
-                  <div className="flex gap-2">
-                      <button 
-                        onClick={handleSubmit} 
-                        disabled={loading} 
-                        className="flex items-center gap-2 bg-brac-gold text-brac-navy px-4 py-2 rounded-md hover:bg-brac-gold-dark transition shadow-sm font-medium"
-                      >
-                          {loading ? <Loader2 className="animate-spin"/> : <Save size={16} />} <span>Save</span>
-                      </button>
-                      <button 
-                        onClick={() => setEditMode(false)} 
-                        className="flex items-center gap-2 bg-gray-200 text-gray-800 px-4 py-2 rounded-md hover:bg-gray-300 transition font-medium"
-                      >
-                          <X size={16} /> <span>Cancel</span>
-                      </button>
-                  </div>
-                  )}
-              </div>
+                )}
+                {!editMode ? (
+                <button onClick={() => setEditMode(true)} className="flex items-center gap-2 bg-white/20 text-white px-4 py-2 rounded-lg hover:bg-white/30 transition shadow-sm font-semibold backdrop-blur-sm">
+                    <Edit size={16} /> <span>Edit Profile</span>
+                </button>
+                ) : (
+                <div className="flex gap-2">
+                    <button onClick={handleSubmit} disabled={loading} className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition shadow-sm">
+                        {loading ? <Loader2 className="animate-spin"/> : <Save size={16} />} <span>Save</span>
+                    </button>
+                    <button onClick={() => setEditMode(false)} className="flex items-center gap-2 bg-gray-200 text-gray-800 px-4 py-2 rounded-lg hover:bg-gray-300 transition">
+                        <X size={16} /> <span>Cancel</span>
+                    </button>
+                </div>
+                )}
+            </div>
+
+            <div className="absolute top-40 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10">
+                <div className="relative h-40 w-40 sm:h-48 sm:w-48 rounded-full border-4 border-white shadow-md">
+                    <Image
+                        src={profile.picture_url}
+                        alt="Avatar"
+                        fill
+                        className="object-cover rounded-full"
+                    />
+                </div>
             </div>
             
-            {/* Profile Picture Container - Fixed Alignment */}
-            <div className="flex justify-center -mt-20 relative z-10">
-              <div className="relative h-40 w-40 rounded-full border-4 border-white shadow-md bg-white">
-                <Image
-                  src={profile.picture_url}
-                  alt="Profile Picture"
-                  fill
-                  className="object-cover rounded-full"
-                  priority
-                />
-              </div>
-            </div>
-            
-            <div className="pt-6 pb-8 px-6 sm:px-8 text-center">
-                <h1 className="text-2xl sm:text-3xl font-bold text-brac-navy">{profile.name}</h1>
-                <p className="font-medium text-brac-blue mt-1">@{profile.username}</p>
-                <div className="flex flex-wrap justify-center gap-4 mt-4 text-sm text-brac-navy">
-                    <div className="flex items-center bg-brac-blue-light px-3 py-1 rounded-full">
-                      <UserSquare size={14} className="mr-1" />
-                      <span>{profile.student_ID}</span>
+            <div className="flex flex-col md:flex-row items-center justify-between pt-28 pb-8 px-6 sm:px-8">
+                <div className="w-full md:w-1/3 text-center md:text-left">
+                    <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">{profile.name}</h1>
+                    <p className="font-semibold text-gray-600 mt-1">@{profile.username}</p>
+                    <div className="text-base font-semibold text-gray-600 mt-3 space-x-3">
+                        <span>{profile.student_ID}</span>
+                        <span className="font-light text-gray-400">•</span>
+                        <span>{profile.department || 'N/A'}</span>
                     </div>
-                    <div className="flex items-center bg-brac-blue-light px-3 py-1 rounded-full">
-                      <Building size={14} className="mr-1" />
-                      <span>{profile.department || 'N/A'}</span>
-                    </div>
-                    <div className="flex items-center bg-brac-blue-light px-3 py-1 rounded-full">
-                      <Users size={14} className="mr-1" />
-                      <span>{profile.connections?.length || 0} Connections</span>
+                </div>
+
+                <div className="w-full md:w-1/3 text-center md:text-right mt-4 md:mt-0">
+                    <div className="flex items-center justify-center md:justify-end gap-2 text-gray-600">
+                        <Users size={16} />
+                        <span>{profile.connections?.length || 0} Connections</span>
                     </div>
                 </div>
             </div>
           </div>
           
-          {/* Main Content */}
-          <div className="mb-8">
+          <div className="mt-6">
             {editMode ? (
-                <form onSubmit={handleSubmit} className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 space-y-8">
-                    <div className="border-b border-gray-200 pb-6">
-                      <h2 className="text-xl font-semibold text-brac-navy mb-4">Personal Information</h2>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                          <div>
-                            <label className="block text-sm font-medium text-brac-navy mb-1">Full Name</label>
-                            <input name="name" value={form.name || ''} onChange={handleChange} className="p-3 border border-gray-300 rounded-md w-full bg-gray-50 focus:ring-2 focus:ring-brac-blue focus:border-brac-blue" />
-                          </div>
-                          <div>
-                            <label className="block text-sm font-medium text-brac-navy mb-1">Username</label>
-                            <input name="username" value={form.username || ''} onChange={handleChange} className="p-3 border border-gray-300 rounded-md w-full bg-gray-50 focus:ring-2 focus:ring-brac-blue focus:border-brac-blue" />
-                          </div>
-                          <div>
-                            <label className="block text-sm font-medium text-brac-navy mb-1">Date of Birth</label>
-                            <input name="dateOfBirth" value={form.dateOfBirth || ''} onChange={handleChange} type="date" className="p-3 border border-gray-300 rounded-md w-full bg-gray-50 focus:ring-2 focus:ring-brac-blue focus:border-brac-blue text-gray-500" />
-                          </div>
-                          <div>
-                            <label className="block text-sm font-medium text-brac-navy mb-1">Blood Group</label>
-                            <input name="bloodGroup" value={form.bloodGroup || ''} onChange={handleChange} placeholder="e.g., O+" className="p-3 border border-gray-300 rounded-md w-full bg-gray-50 focus:ring-2 focus:ring-brac-blue focus:border-brac-blue" />
-                          </div>
-                          <div>
-                            <label className="block text-sm font-medium text-brac-navy mb-1">Phone Number</label>
-                            <input name="phone" value={form.phone || ''} onChange={handleChange} className="p-3 border border-gray-300 rounded-md w-full bg-gray-50 focus:ring-2 focus:ring-brac-blue focus:border-brac-blue" />
-                          </div>
-                          <div>
-                            <label className="block text-sm font-medium text-brac-navy mb-1">Address</label>
-                            <input name="address" value={form.address || ''} onChange={handleChange} className="p-3 border border-gray-300 rounded-md w-full bg-gray-50 focus:ring-2 focus:ring-brac-blue focus:border-brac-blue" />
-                          </div>
-                      </div>
-                    </div>
-
-                    <div className="border-b border-gray-200 pb-6">
-                      <h2 className="text-xl font-semibold text-brac-navy mb-4">University Information</h2>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                          <div>
-                            <label className="block text-sm font-medium text-brac-navy mb-1">Email Address</label>
-                            <input name="email" value={form.email || ''} onChange={handleChange} type="email" className="p-3 border border-gray-300 rounded-md w-full bg-gray-50 focus:ring-2 focus:ring-brac-blue focus:border-brac-blue" />
-                          </div>
-                          <div>
-                            <label className="block text-sm font-medium text-brac-navy mb-1">Student ID</label>
-                            <input name="student_ID" value={form.student_ID || ''} onChange={handleChange} className="p-3 border border-gray-300 rounded-md w-full bg-gray-50 focus:ring-2 focus:ring-brac-blue focus:border-brac-blue" />
-                          </div>
-                          <div className="md:col-span-2">
-                            <label className="block text-sm font-medium text-brac-navy mb-1">Department</label>
-                            <input name="department" value={form.department || ''} onChange={handleChange} className="p-3 border border-gray-300 rounded-md w-full bg-gray-50 focus:ring-2 focus:ring-brac-blue focus:border-brac-blue" />
-                          </div>
-                      </div>
-                    </div>
-
-                    <div className="border-b border-gray-200 pb-6">
-                      <h2 className="text-xl font-semibold text-brac-navy mb-4">About Me</h2>
-                      <div>
-                        <label className="block text-sm font-medium text-brac-navy mb-1">Bio</label>
-                        <textarea name="bio" value={form.bio || ''} onChange={handleChange} placeholder="Tell us about yourself..." className="w-full p-3 border border-gray-300 rounded-md bg-gray-50 focus:ring-2 focus:ring-brac-blue focus:border-brac-blue" rows={4}></textarea>
-                      </div>
-                    </div>
-
-                    <div className="border-b border-gray-200 pb-6">
-                      <h2 className="text-xl font-semibold text-brac-navy mb-4">Education</h2>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                          <div>
-                            <label className="block text-sm font-medium text-brac-navy mb-1">School</label>
-                            <input name="education.school" value={form.education?.school || ''} onChange={handleChange} className="p-3 border border-gray-300 rounded-md w-full bg-gray-50 focus:ring-2 focus:ring-brac-blue focus:border-brac-blue" />
-                          </div>
-                          <div>
-                            <label className="block text-sm font-medium text-brac-navy mb-1">College/University</label>
-                            <input name="education.college" value={form.education?.college || ''} onChange={handleChange} className="p-3 border border-gray-300 rounded-md w-full bg-gray-50 focus:ring-2 focus:ring-brac-blue focus:border-brac-blue" />
-                          </div>
-                      </div>
-                    </div>
-
-                    <div>
-                      <h2 className="text-xl font-semibold text-brac-navy mb-4">Social Links</h2>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                          <div>
-                            <label className="block text-sm font-medium text-brac-navy mb-1">Website</label>
-                            <input name="socialMedia.website" value={form.socialMedia?.website || ''} onChange={handleChange} placeholder="https://..." className="p-3 border border-gray-300 rounded-md w-full bg-gray-50 focus:ring-2 focus:ring-brac-blue focus:border-brac-blue" />
-                          </div>
-                          <div>
-                            <label className="block text-sm font-medium text-brac-navy mb-1">LinkedIn</label>
-                            <input name="socialMedia.linkedin" value={form.socialMedia?.linkedin || ''} onChange={handleChange} placeholder="https://linkedin.com/in/..." className="p-3 border border-gray-300 rounded-md w-full bg-gray-50 focus:ring-2 focus:ring-brac-blue focus:border-brac-blue" />
-                          </div>
-                          <div>
-                            <label className="block text-sm font-medium text-brac-navy mb-1">GitHub</label>
-                            <input name="socialMedia.github" value={form.socialMedia?.github || ''} onChange={handleChange} placeholder="https://github.com/..." className="p-3 border border-gray-300 rounded-md w-full bg-gray-50 focus:ring-2 focus:ring-brac-blue focus:border-brac-blue" />
-                          </div>
-                          <div>
-                            <label className="block text-sm font-medium text-brac-navy mb-1">YouTube</label>
-                            <input name="socialMedia.youtube" value={form.socialMedia?.youtube || ''} onChange={handleChange} placeholder="https://youtube.com/..." className="p-3 border border-gray-300 rounded-md w-full bg-gray-50 focus:ring-2 focus:ring-brac-blue focus:border-brac-blue" />
-                          </div>
-                          <div>
-                            <label className="block text-sm font-medium text-brac-navy mb-1">Twitter</label>
-                            <input name="socialMedia.twitter" value={form.socialMedia?.twitter || ''} onChange={handleChange} placeholder="https://twitter.com/..." className="p-3 border border-gray-300 rounded-md w-full bg-gray-50 focus:ring-2 focus:ring-brac-blue focus:border-brac-blue" />
-                          </div>
-                          <div>
-                            <label className="block text-sm font-medium text-brac-navy mb-1">Facebook</label>
-                            <input name="socialMedia.facebook" value={form.socialMedia?.facebook || ''} onChange={handleChange} placeholder="https://facebook.com/..." className="p-3 border border-gray-300 rounded-md w-full bg-gray-50 focus:ring-2 focus:ring-brac-blue focus:border-brac-blue" />
-                          </div>
-                          <div>
-                            <label className="block text-sm font-medium text-brac-navy mb-1">Instagram</label>
-                            <input name="socialMedia.instagram" value={form.socialMedia?.instagram || ''} onChange={handleChange} placeholder="Username" className="p-3 border border-gray-300 rounded-md w-full bg-gray-50 focus:ring-2 focus:ring-brac-blue focus:border-brac-blue" />
-                          </div>
-                          <div>
-                            <label className="block text-sm font-medium text-brac-navy mb-1">Snapchat</label>
-                            <input name="socialMedia.snapchat" value={form.socialMedia?.snapchat || ''} onChange={handleChange} placeholder="Username" className="p-3 border border-gray-300 rounded-md w-full bg-gray-50 focus:ring-2 focus:ring-brac-blue focus:border-brac-blue" />
-                          </div>
-                      </div>
-                    </div>
+                <form onSubmit={handleSubmit} className="bg-white p-6 sm:p-8 rounded-2xl shadow-lg space-y-8">
+                    <fieldset>
+                        <legend className="text-xl font-semibold mb-4 text-gray-700">Personal Information</legend>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <input name="name" value={form.name || ''} onChange={handleChange} placeholder="Full Name" className="p-3 border rounded-lg w-full bg-gray-50" />
+                            <input name="username" value={form.username || ''} onChange={handleChange} placeholder="Username" className="p-3 border rounded-lg w-full bg-gray-50" />
+                            <input name="dateOfBirth" value={form.dateOfBirth || ''} onChange={handleChange} type="date" className="p-3 border rounded-lg w-full bg-gray-50 text-gray-500" />
+                            <input name="bloodGroup" value={form.bloodGroup || ''} onChange={handleChange} placeholder="Blood Group (e.g., O+)" className="p-3 border rounded-lg w-full bg-gray-50" />
+                            <input name="phone" value={form.phone || ''} onChange={handleChange} placeholder="Phone Number" className="p-3 border rounded-lg w-full bg-gray-50" />
+                            <input name="address" value={form.address || ''} onChange={handleChange} placeholder="Address" className="p-3 border rounded-lg w-full bg-gray-50" />
+                        </div>
+                    </fieldset>
+                    <fieldset>
+                        <legend className="text-xl font-semibold mb-4 text-gray-700">University Information</legend>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <input name="email" value={form.email || ''} onChange={handleChange} placeholder="Email Address" type="email" className="p-3 border rounded-lg w-full bg-gray-50" />
+                            <input name="student_ID" value={form.student_ID || ''} onChange={handleChange} placeholder="Student ID" className="p-3 border rounded-lg w-full bg-gray-50" />
+                            <input name="department" value={form.department || ''} onChange={handleChange} placeholder="Department" className="p-3 border rounded-lg w-full bg-gray-50" />
+                        </div>
+                    </fieldset>
+                    <fieldset>
+                        <legend className="text-xl font-semibold mb-4 text-gray-700">About Me</legend>
+                        <textarea name="bio" value={form.bio || ''} onChange={handleChange} placeholder="Tell us about yourself..." className="w-full p-3 border rounded-lg bg-gray-50" rows={4}></textarea>
+                    </fieldset>
+                    <fieldset>
+                        <legend className="text-xl font-semibold mb-4 text-gray-700">Education</legend>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <input name="education.school" value={form.education?.school || ''} onChange={handleChange} placeholder="School Name" className="p-3 border rounded-lg w-full bg-gray-50" />
+                            <input name="education.college" value={form.education?.college || ''} onChange={handleChange} placeholder="College/University Name" className="p-3 border rounded-lg w-full bg-gray-50" />
+                        </div>
+                    </fieldset>
+                    <fieldset>
+                        <legend className="text-xl font-semibold mb-4 text-gray-700">Social Links</legend>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <input name="socialMedia.website" value={form.socialMedia?.website || ''} onChange={handleChange} placeholder="Website URL" className="p-3 border rounded-lg w-full bg-gray-50" />
+                            <input name="socialMedia.linkedin" value={form.socialMedia?.linkedin || ''} onChange={handleChange} placeholder="LinkedIn URL" className="p-3 border rounded-lg w-full bg-gray-50" />
+                            <input name="socialMedia.github" value={form.socialMedia?.github || ''} onChange={handleChange} placeholder="GitHub URL" className="p-3 border rounded-lg w-full bg-gray-50" />
+                            <input name="socialMedia.youtube" value={form.socialMedia?.youtube || ''} onChange={handleChange} placeholder="YouTube Channel URL" className="p-3 border rounded-lg w-full bg-gray-50" />
+                            <input name="socialMedia.twitter" value={form.socialMedia?.twitter || ''} onChange={handleChange} placeholder="Twitter URL" className="p-3 border rounded-lg w-full bg-gray-50" />
+                            <input name="socialMedia.facebook" value={form.socialMedia?.facebook || ''} onChange={handleChange} placeholder="Facebook URL" className="p-3 border rounded-lg w-full bg-gray-50" />
+                            <input name="socialMedia.instagram" value={form.socialMedia?.instagram || ''} onChange={handleChange} placeholder="Instagram Username" className="p-3 border rounded-lg w-full bg-gray-50" />
+                            <input name="socialMedia.snapchat" value={form.socialMedia?.snapchat || ''} onChange={handleChange} placeholder="Snapchat Username" className="p-3 border rounded-lg w-full bg-gray-50" />
+                        </div>
+                    </fieldset>
                 </form>
             ) : (
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    {/* Left Column */}
-                    <div className="lg:col-span-2 space-y-6">
-                        {/* About Card */}
-                        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-                            <h3 className="font-semibold text-lg text-brac-navy mb-4 flex items-center">
-                                <UserSquare size={20} className="mr-2" />
-                                About
-                            </h3>
-                            <p className="text-brac-navy/80">{profile.bio || "No bio information provided."}</p>
+                    <div className="lg:col-span-1 space-y-6">
+                        <div className={`p-6 rounded-2xl shadow-lg ${currentThemeBgClass}`}>
+                            <h3 className="font-bold text-lg mb-3">About</h3>
+                            <p className="text-sm opacity-80">{profile.bio || "No bio information provided."}</p>
                         </div>
-
-                        {/* Details Card */}
-                        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-                            <h3 className="font-semibold text-lg text-brac-navy mb-4 flex items-center">
-                                <UserSquare size={20} className="mr-2" />
-                                Personal Details
-                            </h3>
-                            <div className="space-y-4">
-                                <div className="flex items-center">
-                                    <Calendar size={18} className="text-brac-blue mr-3 flex-shrink-0" />
-                                    <div>
-                                        <p className="text-sm font-medium text-brac-navy/70">Date of Birth</p>
-                                        <p className="text-brac-navy">{profile.dateOfBirth ? new Date(profile.dateOfBirth).toLocaleDateString() : 'N/A'}</p>
-                                    </div>
-                                </div>
-                                <div className="flex items-center">
-                                    <Droplet size={18} className="text-brac-blue mr-3 flex-shrink-0" />
-                                    <div>
-                                        <p className="text-sm font-medium text-brac-navy/70">Blood Group</p>
-                                        <p className="text-brac-navy">{profile.bloodGroup || 'N/A'}</p>
-                                    </div>
-                                </div>
-                                <div className="flex items-center">
-                                    <Phone size={18} className="text-brac-blue mr-3 flex-shrink-0" />
-                                    <div>
-                                        <p className="text-sm font-medium text-brac-navy/70">Phone</p>
-                                        <p className="text-brac-navy">{profile.phone || 'N/A'}</p>
-                                    </div>
-                                </div>
-                                <div className="flex items-center">
-                                    <Home size={18} className="text-brac-blue mr-3 flex-shrink-0" />
-                                    <div>
-                                        <p className="text-sm font-medium text-brac-navy/70">Address</p>
-                                        <p className="text-brac-navy">{profile.address || 'N/A'}</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Education Card */}
-                        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-                            <h3 className="font-semibold text-lg text-brac-navy mb-4 flex items-center">
-                                <GraduationCap size={20} className="mr-2" />
-                                Education
-                            </h3>
-                            <div className="space-y-4">
-                                <div className="flex items-center">
-                                    <School size={18} className="text-brac-blue mr-3 flex-shrink-0" />
-                                    <div>
-                                        <p className="text-sm font-medium text-brac-navy/70">School</p>
-                                        <p className="text-brac-navy">{profile.education?.school || 'N/A'}</p>
-                                    </div>
-                                </div>
-                                <div className="flex items-center">
-                                    <GraduationCap size={18} className="text-brac-blue mr-3 flex-shrink-0" />
-                                    <div>
-                                        <p className="text-sm font-medium text-brac-navy/70">College/University</p>
-                                        <p className="text-brac-navy">{profile.education?.college || 'N/A'}</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Right Column */}
-                    <div className="space-y-6">
-                        {/* University Details Card */}
-                        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-                            <h3 className="font-semibold text-lg text-brac-navy mb-4 flex items-center">
-                                <Building size={20} className="mr-2" />
-                                University Details
-                            </h3>
-                            <div className="space-y-4">
-                                <div className="flex items-center">
-                                    <Mail size={18} className="text-brac-blue mr-3 flex-shrink-0" />
-                                    <div>
-                                        <p className="text-sm font-medium text-brac-navy/70">Email</p>
-                                        <p className="text-brac-navy">{profile.email}</p>
-                                    </div>
-                                </div>
-                                <div className="flex items-center">
-                                    <UserSquare size={18} className="text-brac-blue mr-3 flex-shrink-0" />
-                                    <div>
-                                        <p className="text-sm font-medium text-brac-navy/70">Student ID</p>
-                                        <p className="text-brac-navy">{profile.student_ID}</p>
-                                    </div>
-                                </div>
-                                <div className="flex items-center">
-                                    <Building size={18} className="text-brac-blue mr-3 flex-shrink-0" />
-                                    <div>
-                                        <p className="text-sm font-medium text-brac-navy/70">Department</p>
-                                        <p className="text-brac-navy">{profile.department || 'N/A'}</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Social Links Card */}
-                        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-                            <h3 className="font-semibold text-lg text-brac-navy mb-4 flex items-center">
-                                <FaGlobe size={18} className="mr-2" />
-                                Social Links
-                            </h3>
-                            <div className="grid grid-cols-4 gap-4">
+                        <div className={`p-6 rounded-2xl shadow-lg ${currentThemeBgClass}`}>
+                            <h3 className="font-bold text-lg mb-4">On The Web</h3>
+                            <div className="flex flex-wrap gap-5">
                                 <SocialLink href={profile.socialMedia?.website} icon={FaGlobe} label="Website" />
                                 <SocialLink href={profile.socialMedia?.linkedin} icon={FaLinkedin} label="LinkedIn" />
                                 <SocialLink href={profile.socialMedia?.github} icon={FaGithub} label="GitHub" />
@@ -494,11 +296,36 @@ export default function ProfilePage() {
                                 <SocialLink href={profile.socialMedia?.snapchat} icon={FaSnapchat} label="Snapchat" />
                             </div>
                         </div>
+                        <div className={`p-6 rounded-2xl shadow-lg ${currentThemeBgClass}`}>
+                            <h3 className="font-bold text-lg mb-4">University Details</h3>
+                            <div className="space-y-4 text-sm sm:text-base">
+                                <div className="flex items-center gap-4"><Mail className="flex-shrink-0"/><span className="font-semibold w-24">Email:</span> <span className="opacity-80">{profile.email}</span></div>
+                                <div className="flex items-center gap-4"><UserSquare className="flex-shrink-0"/><span className="font-semibold w-24">Student ID:</span> <span className="opacity-80">{profile.student_ID}</span></div>
+                                <div className="flex items-center gap-4"><Building className="flex-shrink-0"/><span className="font-semibold w-24">Department:</span> <span className="opacity-80">{profile.department || 'N/A'}</span></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="lg:col-span-2 flex flex-col gap-6">
+                        <div className={`p-6 rounded-2xl shadow-lg flex-1 ${currentThemeBgClass}`}>
+                            <h3 className="font-bold text-lg mb-4">Details</h3>
+                            <div className="space-y-4 text-sm sm:text-base">
+                                <div className="flex items-center gap-4"><Calendar className="flex-shrink-0"/><span className="font-semibold w-24">Born:</span> <span className="opacity-80">{profile.dateOfBirth ? new Date(profile.dateOfBirth).toLocaleDateString() : 'N/A'}</span></div>
+                                <div className="flex items-center gap-4"><Droplet className="flex-shrink-0"/><span className="font-semibold w-24">Blood Group:</span> <span className="opacity-80">{profile.bloodGroup || 'N/A'}</span></div>
+                                <div className="flex items-center gap-4"><Phone className="flex-shrink-0"/><span className="font-semibold w-24">Phone:</span> <span className="opacity-80">{profile.phone || 'N/A'}</span></div>
+                                <div className="flex items-center gap-4"><Home className="flex-shrink-0"/><span className="font-semibold w-24">Address:</span> <span className="opacity-80">{profile.address || 'N/A'}</span></div>
+                            </div>
+                        </div>
+                        <div className={`p-6 rounded-2xl shadow-lg flex-1 ${currentThemeBgClass}`}>
+                            <h3 className="font-bold text-lg mb-4">Education</h3>
+                            <div className="space-y-4 text-sm sm:text-base">
+                                <div className="flex items-center gap-4"><School className="flex-shrink-0"/><span className="font-semibold w-24">School:</span> <span className="opacity-80">{profile.education?.school || 'N/A'}</span></div>
+                                <div className="flex items-center gap-4"><GraduationCap className="flex-shrink-0"/><span className="font-semibold w-24">College:</span> <span className="opacity-80">{profile.education?.college || 'N/A'}</span></div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             )}
           </div>
-        </div>
       </div>
     </>
   );
