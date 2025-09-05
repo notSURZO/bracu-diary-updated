@@ -1,11 +1,12 @@
 'use client';
 
-import { useEffect, useState, useRef, useCallback } from 'react';
+import { useEffect, useState, useRef, useCallback, MouseEvent } from 'react';
 import { useParams, usePathname, useRouter } from 'next/navigation';
 import { useUser } from '@clerk/nextjs';
 import { format } from 'date-fns';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+
 
 interface Deadline {
   _id: string;
@@ -67,6 +68,7 @@ export default function ManageDeadlinesPage() {
   const [error, setError] = useState<string | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const modalRef = useRef<HTMLDivElement>(null);
+  const [createdByUsername, setCreatedByUsername] = useState<string>('');
 
   const [formData, setFormData] = useState({
     type: 'theory' as 'theory' | 'lab',
@@ -293,6 +295,31 @@ export default function ManageDeadlinesPage() {
       setError('Failed to post deadline');
     }
   };
+
+
+  interface UserData {
+    username: string;
+  }
+  const handleClickName = async (e: MouseEvent<HTMLAnchorElement>, student_id: string | undefined) => {
+    e.preventDefault();
+    if (!user) return;
+    try {
+      const response = await fetch(`/api/profile/by-student-id/${student_id}`);
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      const usernameJson: UserData = await response.json();
+      const {username} = usernameJson;
+      setCreatedByUsername(username);
+      router.push(`../profile/${username}`);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+    
+  
 
   const handleToggleComplete = async (deadline: Deadline) => {
     if (!user) return;
@@ -611,7 +638,19 @@ export default function ManageDeadlinesPage() {
                 <span className="font-medium text-gray-700">Due:</span> {date} at {time}
               </div>
               <div>
-                <span className="font-medium text-gray-700">Created by:</span> {deadline.createdByName && deadline.createdByStudentId ? `${deadline.createdByName} (${deadline.createdByStudentId})` : 'Unknown'}
+                <span className="font-medium text-gray-700">Created by:</span>{' '}
+                {deadline.createdByStudentId ? (
+                  <button
+                   
+                    onClick={(e) => handleClickName(e, deadline.createdByStudentId)}
+                    
+                    className="text-blue-600 hover:underline"
+                  >
+                    {deadline.createdByName} ({deadline.createdByStudentId})
+                  </button>
+                ) : (
+                  'Unknown'
+                )}
               </div>
               <div>
                 <span className="font-medium text-gray-700">Created at:</span> {formatDateTime(deadline.createdAt).date} at {formatDateTime(deadline.createdAt).time}
