@@ -1,6 +1,57 @@
 @layer theme, base, clerk, components, utilities;
 @import "tailwindcss";
 
+:root {
+  --brac-navy: #002147;
+  --brac-blue: #0062FF;
+  --brac-blue-light: #E6F0FF;
+  --brac-blue-dark: #0047B3;
+  --brac-gold: #FFB81C;
+  --brac-gold-light: #FFF6E6;
+  --brac-gold-dark: #E6A619;
+}
+
+/* Text colors */
+.text-brac-navy { color: #002147; }
+.text-brac-blue { color: #0062FF; }
+
+/* Background colors */
+.bg-brac-blue { background-color: #0062FF; }
+.bg-brac-blue-light { background-color: #E6F0FF; }
+.bg-brac-blue-dark { background-color: #0047B3; }
+.bg-brac-gold { background-color: #FFB81C; }
+.bg-brac-gold-light { background-color: #FFF6E6; }
+.bg-brac-gold-dark { background-color: #E6A619; }
+
+/* Gradient backgrounds */
+.from-brac-blue { --tw-gradient-from: #0062FF; --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to, rgb(0 98 255 / 0)); }
+.to-brac-blue-dark { --tw-gradient-to: #0047B3; }
+
+.from-brac-gold { --tw-gradient-from: #FFB81C; --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to, rgb(255 184 28 / 0)); }
+.to-brac-gold-dark { --tw-gradient-to: #E6A619; }
+
+:root {
+  --brac-navy: #002147;
+  --brac-blue: #0062FF;
+  --brac-gold: #FFB81C;
+  --brac-gold-dark: #e6a619;
+}
+
+/* Tailwind custom colors */
+.text-brac-navy { color: #002147; }
+.bg-brac-navy { background-color: #002147; }
+.border-brac-navy { border-color: #002147; }
+
+.text-brac-blue { color: #0062FF; }
+.bg-brac-blue { background-color: #0062FF; }
+.border-brac-blue { border-color: #0062FF; }
+
+.text-brac-gold { color: #FFB81C; }
+.bg-brac-gold { background-color: #FFB81C; }
+.border-brac-gold { border-color: #FFB81C; }
+
+.bg-brac-gold-dark { background-color: #e6a619; }
+
 
 :root {
   --background: #ffffff;
@@ -64,3 +115,5 @@ body.with-right-sidebar main {
   max-height: 16rem;
   overflow-y: auto;
 }
+
+

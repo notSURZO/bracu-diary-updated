@@ -107,16 +107,17 @@ const MarksSection = ({ title, deadlines, marks, distribution, courseId, onMarks
         }));
     };
 
-    // Filter marks based on includedDeadlines
+    // Filter marks based on includedDeadlines and updatedDeadlines
     const filteredMarks = useMemo(() => {
-        const filterMarks = (marksArray: Mark[]) => marksArray.filter(m => includedDeadlines[m.deadlineId] !== false);
+        const updatedDeadlineIds = new Set(updatedDeadlines.map((d: Deadline) => d.id));
+        const filterMarks = (marksArray: Mark[]) => marksArray.filter(m => includedDeadlines[m.deadlineId] !== false && updatedDeadlineIds.has(m.deadlineId));
         return {
             quiz: filterMarks(marks.quiz),
             assignment: filterMarks(marks.assignment),
             mid: filterMarks(marks.mid),
             final: filterMarks(marks.final),
         };
-    }, [marks, includedDeadlines]);
+    }, [marks, includedDeadlines, updatedDeadlines]);
 
     // Calculate marks based on filtered marks
     const calculatedMarks = useMemo(() => {
