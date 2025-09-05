@@ -87,7 +87,7 @@ export async function DELETE(req: Request) {
 
     // Remove the deadline from each user's deadlines array
     for (const user of users) {
-      user.deadlines = user.deadlines.filter((d: any) =>
+      user.deadlines = (user.deadlines || []).filter((d: any) =>
         d.id !== deadlineId && d._id?.toString() !== deadlineId
       );
 

@@ -9,11 +9,11 @@ export async function GET(
 ) {
   try {
     await connectToDatabase();
-    const { username } = params;
+    const { username } = await params;
     const { userId } = await auth();
 
     // Find user by username
-    const userDoc = await User.findOne({ username });
+    const userDoc: any = await User.findOne({ username });
 
     // If user not found, return 404
     if (!userDoc) {

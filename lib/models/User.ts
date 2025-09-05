@@ -53,6 +53,7 @@ export interface IUser extends Document {
   education?: IEducation;
   address?: string;
   department?: string;
+  connectionRequests: string[];
   theme_color?: string;
   interests?: string[];
   studyInvites?: Array<{

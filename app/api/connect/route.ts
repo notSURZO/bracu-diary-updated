@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import mongoose from 'mongoose';
-import User from '../../../lib/models/User';
+import User, { IUser } from '../../../lib/models/User';
 import { connectToDatabase } from '../../../lib/mongodb';
 import { auth } from '@clerk/nextjs/server';
 
