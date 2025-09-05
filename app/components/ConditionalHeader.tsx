@@ -276,11 +276,8 @@ export default function ConditionalHeader() {
     }
   }, [user?.id]);
 
-  const debouncedFetchNotifications = useMemo(() => debounce(fetchNotifications, 600), [fetchNotifications]);
-
-  useEffect(() => {
-    return () => debouncedFetchNotifications.cancel();
-  }, [debouncedFetchNotifications]);
+  // We will fetch notifications before opening the dropdown
+  // so users don't see a loading state inside the panel.
 
   const handleConnectionsToggleDropdown = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -301,20 +298,22 @@ export default function ConditionalHeader() {
     });
   };
 
-  const handleNotificationsToggleDropdown = (e: React.MouseEvent) => {
+  const handleNotificationsToggleDropdown = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     setMobileNavOpen(false);
     setIsConnectionsDropdownOpen(false);
-    setIsNotificationsDropdownOpen((prev) => {
-      const newState = !prev;
-      if (!newState) {
-        setError(null);
-      } else {
-        debouncedFetchNotifications(); // Debounced fetch to avoid rapid repeats
-      }
-      return newState;
-    });
+    if (isNotificationsDropdownOpen) {
+      setIsNotificationsDropdownOpen(false);
+      setError(null);
+      return;
+    }
+    try {
+      await fetchNotifications();
+    } finally {
+      // Open after data is loaded
+      setIsNotificationsDropdownOpen(true);
+    }
   };
 
   // Background poll for study invites (lightweight)
@@ -842,50 +841,89 @@ export default function ConditionalHeader() {
                 &times;
               </button>
             </div>
-            {isLoading ? (
-              <div className="p-4 text-center text-gray-500">Loading...</div>
-            ) : error ? (
+            {error ? (
               <div className="p-4 text-center text-red-500">{error}</div>
-            ) : deadlines.length === 0 ? (
-              <div className="p-4 text-center text-gray-500">No upcoming deadlines.</div>
+            ) : (studyInvites.length === 0 && deadlines.length === 0) ? (
+              <div className="p-4 text-center text-gray-500">No notifications.</div>
             ) : (
-              <ul className="divide-y divide-gray-100">
-                {deadlines.map((deadline) => {
-                  const { date, time } = formatDateTime(deadline.lastDate);
-                  return (
-                    <li
-                      key={deadline.id}
-                      className={`p-3 hover:bg-gray-50 transition-colors flex justify-between items-center ${
-                        deadline.completed ? 'bg-green-50' : 'bg-white'
-                      }`}
-                    >
-                      <Link
-                        href={`/manage-deadlines/${deadline.courseId}`}
-                        className="flex flex-col space-y-1 w-full"
-                        onClick={() => {
-                          setIsNotificationsDropdownOpen(false);
-                        }}
-                      >
-                        <div className="flex items-center space-x-2">
-                          <p className="font-medium text-gray-800">{deadline.title}</p>
-                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                            deadline.type === 'theory' 
-                              ? 'bg-blue-100 text-blue-800' 
-                              : 'bg-green-100 text-green-800'
-                          }`}>
-                            {deadline.type === 'theory' ? 'Theory' : 'Lab'}
-                          </span>
-                        </div>
-                        <p className="text-sm text-gray-600">{deadline.courseCode} - {deadline.courseName} (Section {deadline.section})</p>
-                        <p className="text-sm text-gray-500">Due: {date} at {time}</p>
-                      </Link>
-                      {deadline.completed && (
-                        <span className="text-sm text-green-600 font-medium">Completed</span>
-                      )}
-                    </li>
-                  );
-                })}
-              </ul>
+              <div>
+                {studyInvites.length > 0 && (
+                  <div className="p-3">
+                    <h3 className="text-sm font-semibold text-gray-700 mb-2">Group Study Invites</h3>
+                    <ul className="divide-y divide-gray-100 border border-gray-100 rounded-md">
+                      {studyInvites.map((inv) => (
+                        <li key={inv._id} className="p-3 flex items-center justify-between hover:bg-gray-50">
+                          <div>
+                            <p className="font-medium text-gray-800">{inv.hostName} invited you to study</p>
+                            <p className="text-xs text-gray-500">Room: {inv.roomSlug}</p>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <a
+                              href={`https://meet.jit.si/BRACU-DIARY-${encodeURIComponent(inv.roomSlug)}#config.prejoinPageEnabled=true`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="px-3 py-1.5 bg-blue-600 text-white rounded-md text-sm hover:bg-blue-700"
+                            >
+                              Join
+                            </a>
+                            <button
+                              onClick={async () => {
+                                try {
+                                  await fetch('/api/study-sessions/dismiss', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ inviteId: inv._id }) });
+                                  setStudyInvites(prev => prev.filter(i => i._id !== inv._id));
+                                } catch {}
+                              }}
+                              className="px-3 py-1.5 bg-gray-100 text-gray-700 rounded-md text-sm hover:bg-gray-200"
+                            >
+                              Dismiss
+                            </button>
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {deadlines.length > 0 && (
+                  <ul className="divide-y divide-gray-100">
+                    {deadlines.map((deadline) => {
+                      const { date, time } = formatDateTime(deadline.lastDate);
+                      return (
+                        <li
+                          key={deadline.id}
+                          className={`p-3 hover:bg-gray-50 transition-colors flex justify-between items-center ${
+                            deadline.completed ? 'bg-green-50' : 'bg-white'
+                          }`}
+                        >
+                          <Link
+                            href={`/manage-deadlines/${deadline.courseId}`}
+                            className="flex flex-col space-y-1 w-full"
+                            onClick={() => {
+                              setIsNotificationsDropdownOpen(false);
+                            }}
+                          >
+                            <div className="flex items-center space-x-2">
+                              <p className="font-medium text-gray-800">{deadline.title}</p>
+                              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                                deadline.type === 'theory' 
+                                  ? 'bg-blue-100 text-blue-800' 
+                                  : 'bg-green-100 text-green-800'
+                              }`}>
+                                {deadline.type === 'theory' ? 'Theory' : 'Lab'}
+                              </span>
+                            </div>
+                            <p className="text-sm text-gray-600">{deadline.courseCode} - {deadline.courseName} (Section {deadline.section})</p>
+                            <p className="text-sm text-gray-500">Due: {date} at {time}</p>
+                          </Link>
+                          {deadline.completed && (
+                            <span className="text-sm text-green-600 font-medium">Completed</span>
+                          )}
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+              </div>
             )}
             </div>
           </>
