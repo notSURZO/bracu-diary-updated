@@ -697,9 +697,9 @@ export default function ConditionalHeader() {
                     setShowRequests(false);
                     setConnectionSearchQuery('');
                   }}
-                  className="p-3 text-sm text-blue-600 hover:underline"
+                  className="p-3 text-sm text-blue-600 rounded hover:underline cursor-pointer"
                 >
-                  Back to options
+                 🔙 Back to options
                 </button>
                 {isLoading ? (
                   <div className="p-4 text-center text-gray-500">Loading...</div>
@@ -761,9 +761,9 @@ export default function ConditionalHeader() {
                     setShowConnections(false);
                     setConnectionSearchQuery('');
                   }}
-                  className="p-3 text-sm text-blue-600 hover:underline"
+                  className="p-3 text-sm text-blue-600 hover:underline cursor-pointer"
                 >
-                  Back to options
+                  🔙 Back to options
                 </button>
                 {isLoading ? (
                   <div className="p-4 text-center text-gray-500">Loading...</div>
@@ -778,6 +778,15 @@ export default function ConditionalHeader() {
                         key={request.email}
                         className="p-3 hover:bg-gray-50 transition-colors flex items-center justify-between"
                       >
+                      
+                      <Link
+                        href={`/profile/${request.username}`}
+                        className="flex items-center space-x-3"
+                        onClick={() => {
+                          setIsConnectionsDropdownOpen(false);
+                          setConnectionSearchQuery('');
+                        }}
+                      ></Link>
                         <div className="flex items-center space-x-3">
                           {request.picture_url ? (
                             <Image
