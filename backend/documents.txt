@@ -1,3 +1,24 @@
-The Eiffel Tower is in Paris and was built in 1889.
-Python is a popular programming language created by Guido van Rossum.
-Retrieval Augmented Generation combines vector search with LLMs.
+CSE460: VLSI Design, Pre-requisite: CSE260. Introduction to VLSI (Very Large Scale Integration) design: history, IC trends, technology & design approaches. Moore’s law. Review of digital logic design. Introduction to logic circuit families: n-MOS, p-MOS, pseudo n-MOS and CMOS technologies. Introduction to CMOS logic. Pull-up and pull-down networks, implementation using series and parallel MOSFETs. Combinational logic circuit design using CMOS. Complex gate design using CMOS such as And-Or-Invert or Or-And-Invert. Implementation of different circuit elements like basic gates. Multiplexers, encoder, latch, flip-flops using CMOS. Introduction to FSM (Finite State Machine): Moore type & Mealy type FSM hardware implementation. State encoding & minimization techniques. Integrated circuit fabrication technology: photolithography, CMOS process flow, design rules. Estimation of resistance and capacitance from layout. Layout comparison. Stick diagram and area estimation. Eulerian paths. CMOS transistor theory: modes of operation. Derivation of I-V characteristics. MOS capacitance. DC Response of CMOS gates: n-MOS & p-MOS pass transistors. Logic levels and noise margins. DC transfer characteristics. CMOS Power: instantaneous and average power, energy. Power analysis of circuit elements (R, C, DC Supply). Switching waveforms of an inverter. Static power and Dynamic power. Activity factor. Power reduction techniques: Clock gating, Power gating, Dynamic voltage scaling. Transient response of CMOS gates. Delay definitions: rise time, fall time, propagation delay and contamination delay, RC delay model. Effective resistance & capacitance. Elmore delay. Parasitic and effort delay. Fan-in and fan-out. Layout comparisons. Physical design of ICs: floorplanning, partitioning, routing, clock tree synthesis, KL Algorithm for partitioning, Lee’s algorithm for global routing.
+Course objectives are: 1. The objectives of this course are to give a brief introduction to the complete process of chip designing 2. provide background knowledge to design, simulate and implement combinational & sequential CMOS circuits 3. teach theoretical concepts to critically analyze the cost & performance of an IC 4. expose the students to the fabrication process & physical design aspects of CMOS IC design 5. introduce the necessary programming language/softwares such as: Verilog (programming language), Quartus II, Microwind & DSCH2 to design, simulate, visualize and verify CMOS logic circuits and layouts
+List of Books
+1. CMOS VLSI Design: A Circuits and Systems Perspective,Neil H. E. Weste & David Money Harris,2011,4th ed.,Addison-Wesley,ISBN 13: 978-0-321-54774-3
+2. Fundamentals of Digital Logic with Verilog Design,Stephen Brown & Zvonko Vranesic,2014,3rd ed.,McGraw-Hill,ISBN 978–0–07–338054–4
+Course Materials
+Lecture notes and presentation slides, Class notes, Lab handouts and presentation slides, Softwares: Quartus II, DSCH2, Microwind (shall be provided at on-campus computer labs)
+
+CSE320: Data Communications
+Offered:
+Pre-requisite: N/A
+
+This course will present an introduction to purpose and methods of communication. First of all, the course will cover the principles of networking by using the protocol layering of the Internet and the TCP/IP protocol suite. Starting from the Physical layer, this course will cover the concepts of analog and digital data and signals , their performance measurements, effects of noise and control. Next, some basic concepts such as data rate limits, analog to digital conversion methods, modulation and bandwidth utilization techniques are discussed in this course. Lastly, Data Link layer concepts and services such as error detection and multiple-access protocols are explained.
+Course Objectives
+a. Introduce Students with fundamental concepts of data communication
+b. Explain the principles of networking by using the protocol layering of the Internet
+c. Teach necessity for modulation, analog to digital conversion methods and different multiplexing techniques
+d. Explain effects of noise, error detection and control etc.
+List of Books
+1. Data Communication and Networking, Behrouz A. Forouzen, 2017, 5th, McGraw Hill, ISBN 10: 1259064751
+2. Data and Computer Communications, William Stallings, 2013, 10th, Pearson, ISBN-10: 0133506487
+Course Materials
+Text and Reference Books, Lecture Notes and presentation slides
+

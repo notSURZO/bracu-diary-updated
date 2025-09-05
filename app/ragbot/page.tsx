@@ -93,17 +93,17 @@ export default function RAGPage() {
 
   return (
     <div className="flex flex-col h-full bg-gray-50 font-sans">
-      {/* Header - Matches your layout styling */}
+      {/* Header - Matches your layout styling but not fixed */}
       <div className="bg-blue-900 text-white p-4 flex items-center space-x-3">
         <div className="w-12 h-12 rounded-full bg-white flex items-center justify-center text-blue-900 font-bold text-lg">
-              <Image
-                src="/bot-icon.svg"
-                alt="BRACU Diary Logo"
-                width={200}
-                height={60}
-                className="object-contain h-8 w-auto"
-                priority
-              />
+          <Image
+            src="/bot-icon.svg"
+            alt="BRACU Diary Logo"
+            width={200}
+            height={60}
+            className="object-contain h-8 w-auto"
+            priority
+          />
         </div>
         <div>
           <h2 className="text-xl font-semibold">Diary Assistant</h2>
@@ -111,44 +111,69 @@ export default function RAGPage() {
         </div>
       </div>
 
-      {/* Chat Container - Adjusted for header height */}
-      <div className="flex-1 overflow-y-auto pt-100 space-y-4">
+      {/* Chat Container - Adjusted for header height and bottom padding for input */}
+      <div className="flex-1 overflow-y-auto p-5 space-y-4 mb-20">
         {messages.map((message) => (
           <div
             key={message.id}
             className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}
           >
             <div
-              className={`max-w-xs md:max-w-md lg:max-w-lg xl:max-w-xl rounded-lg p-4 ${
-                message.sender === 'user' 
-                  ? 'bg-blue-600 text-white rounded-br-none' 
-                  : 'bg-white text-gray-800 rounded-bl-none shadow'
+              className={`max-w-xs md:max-w-md lg:max-w-lg xl:max-w-xl rounded-lg ${
+                message.sender === 'user'
+                  ? 'p-4 bg-blue-600 text-white rounded-br-none'
+                  : 'pl-1 pr-4 pt-4 pb-4 bg-white text-gray-800 rounded-bl-none shadow'
               }`}
             >
-              <p className="whitespace-pre-wrap">{message.text}</p>
-              <span className={`text-xs block mt-1 ${
-                message.sender === 'user' ? 'text-blue-200' : 'text-gray-500'
-              }`}>
-                {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-              </span>
+              {message.sender === 'bot' ? (
+                <div className="flex items-start space-x-2 ">
+                  <Image
+                    src="/bot-icon.svg"
+                    alt="Bot"
+                    width={20}
+                    height={20}
+                  />
+                  <div>
+                    <p className="whitespace-pre-wrap">{message.text}</p>
+                    <span className="text-xs block mt-1 text-gray-500">
+                      {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </span>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <p className="whitespace-pre-wrap">{message.text}</p>
+                  <span className="text-xs block mt-1 text-blue-200">
+                    {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  </span>
+                </>
+              )}
             </div>
           </div>
         ))}
         {loading && (
           <div className="flex justify-start">
-            <div className="bg-white text-gray-800 rounded-lg rounded-bl-none pl-6 pr-4 pt-4 pb-4 shadow flex space-x-1">
-              <div className="w-2 h-2 rounded-full bg-blue-600 animate-pulse"></div>
-              <div className="w-2 h-2 rounded-full bg-blue-600 animate-pulse" style={{ animationDelay: '0.2s' }}></div>
-              <div className="w-2 h-2 rounded-full bg-blue-600 animate-pulse" style={{ animationDelay: '0.4s' }}></div>
+            <div className="bg-white text-gray-800 rounded-lg rounded-bl-none pl-1 pr-4 pt-4 pb-4 shadow flex items-center space-x-2">
+              <Image
+                src="/bot-icon.svg"
+                alt="Bot"
+                width={20}
+                height={20}
+              />
+              <div className="flex space-x-1">
+                <div className="w-2 h-2 rounded-full bg-blue-600 animate-pulse"></div>
+                <div className="w-2 h-2 rounded-full bg-blue-600 animate-pulse" style={{ animationDelay: '0.2s' }}></div>
+                <div className="w-2 h-2 rounded-full bg-blue-600 animate-pulse" style={{ animationDelay: '0.4s' }}></div>
+              </div>
             </div>
           </div>
         )}
         <div ref={messagesEndRef} />
       </div>
-
-      {/* Input Area */}
-      <div className="bg-white border-t border-gray-200 p-4">
-        <div className="flex space-x-2">
+      
+      {/* Input Area - Fixed at bottom */}
+      <div className="fixed bottom-0 left-0 lg:left-64 right-0 bg-white border-t border-gray-200 p-4">
+        <div className="flex space-x-2 max-w-7xl mx-auto px-5">
           <input
             type="text"
             value={input}
@@ -167,13 +192,6 @@ export default function RAGPage() {
           </button>
         </div>
       </div>
-
-      {/* Auth Status */}
-      {/* {!isSignedIn && (
-        <div className="bg-red-100 text-red-700 p-3 text-center text-sm">
-          Please sign in to use the Brac University chatbot.
-        </div>
-      )} */}
     </div>
   );
 }

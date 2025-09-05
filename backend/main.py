@@ -41,7 +41,7 @@ load_documents()
 
 class QueryRequest(BaseModel):
     question: str
-    top_k: int = 2
+    top_k: int = 5
 
 @app.post("/ask")
 async def ask(request: QueryRequest):
@@ -49,7 +49,7 @@ async def ask(request: QueryRequest):
         results = collection.query(query_texts=[request.question], n_results=request.top_k)
         relevant_docs = results['documents'][0]
         context = "\n".join(relevant_docs)
-        prompt = f"Context: {context}\n\nQuestion: {request.question}\n\nAnswer based on the context."
+        prompt = f"Context: {context}\n\nQuestion: {request.question}\n\nAnswer strictly based on the context Do not make anything up by yourself."
         model = genai.GenerativeModel('gemini-2.0-flash')
         response = model.generate_content(prompt)
         return {"answer": response.text, "sources": relevant_docs}
