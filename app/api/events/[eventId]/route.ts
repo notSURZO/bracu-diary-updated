@@ -10,7 +10,9 @@ export async function GET(
   { params }: { params: { eventId: string } }
 ) {
   try {
-    console.log('Fetching event with ID:', params.eventId);
+    // Await params before using
+    const { eventId } = await params;
+    console.log('Fetching event with ID:', eventId);
     await connectToDatabase();
     
     // Check if Event model is working
@@ -18,7 +20,7 @@ export async function GET(
     console.log('Total events in database:', eventCount);
     
     // Try to find the event without population first
-    let event = await Event.findById(params.eventId).lean();
+    let event = await Event.findById(eventId).lean();
     console.log('Event found:', event ? 'Yes' : 'No');
     
     if (!event) {
@@ -88,6 +90,9 @@ export async function PUT(
       return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
     }
 
+    // Await params before using
+    const { eventId } = await params;
+
     await connectToDatabase();
     
     // Get user's profile and check admin status
@@ -102,7 +107,7 @@ export async function PUT(
     }
 
     // Find the event and verify ownership
-    const event = await Event.findById(params.eventId);
+    const event = await Event.findById(eventId);
     if (!event) {
       return NextResponse.json({ message: 'Event not found' }, { status: 404 });
     }
@@ -191,6 +196,9 @@ export async function DELETE(
       return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
     }
 
+    // Await params before using
+    const { eventId } = await params;
+
     await connectToDatabase();
     
     // Get user's profile and check admin status
@@ -205,7 +213,7 @@ export async function DELETE(
     }
 
     // Find the event and verify ownership
-    const event = await Event.findById(params.eventId);
+    const event = await Event.findById(eventId);
     if (!event) {
       return NextResponse.json({ message: 'Event not found' }, { status: 404 });
     }
