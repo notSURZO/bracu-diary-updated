@@ -111,7 +111,7 @@ export default function Schedule() {
     const doc = new jsPDF();
     const pageWidth = doc.internal.pageSize.getWidth();
     doc.setFontSize(22);
-    const headerText = "Schedule of Summer 2025";
+    const headerText = "SCHEDULE OF SUMMER 2025";
     const headerX = pageWidth / 2;
     doc.text(headerText, headerX, 18, { align: "center" });
 
@@ -245,9 +245,9 @@ export default function Schedule() {
 
   return (
     <div className="flex flex-col gap-8 sm:gap-10 md:gap-12">
-      <h2 className="text-2xl sm:text-4xl md:text-5xl font-extrabold text-blue-900 text-center tracking-tight mt-4 sm:mt-8 md:mt-12">
-        Schedule of Summer 2025
-      </h2>
+      <h3 className="text-2xl sm:text-4xl md:text-5xl font-extrabold text-blue-900 text-center tracking-tight mt-4 sm:mt-8 md:mt-12">
+        SUMMER 2025
+      </h3>
       <div className="flex justify-center mt-2 sm:mt-4 mb-2">
         <button
           onClick={handleDownloadPDF}
