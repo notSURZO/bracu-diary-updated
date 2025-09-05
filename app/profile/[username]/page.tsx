@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, memo } from 'react';
 import { notFound } from "next/navigation";
 import Image from 'next/image';
 import { FaLinkedin, FaTwitter, FaGithub, FaGlobe, FaFacebook, FaInstagram, FaSnapchat, FaYoutube } from 'react-icons/fa';
@@ -21,6 +21,8 @@ interface IProfile {
   bloodGroup?: string; socialMedia?: ISocialMedia; education?: IEducation;
   connections?: string[];
   theme_color?: string;
+  isConnected?: boolean;
+  hasSentRequest?: boolean;
 }
 
 const themes: { [key: string]: string } = {
@@ -39,10 +41,12 @@ const themeBgs: { [key: string]: string } = {
   orange: 'bg-orange-50 text-orange-800',
 };
 
-export default function UserProfilePage({ params }: { params: Promise<{ username: string }> }) {
+const UserProfilePage = memo(function UserProfilePage({ params }: { params: Promise<{ username: string }> }) {
   const [profile, setProfile] = useState<IProfile | null>(null);
   const [isConnected, setIsConnected] = useState<boolean>(false);
+  const [hasSentRequest, setHasSentRequest] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isActionLoading, setIsActionLoading] = useState<boolean>(false);
   const [showDisconnectDialog, setShowDisconnectDialog] = useState<boolean>(false);
   const { userId } = useAuth();
 
@@ -50,7 +54,7 @@ export default function UserProfilePage({ params }: { params: Promise<{ username
     async function fetchProfileData() {
       try {
         const { username } = await params;
-        
+
         // Fetch profile data from API
         const profileResponse = await fetch(`/api/profile/${username}`);
         if (!profileResponse.ok) {
@@ -59,18 +63,14 @@ export default function UserProfilePage({ params }: { params: Promise<{ username
           }
           throw new Error('Failed to fetch profile data');
         }
-        
+
         const profileData: IProfile = await profileResponse.json();
         setProfile(profileData);
 
-        // Check if current user is connected to this profile
+        // Set connection status from profile data
         if (userId) {
-          const connectionsResponse = await fetch('/api/my-connections');
-          if (connectionsResponse.ok) {
-            const connections = await connectionsResponse.json();
-            const isConnected = connections.some((conn: any) => conn.email === profileData.email);
-            setIsConnected(isConnected);
-          }
+          setIsConnected(profileData.isConnected || false);
+          setHasSentRequest(profileData.hasSentRequest || false);
         }
       } catch (error) {
         console.error('Error fetching profile data:', error);
@@ -82,12 +82,14 @@ export default function UserProfilePage({ params }: { params: Promise<{ username
     fetchProfileData();
   }, [params, userId]);
 
-  const handleConnect = async () => {
+  const handleConnect = useCallback(async () => {
     if (!profile || !userId) return;
 
+    // Optimistic update
+    setHasSentRequest(true);
+    setIsActionLoading(true);
+
     try {
-      setIsLoading(true);
-      
       const response = await fetch('/api/connect', {
         method: 'POST',
         headers: {
@@ -99,26 +101,69 @@ export default function UserProfilePage({ params }: { params: Promise<{ username
       });
 
       if (response.ok) {
-        setIsConnected(true);
-        alert('Connection request sent successfully!');
+        toast.success('Connection request sent successfully!');
       } else {
+        // Revert on failure
+        setHasSentRequest(false);
         const errorData = await response.json();
-        alert(errorData.message || 'Failed to send connection request');
+        toast.error(errorData.message || 'Failed to send connection request');
       }
     } catch (error) {
+      // Revert on failure
+      setHasSentRequest(false);
       console.error('Error sending connection request:', error);
-      alert('Failed to send connection request');
+      toast.error('Failed to send connection request');
     } finally {
-      setIsLoading(false);
+      setIsActionLoading(false);
     }
-  };
+  }, [profile, userId]);
 
-  const handleDisconnect = async () => {
+  const handleCancelRequest = useCallback(async () => {
     if (!profile || !userId) return;
 
+    // Optimistic update
+    setHasSentRequest(false);
+    setIsActionLoading(true);
+
     try {
-      setIsLoading(true);
-      
+      const response = await fetch('/api/cancel-connect', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          targetUserId: profile._id,
+        }),
+      });
+
+      if (response.ok) {
+        toast.success('Connection request canceled!');
+      } else {
+        // Revert on failure
+        setHasSentRequest(true);
+        const errorData = await response.json();
+        toast.error(errorData.message || 'Failed to cancel connection request');
+      }
+    } catch (error) {
+      // Revert on failure
+      setHasSentRequest(true);
+      console.error('Error canceling connection request:', error);
+      toast.error('Failed to cancel connection request');
+    } finally {
+      setIsActionLoading(false);
+    }
+  }, [profile, userId]);
+
+  const handleDisconnect = useCallback(async () => {
+    if (!profile || !userId) return;
+
+    // Optimistic update
+    setIsConnected(false);
+    setHasSentRequest(false);
+    setShowDisconnectDialog(false);
+    setIsLoading(true);
+
+    try {
       const response = await fetch('/api/disconnect', {
         method: 'POST',
         headers: {
@@ -130,20 +175,24 @@ export default function UserProfilePage({ params }: { params: Promise<{ username
       });
 
       if (response.ok) {
-        setIsConnected(false);
-        setShowDisconnectDialog(false);
         toast.success('Disconnected successfully!');
       } else {
+        // Revert on failure
+        setIsConnected(true);
+        setHasSentRequest(false);
         const errorData = await response.json();
-        alert(errorData.error || 'Failed to disconnect');
+        toast.error(errorData.error || 'Failed to disconnect');
       }
     } catch (error) {
+      // Revert on failure
+      setIsConnected(true);
+      setHasSentRequest(false);
       console.error('Error disconnecting:', error);
-      alert('Failed to disconnect');
+      toast.error('Failed to disconnect');
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [profile, userId]);
 
   if (isLoading) {
     return (
@@ -216,13 +265,21 @@ export default function UserProfilePage({ params }: { params: Promise<{ username
                     >
                       {isLoading ? 'Loading...' : 'Connected'}
                     </button>
+                  ) : hasSentRequest ? (
+                    <button
+                      onClick={handleCancelRequest}
+                      disabled={isLoading}
+                      className="bg-gray-500 text-white px-4 py-2 rounded-lg font-medium cursor-pointer disabled:opacity-50"
+                    >
+                      {isLoading ? 'Loading...' : 'Request sent'}
+                    </button>
                   ) : (
                     <button
                       onClick={handleConnect}
                       disabled={isLoading}
                       className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg font-medium disabled:opacity-50"
                     >
-                      {isLoading ? 'Loading...' : 'Send Request'}
+                      {isLoading ? 'Loading...' : 'Connect'}
                     </button>
                   )}
                 </div>
@@ -310,4 +367,6 @@ export default function UserProfilePage({ params }: { params: Promise<{ username
       )}
     </div>
   );
-}
+});
+
+export default UserProfilePage;
