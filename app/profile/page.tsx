@@ -26,13 +26,23 @@ interface IProfile {
 
 // BRAC University color themes
 const themes: { [key: string]: string } = {
+
   'brac-blue': 'from-brac-blue to-brac-blue-dark',
   'brac-gold': 'from-brac-gold to-brac-gold-dark',
+  'brac-green': 'from-green-600 to-green-800',
+  'brac-purple': 'from-purple-600 to-purple-800',
+  'brac-red': 'from-red-600 to-red-800',
+  'brac-teal': 'from-teal-600 to-teal-800',
 };
 
 const themeBgs: { [key: string]: string } = {
-  'brac-blue': 'bg-brac-blue-light text-brac-navy',
-  'brac-gold': 'bg-brac-gold-light text-brac-navy',
+
+  'brac-blue': 'bg-brac-blue-light',
+  'brac-gold': 'bg-brac-gold-light',
+  'brac-green': 'bg-green-100',
+  'brac-purple': 'bg-purple-100',
+  'brac-red': 'bg-red-100',
+  'brac-teal': 'bg-teal-100',
 };
 
 export default function ProfilePage() {
@@ -98,14 +108,17 @@ export default function ProfilePage() {
   };
 
   const handleThemeChange = () => {
-    const currentTheme = form.theme_color || 'brac-blue';
-    const nextTheme = currentTheme === 'brac-blue' ? 'brac-gold' : 'brac-blue';
-    
+    const themeOrder = [ 'brac-blue', 'brac-gold', 'brac-green', 'brac-purple', 'brac-red', 'brac-teal'];
+    const currentTheme = form.theme_color || 'brac-navy';
+    const currentIndex = themeOrder.indexOf(currentTheme);
+    const nextIndex = (currentIndex + 1) % themeOrder.length;
+    const nextTheme = themeOrder[nextIndex];
+
     setForm(prev => ({ ...prev, theme_color: nextTheme }));
     if (profile) {
        setProfile(prev => ({ ...prev!, theme_color: nextTheme }));
     }
-    
+
     saveTheme(nextTheme);
   };
 
@@ -142,7 +155,7 @@ export default function ProfilePage() {
   
   if (initialLoading) {
     return (
-      <div className="flex w-full h-screen bg-gray-50 items-center justify-center">
+      <div className="flex w-full h-screen items-center justify-center bg-brac-blue-light bg-gradient-to-br from-brac-blue to-brac-blue-dark">
         <div className="flex flex-col items-center">
           <Loader2 className="h-12 w-12 animate-spin text-brac-blue" />
           <p className="mt-4 text-brac-navy">Loading your profile...</p>
@@ -175,13 +188,13 @@ export default function ProfilePage() {
   };
   
   const activeTheme = editMode ? form.theme_color : profile.theme_color;
-  const currentThemeClass = themes[activeTheme || 'brac-blue'];
-  const currentThemeBgClass = themeBgs[activeTheme || 'brac-blue'];
+  const currentThemeClass = themes[activeTheme || 'brac-navy'];
+  const currentThemeBgClass = themeBgs[activeTheme || 'brac-navy'];
 
   return (
     <>
       <ToastContainer position="bottom-right" autoClose={5000} hideProgressBar={false} />
-      <div className="w-full min-h-screen bg-gray-50 p-4 sm:p-6 lg:p-8">
+      <div className={`w-full min-h-screen p-4 sm:p-6 lg:p-8 ${currentThemeBgClass}  from-current to-current/80`}>
         <div className="max-w-6xl mx-auto">
           {/* Header Section */}
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden mb-8 relative">
@@ -190,7 +203,7 @@ export default function ProfilePage() {
                   {editMode && (
                     <button 
                       onClick={handleThemeChange} 
-                      className="flex items-center gap-2 bg-white/20 text-white p-2 rounded-md hover:bg-white/30 transition shadow-sm font-medium backdrop-blur-sm"
+                      className="flex items-center gap-2 bg-white/50 text-black p-2 rounded-md hover:bg-white/30 transition shadow-sm font-medium backdrop-blur-sm"
                     >
                         <Palette size={16} />
                         <span>Change Theme</span>

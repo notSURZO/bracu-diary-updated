@@ -157,7 +157,7 @@ const UserSchema: Schema = new Schema({
   address: { type: String, default: '' },
   department: { type: String, default: '' },
   connectionRequests: [{ type: String, default: [] }],
-  theme_color: { type: String, default: 'blue' },
+  theme_color: { type: String, default: 'brac-blue' },
   interests: { type: [String], default: [] },
   studyInvites: [{
     roomSlug: { type: String, required: true },

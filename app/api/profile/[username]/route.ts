@@ -36,7 +36,7 @@ export async function GET(
       socialMedia: userDoc.socialMedia || {},
       education: userDoc.education || {},
       connections: userDoc.connections || [],
-      theme_color: userDoc.theme_color || "blue",
+      theme_color: userDoc.theme_color || "brac-blue",
     };
 
     // If authenticated, add connection status
