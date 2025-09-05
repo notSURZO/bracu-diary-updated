@@ -112,7 +112,7 @@ export default function RAGPage() {
       </div>
 
       {/* Chat Container - Adjusted for header height */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+      <div className="flex-1 overflow-y-auto pt-100 space-y-4">
         {messages.map((message) => (
           <div
             key={message.id}
@@ -136,7 +136,7 @@ export default function RAGPage() {
         ))}
         {loading && (
           <div className="flex justify-start">
-            <div className="bg-white text-gray-800 rounded-lg rounded-bl-none p-4 shadow flex space-x-1">
+            <div className="bg-white text-gray-800 rounded-lg rounded-bl-none pl-6 pr-4 pt-4 pb-4 shadow flex space-x-1">
               <div className="w-2 h-2 rounded-full bg-blue-600 animate-pulse"></div>
               <div className="w-2 h-2 rounded-full bg-blue-600 animate-pulse" style={{ animationDelay: '0.2s' }}></div>
               <div className="w-2 h-2 rounded-full bg-blue-600 animate-pulse" style={{ animationDelay: '0.4s' }}></div>
