@@ -15,6 +15,7 @@ export async function GET(req: NextRequest) {
     const page = Math.max(1, parseInt(searchParams.get('page') || '1', 10));
     const limit = Math.min(100, Math.max(1, parseInt(searchParams.get('limit') || '50', 10)));
     const skip = (page - 1) * limit;
+    
 
     // Build search filter for courses
     const courseMatch: any = {};
@@ -27,8 +28,8 @@ export async function GET(req: NextRequest) {
       ];
     }
 
-    // Default: Course Code A–Z when empty
-    let sort: Record<string, 1 | -1> = { courseCode: 1, courseName: 1 };
+    // Default: Course Code A–Z
+    let sort: Record<string, 1 | -1> = { courseCode: 1, title: 1 };
     switch (sortParam) {
       case 'newest':
         sort = { createdAt: -1 };
@@ -37,18 +38,21 @@ export async function GET(req: NextRequest) {
         sort = { createdAt: 1 };
         break;
       case 'code_asc':
-        sort = { courseCode: 1, courseName: 1 };
+        sort = { courseCode: 1, title: 1 };
         break;
       case 'code_desc':
-        sort = { courseCode: -1, courseName: 1 };
+        sort = { courseCode: -1, title: 1 };
         break;
       case 'title_asc':
-        sort = { courseName: 1 };
+        sort = { title: 1 };
         break;
       case 'title_desc':
-        sort = { courseName: -1 };
+        sort = { title: -1 };
         break;
-      // default handled above
+      default:
+        // Default to Course Code A–Z
+        sort = { courseCode: 1, title: 1 };
+        break;
     }
 
     // First, ensure all courses have directories created (one-time setup)
@@ -132,17 +136,26 @@ export async function GET(req: NextRequest) {
       }
     }
     
-    // Now use proper database pagination for the main query
-    const total = await CourseResourceDirectory.countDocuments({
+    // Build search filter for directories
+    const directoryMatch: any = {
       isSubdirectory: { $ne: true },
       visibility: 'public'
-    });
+    };
+    
+    if (q) {
+      const safe = q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const anchored = `^${safe}`;
+      directoryMatch.$or = [
+        { courseCode: { $regex: anchored, $options: 'i' } },
+        { title: { $regex: anchored, $options: 'i' } },
+      ];
+    }
+    
+    // Now use proper database pagination for the main query
+    const total = await CourseResourceDirectory.countDocuments(directoryMatch);
     
     // Get paginated main directories directly from database
-    const mainDirectories = await CourseResourceDirectory.find({
-      isSubdirectory: { $ne: true },
-      visibility: 'public'
-    })
+    const mainDirectories = await CourseResourceDirectory.find(directoryMatch)
     .sort(sort)
     .skip(skip)
     .limit(limit)
