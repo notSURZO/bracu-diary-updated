@@ -219,7 +219,7 @@ export async function DELETE(req: NextRequest) {
       );
     }
 
-    const bucket = process.env.SUPABASE_BUCKET as string | undefined;
+    const bucket = process.env.SUPABASE_BUCKET;
     if (resource.kind === 'file' && resource.file?.url && bucket) {
       try {
         const urlStr = String(resource.file.url);

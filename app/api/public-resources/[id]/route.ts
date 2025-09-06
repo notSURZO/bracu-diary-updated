@@ -35,7 +35,7 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
     }
 
     // If it's a file resource with a Supabase public URL, delete the object as well.
-    const bucket = process.env.SUPABASE_BUCKET as string | undefined;
+    const bucket = process.env.SUPABASE_BUCKET;
     if (resource.kind === 'file' && resource.file?.url && bucket) {
       try {
         const url = String(resource.file.url);
@@ -60,7 +60,7 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
       resource.title,
       resource.courseCode,
       id,
-      resource.kind as 'file' | 'youtube'
+      resource.kind
     );
 
     await CourseResource.deleteOne({ _id: id });

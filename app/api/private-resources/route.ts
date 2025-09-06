@@ -194,7 +194,7 @@ export async function DELETE(req: NextRequest) {
       resource.title,
       resource.courseCode,
       id,
-      resource.kind as 'file' | 'youtube'
+      resource.kind
     );
 
     await CourseResource.deleteOne({ _id: id });
@@ -224,7 +224,8 @@ function extractYouTubeId(inputUrl: string): string | null {
       if (u.pathname === '/watch') {
         return u.searchParams.get('v');
       }
-      const m = u.pathname.match(/\/shorts\/([^/]+)/);
+      const regex = /\/shorts\/([^/]+)/;
+      const m = regex.exec(u.pathname);
       if (m) return m[1];
     }
     return null;

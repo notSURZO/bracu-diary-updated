@@ -57,30 +57,33 @@ export default function PrivateFolderGridClient({ items: initialItems }: { reado
     });
   }, []);
 
+  // Helper functions for event handling
+  const handleResourceCreated = useCallback((e: Event) => {
+    const detail = (e as CustomEvent).detail as { item: PrivateResourceItem } | undefined;
+    if (!detail?.item) return;
+    setItems(prev => {
+      if (prev.some(it => it._id === detail.item._id)) return prev; // dedupe
+      if (deletedIdsRef.current.has(detail.item._id)) return prev; // ignore if recently deleted
+      return sortItems([detail.item, ...prev]);
+    });
+  }, [sortItems]);
+
+  const handleResourceDeleted = useCallback((e: Event) => {
+    const detail = (e as CustomEvent).detail as { id: string } | undefined;
+    if (!detail?.id) return;
+    deletedIdsRef.current.add(detail.id);
+    setItems(prev => prev.filter(it => it._id !== detail.id));
+  }, []);
+
   // Listen for optimistic create events from modals
   useEffect(() => {
-    function onCreated(e: Event) {
-      const detail = (e as CustomEvent).detail as { item: PrivateResourceItem } | undefined;
-      if (!detail?.item) return;
-      setItems(prev => {
-        if (prev.some(it => it._id === detail.item._id)) return prev; // dedupe
-        if (deletedIdsRef.current.has(detail.item._id)) return prev; // ignore if recently deleted
-        return sortItems([detail.item, ...prev]);
-      });
-    }
-    function onDeleted(e: Event) {
-      const detail = (e as CustomEvent).detail as { id: string } | undefined;
-      if (!detail?.id) return;
-      deletedIdsRef.current.add(detail.id);
-      setItems(prev => prev.filter(it => it._id !== detail.id));
-    }
-    window.addEventListener('private-resource:created', onCreated);
-    window.addEventListener('private-resource:deleted', onDeleted);
+    window.addEventListener('private-resource:created', handleResourceCreated);
+    window.addEventListener('private-resource:deleted', handleResourceDeleted);
     return () => {
-      window.removeEventListener('private-resource:created', onCreated);
-      window.removeEventListener('private-resource:deleted', onDeleted);
+      window.removeEventListener('private-resource:created', handleResourceCreated);
+      window.removeEventListener('private-resource:deleted', handleResourceDeleted);
     };
-  }, [sortItems]);
+  }, [handleResourceCreated, handleResourceDeleted]);
 
   // Fetch uploader avatars for display
   useEffect(() => {
@@ -129,7 +132,10 @@ export default function PrivateFolderGridClient({ items: initialItems }: { reado
           const contentType = res.headers.get('content-type') || '';
           if (contentType.includes('application/json')) {
             const j = await res.json();
-            if (j?.error) msg = `${j.error}${j.reason ? `: ${j.reason}` : ''}`;
+            if (j?.error) {
+              const reasonText = j.reason ? `: ${j.reason}` : '';
+              msg = `${j.error}${reasonText}`;
+            }
           } else {
             const t = await res.text();
             if (t) msg = `${msg}: ${t}`;
@@ -156,12 +162,6 @@ export default function PrivateFolderGridClient({ items: initialItems }: { reado
     }
   }, [sortItems]);
 
-  const formatBytes = (b?: number) => {
-    if (!b || b <= 0) return undefined;
-    const units = ["B", "KB", "MB", "GB"]; let i = 0; let n = b;
-    while (n >= 1024 && i < units.length - 1) { n /= 1024; i++; }
-    return `${n.toFixed(n >= 100 ? 0 : n >= 10 ? 1 : 2)} ${units[i]}`;
-  };
 
   const formatDate = (d?: string) => {
     if (!d) return undefined;
@@ -188,30 +188,6 @@ export default function PrivateFolderGridClient({ items: initialItems }: { reado
     return () => window.removeEventListener('resource-search:q', onQ as EventListener);
   }, []);
 
-  // Live updates: reflect created/deleted private resources instantly
-  useEffect(() => {
-    const handleCreated = (e: Event) => {
-      const detail = (e as CustomEvent).detail as { item: PrivateResourceItem } | undefined;
-      if (!detail?.item) return;
-      setItems(prev => {
-        if (prev.some(it => it._id === detail.item._id)) return prev; // dedupe
-        if (deletedIdsRef.current.has(detail.item._id)) return prev; // ignore if recently deleted
-        return sortItems([detail.item, ...prev]);
-      });
-    };
-    const handleDeleted = (e: Event) => {
-      const detail = (e as CustomEvent).detail as { id: string } | undefined;
-      if (!detail?.id) return;
-      deletedIdsRef.current.add(detail.id);
-      setItems(prev => prev.filter(it => it._id !== detail.id));
-    };
-    window.addEventListener('private-resource:created', handleCreated as EventListener);
-    window.addEventListener('private-resource:deleted', handleDeleted as EventListener);
-    return () => {
-      window.removeEventListener('private-resource:created', handleCreated as EventListener);
-      window.removeEventListener('private-resource:deleted', handleDeleted as EventListener);
-    };
-  }, [sortItems]);
 
   // Advanced, lightweight scoring similar to professional sites
   const visible = useMemo(() => {
@@ -255,9 +231,9 @@ export default function PrivateFolderGridClient({ items: initialItems }: { reado
           if (field.includes(t)) { score += 20 * weight; tokenMatched = true; break; }
           if (t.length >= 3) {
             // light fuzzy: check minimal edit distance within sliding windows
-            const window = Math.min(Math.max(t.length + 2, 3), Math.max(field.length, 3));
+            const windowSize = Math.min(Math.max(t.length + 2, 3), Math.max(field.length, 3));
             let best = Number.MAX_SAFE_INTEGER;
-            for (let i = 0; i + t.length <= field.length && i < 80; i++) {
+            for (let i = 0; i + t.length <= field.length && i < windowSize; i++) {
               const seg = field.slice(i, i + t.length);
               best = Math.min(best, editDistance(seg, t));
               if (best === 0) break;
@@ -376,7 +352,11 @@ export default function PrivateFolderGridClient({ items: initialItems }: { reado
                     ) : (
                       <div className="w-6 h-6 rounded-full bg-gray-100 flex items-center justify-center text-[10px] text-gray-500">{(r.ownerDisplayName || user?.fullName || 'U')?.[0] || 'U'}</div>
                     )}
-                    <span>{r.ownerDisplayName || (r.ownerUserId === userId ? (user?.fullName || "You") : "Unknown")}</span>
+                    <span>{(() => {
+                      if (r.ownerDisplayName) return r.ownerDisplayName;
+                      if (r.ownerUserId === userId) return user?.fullName || "You";
+                      return "Unknown";
+                    })()}</span>
                   </div>
                 </td>
                 <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-700 text-center">{dateStr}</td>
@@ -397,25 +377,31 @@ export default function PrivateFolderGridClient({ items: initialItems }: { reado
                     </div>
 
                     {/* Slot 2: Copy link (VIDEO/DRIVE) or Download (file types), else placeholder */}
-                    {(type === 'VIDEO' || type === 'DRIVE') ? (
-                      <div className="w-[120px] flex justify-center">
-                        <CopyLinkButton url={url} />
-                      </div>
-                    ) : (type === 'PDF' || type === 'DOCX' || type === 'TEXT') ? (
-                      <div className="w-[120px] flex justify-center">
-                        <a
-                          href={url}
-                          download
-                          className="inline-flex items-center gap-1 rounded-md border border-gray-200 bg-white px-3.5 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
-                          title="Download"
-                        >
-                          <FaDownload className="h-3.5 w-3.5" />
-                          <span>Download</span>
-                        </a>
-                      </div>
-                    ) : (
-                      <div className="w-[120px]" aria-hidden="true" />
-                    )}
+                    {(() => {
+                      if (type === 'VIDEO' || type === 'DRIVE') {
+                        return (
+                          <div className="w-[120px] flex justify-center">
+                            <CopyLinkButton url={url} />
+                          </div>
+                        );
+                      }
+                      if (type === 'PDF' || type === 'DOCX' || type === 'TEXT') {
+                        return (
+                          <div className="w-[120px] flex justify-center">
+                            <a
+                              href={url}
+                              download
+                              className="inline-flex items-center gap-1 rounded-md border border-gray-200 bg-white px-3.5 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                              title="Download"
+                            >
+                              <FaDownload className="h-3.5 w-3.5" />
+                              <span>Download</span>
+                            </a>
+                          </div>
+                        );
+                      }
+                      return <div className="w-[120px]" aria-hidden="true" />;
+                    })()}
 
                     {/* Slot 3: Delete / Confirm-Cancel */}
                     <div className="w-[160px] flex justify-center">

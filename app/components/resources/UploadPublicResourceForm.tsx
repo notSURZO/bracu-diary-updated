@@ -1,5 +1,5 @@
 "use client";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth, useUser } from "@clerk/nextjs";
 import { toast } from "react-toastify";
@@ -27,15 +27,6 @@ export default function UploadPublicResourceForm({ courseCode, defaultCourseName
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
 
-  const detectedType = useMemo(() => {
-    const u = fileUrl.trim().toLowerCase();
-    if (!u) return "";
-    if (u.endsWith(".pdf")) return "PDF";
-    if (u.endsWith(".doc") || u.endsWith(".docx")) return "DOC/DOCX";
-    if (u.endsWith(".txt")) return "TEXT";
-    if (u.endsWith(".mp4") || u.endsWith(".mov") || u.includes("youtube.com") || u.includes("youtu.be")) return "VIDEO";
-    return "LINK";
-  }, [fileUrl]);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
