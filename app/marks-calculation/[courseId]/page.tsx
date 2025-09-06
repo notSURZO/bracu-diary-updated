@@ -4,6 +4,7 @@ import { useEffect, useState, useMemo, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import { FaCalculator, FaEdit, FaPlusCircle, FaCheckCircle, FaTimesCircle, FaPercent } from 'react-icons/fa';
 
 // --- TYPE DEFINITIONS ---
 interface Mark {
@@ -156,95 +157,151 @@ const MarksSection = ({ title, deadlines, marks, distribution, courseId, onMarks
         setIsModalOpen(false);
     };
 
-
-
     const totalMarks = Object.values(calculatedMarks).reduce((sum: number, mark: any) => sum + (mark || 0), 0);
 
     return (
-        <div className="bg-white p-6 rounded-lg shadow-md space-y-6">
-            <h2 className="text-xl font-semibold text-gray-800 border-b pb-2">{title} Marks</h2>
+        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 space-y-6">
+            <h2 className="text-xl font-bold text-brac-navy border-b border-gray-200 pb-3 flex items-center gap-2">
+                <FaCalculator className="text-brac-blue" />
+                {title} Marks
+            </h2>
             
             <div>
-                <h3 className="text-lg font-medium text-gray-700 mb-2">Pending Mark Updates</h3>
+                <h3 className="text-lg font-medium text-brac-navy mb-3 flex items-center gap-2">
+                    <FaPlusCircle className="text-brac-blue" />
+                    Pending Mark Updates
+                </h3>
                 <div className="space-y-2 max-h-60 overflow-y-auto pr-2">
                     {pendingDeadlines.length > 0 ? pendingDeadlines.map((d: Deadline) => (
-                        <div key={d.id} className="flex justify-between items-center p-3 bg-gray-50 rounded-md">
-                            <span className="text-sm"><b>{d.category}</b>: {d.title}</span>
+                        <div key={d.id} className="flex justify-between items-center p-3 bg-brac-blue-light rounded-md">
+                            <span className="text-sm text-brac-navy"><b>{d.category}</b>: {d.title}</span>
                             
-                            <button onClick={() => openModal(d)} className="px-3 py-1 bg-blue-100 text-blue-800 text-xs rounded-full hover:bg-blue-200">
+                            <button 
+                                onClick={() => openModal(d)} 
+                                className="px-3 py-1 bg-brac-blue text-white text-xs rounded-md hover:bg-brac-blue-dark flex items-center gap-1"
+                            >
+                                <FaEdit size={12} />
                                 Update
                             </button>
                         </div>
-                    )) : <p className="text-sm text-gray-500">All marks are up to date.</p>}
+                    )) : (
+                        <div className="p-4 bg-gray-50 rounded-md text-center">
+                            <p className="text-sm text-brac-blue">All marks are up to date.</p>
+                        </div>
+                    )}
                 </div>
             </div>
 
             <div>
-                <h3 className="text-lg font-medium text-gray-700 mb-2">Marks Updated</h3>
+                <h3 className="text-lg font-medium text-brac-navy mb-3 flex items-center gap-2">
+                    <FaCheckCircle className="text-brac-blue" />
+                    Marks Updated
+                </h3>
                 <div className="space-y-2 max-h-60 overflow-y-auto pr-2">
-            {updatedDeadlines.length > 0 ? updatedDeadlines.map((d: Deadline) => (
-                <div key={d.id} className="flex justify-between items-center p-3 bg-green-50 rounded-md">
-                    <label className="flex items-center space-x-2">
-                        <input
-                            type="checkbox"
-                            checked={includedDeadlines[d.id] !== false}
-                            onChange={() => toggleIncludeDeadline(d.id)}
-                            className="form-checkbox h-4 w-4 text-blue-600"
-                        />
-                        <span className="text-sm"><b>{d.category}</b>: {d.title}</span>
-                    </label>
-                    <button onClick={() => openModal(d)} className="px-3 py-1 bg-yellow-100 text-yellow-800 text-xs rounded-full hover:bg-yellow-200">
-                        Re-update
-                    </button>
-                </div>
-            )) : <p className="text-sm text-gray-500">No marks updated yet.</p>}
+                    {updatedDeadlines.length > 0 ? updatedDeadlines.map((d: Deadline) => (
+                        <div key={d.id} className="flex justify-between items-center p-3 bg-brac-gold-light rounded-md">
+                            <label className="flex items-center space-x-2">
+                                <input
+                                    type="checkbox"
+                                    checked={includedDeadlines[d.id] !== false}
+                                    onChange={() => toggleIncludeDeadline(d.id)}
+                                    className="form-checkbox h-4 w-4 text-brac-blue rounded"
+                                />
+                                <span className="text-sm text-brac-navy"><b>{d.category}</b>: {d.title}</span>
+                            </label>
+                            <button 
+                                onClick={() => openModal(d)} 
+                                className="px-3 py-1 bg-brac-gold text-brac-navy text-xs rounded-md hover:bg-brac-gold-dark flex items-center gap-1"
+                            >
+                                <FaEdit size={12} />
+                                Edit
+                            </button>
+                        </div>
+                    )) : (
+                        <div className="p-4 bg-gray-50 rounded-md text-center">
+                            <p className="text-sm text-brac-blue">No marks updated yet.</p>
+                        </div>
+                    )}
                 </div>
             </div>
 
-            <div>
-                <h3 className="text-lg font-medium text-gray-700 mb-3">Calculated Marks</h3>
-                <div className="space-y-2 text-sm">
+            <div className="bg-gray-50 p-4 rounded-lg">
+                <h3 className="text-lg font-medium text-brac-navy mb-3 flex items-center gap-2">
+                    <FaPercent className="text-brac-blue" />
+                    Calculated Marks
+                </h3>
+                <div className="space-y-3 text-sm">
                     {Object.entries(calculatedMarks).map(([key, value]) => (
-                        <div key={key} className="flex justify-between">
-                            <span className="capitalize text-gray-600">{key}:</span>
-                            <span className="font-semibold">{Number(value).toFixed(2)} / {distribution?.[key as keyof MarksDistribution]}%</span>
+                        <div key={key} className="flex justify-between items-center">
+                            <span className="capitalize text-brac-navy font-medium">{key}:</span>
+                            <span className="font-semibold text-brac-blue">
+                                {Number(value).toFixed(2)} / {distribution?.[key as keyof MarksDistribution]}%
+                            </span>
                         </div>
                     ))}
-                    <div className="flex justify-between font-bold text-base pt-2 border-t">
-                        <span>Total:</span>
-                        <span>{totalMarks.toFixed(2)}%</span>
+                    <div className="flex justify-between font-bold text-base pt-3 border-t border-gray-200 mt-2">
+                        <span className="text-brac-navy">Total:</span>
+                        <span className="text-brac-blue">{totalMarks.toFixed(2)}%</span>
                     </div>
                 </div>
             </div>
             
             {/* Modal for updating marks */}
             {isModalOpen && selectedDeadline && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
-                    <div className="bg-white p-8 rounded-lg shadow-xl w-full max-w-md">
-                        <h2 className="text-2xl font-bold mb-4">Update Marks for "{selectedDeadline.title}"</h2>
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 p-4">
+                    <div className="bg-white p-6 rounded-lg shadow-xl w-full max-w-md border border-gray-200">
+                        <h2 className="text-xl font-bold text-brac-navy mb-4 flex items-center gap-2">
+                            <FaEdit className="text-brac-blue" />
+                            Update Marks for "{selectedDeadline.title}"
+                        </h2>
                         <form onSubmit={handleMarkSubmit} className="space-y-4">
                             <div>
-                                <label className="block text-sm font-medium text-gray-700">Type</label>
+                                <label className="block text-sm font-medium text-brac-navy mb-1">Type</label>
                                 <input
                                     type="text"
                                     value={markData.type}
                                     readOnly
-                                    className="mt-1 block w-full p-2 border rounded-md bg-gray-100"
+                                    className="w-full p-2 border border-gray-300 rounded-md bg-gray-50 text-brac-navy"
                                 />
                             </div>
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700">Obtained</label>
-                                    <input type="number" step="0.01" required value={markData.obtained} onChange={e => setMarkData({...markData, obtained: e.target.value})} className="mt-1 block w-full p-2 border rounded-md" />
+                                    <label className="block text-sm font-medium text-brac-navy mb-1">Obtained</label>
+                                    <input 
+                                        type="number" 
+                                        step="0.01" 
+                                        required 
+                                        value={markData.obtained} 
+                                        onChange={e => setMarkData({...markData, obtained: e.target.value})} 
+                                        className="w-full p-2 border border-gray-300 rounded-md focus:ring-brac-blue focus:border-brac-blue" 
+                                    />
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700">Out Of</label>
-                                    <input type="number" step="0.01" required value={markData.outOf} onChange={e => setMarkData({...markData, outOf: e.target.value})} className="mt-1 block w-full p-2 border rounded-md" />
+                                    <label className="block text-sm font-medium text-brac-navy mb-1">Out Of</label>
+                                    <input 
+                                        type="number" 
+                                        step="0.01" 
+                                        required 
+                                        value={markData.outOf} 
+                                        onChange={e => setMarkData({...markData, outOf: e.target.value})} 
+                                        className="w-full p-2 border border-gray-300 rounded-md focus:ring-brac-blue focus:border-brac-blue" 
+                                    />
                                 </div>
                             </div>
                             <div className="flex justify-end space-x-3 pt-4">
-                                <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 bg-gray-200 rounded-md">Cancel</button>
-                                <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded-md">Save</button>
+                                <button 
+                                    type="button" 
+                                    onClick={() => setIsModalOpen(false)} 
+                                    className="px-4 py-2 bg-gray-200 text-brac-navy rounded-md hover:bg-gray-300 font-medium"
+                                >
+                                    Cancel
+                                </button>
+                                <button 
+                                    type="submit" 
+                                    className="px-4 py-2 bg-brac-blue text-white rounded-md hover:bg-brac-blue-dark font-medium"
+                                >
+                                    Save Marks
+                                </button>
                             </div>
                         </form>
                     </div>
@@ -335,35 +392,49 @@ export default function MarksPage() {
         fetchData();
     }, [fetchData]);
 
-    if (loading) return <div className="text-center p-10">Calculating Marks...</div>;
+    if (loading) {
+        return (
+            <div className="flex justify-center items-center h-64">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brac-blue"></div>
+                <span className="ml-3 text-brac-navy">Calculating Marks...</span>
+            </div>
+        );
+    }
 
     const theoryDistribution = courseDetails?.theoryMarksDistribution?.[0];
     const labDistribution = courseDetails?.labmarksDistribution?.[0];
 
     return (
-        <div>
+        <div className="bg-gray-50 min-h-screen p-4 md:p-6">
             <ToastContainer />
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                {theoryDistribution && (
-                    <MarksSection
-                        title="Theory"
-                        deadlines={finishedDeadlines.theory}
-                        marks={courseMarks}
-                        distribution={theoryDistribution}
-                        courseId={courseId}
-                        onMarksUpdated={fetchData}
-                    />
-                )}
-                {labDistribution && (
-                     <MarksSection
-                        title="Lab"
-                        deadlines={finishedDeadlines.lab}
-                        marks={courseMarks} // Assuming lab marks are stored similarly
-                        distribution={labDistribution}
-                        courseId={courseId}
-                        onMarksUpdated={fetchData}
-                    />
-                )}
+            <div className="max-w-6xl mx-auto">
+                <div className="bg-white rounded-lg shadow-sm p-6 mb-6 border border-gray-200">
+                    <h1 className="text-2xl font-bold text-brac-navy mb-2">Marks Calculation</h1>
+                    <p className="text-brac-blue">Track and calculate your course marks based on completed deadlines</p>
+                </div>
+                
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    {theoryDistribution && (
+                        <MarksSection
+                            title="Theory"
+                            deadlines={finishedDeadlines.theory}
+                            marks={courseMarks}
+                            distribution={theoryDistribution}
+                            courseId={courseId}
+                            onMarksUpdated={fetchData}
+                        />
+                    )}
+                    {labDistribution && (
+                        <MarksSection
+                            title="Lab"
+                            deadlines={finishedDeadlines.lab}
+                            marks={courseMarks}
+                            distribution={labDistribution}
+                            courseId={courseId}
+                            onMarksUpdated={fetchData}
+                        />
+                    )}
+                </div>
             </div>
         </div>
     );
