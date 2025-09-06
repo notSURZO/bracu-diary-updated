@@ -17,7 +17,8 @@ import {
   FaTimes,
   FaFilter,
   FaSearch,
-  FaSync
+  FaSync,
+  FaThumbsUp
 } from 'react-icons/fa';
 
 interface Activity {
@@ -88,6 +89,10 @@ const getActivityIcon = (action: string) => {
       return <FaEdit className="w-5 h-5 text-brac-gold" />;
     case 'deadline_voted':
       return <FaStar className="w-5 h-5 text-brac-gold" />;
+    case 'resource_voted':
+      return <FaThumbsUp className="w-5 h-5 text-brac-blue" />;
+    case 'review_voted':
+      return <FaStar className="w-5 h-5 text-brac-gold" />;
     default:
       return <FaClock className="w-5 h-5 text-gray-600" />;
   }
@@ -142,6 +147,10 @@ const getActivityColor = (action: string) => {
     case 'interests_updated':
       return 'bg-brac-gold-light border-brac-gold';
     case 'deadline_voted':
+      return 'bg-brac-gold-light border-brac-gold';
+    case 'resource_voted':
+      return 'bg-brac-blue-light border-brac-blue';
+    case 'review_voted':
       return 'bg-brac-gold-light border-brac-gold';
     default:
       return 'bg-gray-50 border-gray-200';
@@ -444,7 +453,13 @@ export default function ActivitiesPage() {
                             )}
                             {activity.details.metadata.voteType && (
                               <span className="inline-block bg-purple-100 text-purple-800 text-xs px-2 py-1 rounded-full mr-2 mb-1">
-                                {activity.details.metadata.voteType === 'agree' ? '👍' : '👎'} {activity.details.metadata.voteType}
+                                {(() => {
+                                  const voteType = activity.details.metadata.voteType;
+                                  if (voteType === 'agree' || voteType === 'up') return '👍';
+                                  if (voteType === 'disagree' || voteType === 'down') return '👎';
+                                  if (voteType === 'clear') return '↩️';
+                                  return '👍'; // fallback
+                                })()} {activity.details.metadata.voteType}
                               </span>
                             )}
                             {activity.details.metadata.interests && (

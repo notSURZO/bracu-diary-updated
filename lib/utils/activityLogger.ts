@@ -29,7 +29,9 @@ export const ACTIVITY_TYPES = {
   STUDY_SESSION_CREATED: 'study_session_created',
   STUDY_SESSION_LEFT: 'study_session_left',
   INTERESTS_UPDATED: 'interests_updated',
-  DEADLINE_VOTED: 'deadline_voted'
+  DEADLINE_VOTED: 'deadline_voted',
+  RESOURCE_VOTED: 'resource_voted',
+  REVIEW_VOTED: 'review_voted'
 } as const;
 
 export type ActivityType = typeof ACTIVITY_TYPES[keyof typeof ACTIVITY_TYPES];
@@ -43,7 +45,8 @@ export const RESOURCE_TYPES = {
   REVIEW: 'review',
   CONNECTION: 'connection',
   STUDY_SESSION: 'study_session',
-  PROFILE: 'profile'
+  PROFILE: 'profile',
+  USER: 'user'
 } as const;
 
 export type ResourceType = typeof RESOURCE_TYPES[keyof typeof RESOURCE_TYPES];
@@ -589,5 +592,57 @@ export const logDeadlineVoted = async (
     },
     RESOURCE_TYPES.DEADLINE,
     deadlineId
+  );
+};
+
+export const logResourceVoted = async (
+  userId: string,
+  resourceTitle: string,
+  courseCode: string,
+  voteType: 'up' | 'down' | 'clear',
+  resourceId: string
+) => {
+  let voteText = '';
+  if (voteType === 'up') {
+    voteText = 'upvoted';
+  } else if (voteType === 'down') {
+    voteText = 'downvoted';
+  } else {
+    voteText = 'removed vote from';
+  }
+  
+  await logActivity(
+    userId,
+    ACTIVITY_TYPES.RESOURCE_VOTED,
+    {
+      title: `Voted on resource`,
+      description: `${voteText} resource: ${resourceTitle} in ${courseCode}`,
+      metadata: { courseCode, resourceTitle, voteType }
+    },
+    RESOURCE_TYPES.RESOURCE,
+    resourceId
+  );
+};
+
+export const logReviewVoted = async (
+  userId: string,
+  courseCode: string,
+  voteType: 'agree' | 'disagree',
+  reviewId: string,
+  reviewText?: string
+) => {
+  const voteText = voteType === 'agree' ? 'agreed with' : 'disagreed with';
+  const truncatedText = reviewText && reviewText.length > 50 ? reviewText.substring(0, 50) + '...' : reviewText || 'review';
+  
+  await logActivity(
+    userId,
+    ACTIVITY_TYPES.REVIEW_VOTED,
+    {
+      title: `Voted on review`,
+      description: `${voteText} review for ${courseCode}: "${truncatedText}"`,
+      metadata: { courseCode, voteType, reviewText: truncatedText }
+    },
+    RESOURCE_TYPES.REVIEW,
+    reviewId
   );
 };
