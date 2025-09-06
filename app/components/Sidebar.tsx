@@ -172,7 +172,7 @@ export default function Sidebar({ mobileOpen = false, onClose }: SidebarProps): 
       {mobileOpen && (
         <div className="lg:hidden fixed inset-0 z-50">
           <div className="absolute inset-0 bg-black/40" onClick={onClose} />
-          <aside className="absolute left-0 top-0 h-full w-64 bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 shadow-xl">
+          <aside className="absolute left-0 top-0 h-full w-64 bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 shadow-xl overflow-y-auto">
             <div className="flex items-center justify-between p-4 border-b">
               <span className="font-semibold">Menu</span>
               <button onClick={onClose} className="text-gray-600">✕</button>
