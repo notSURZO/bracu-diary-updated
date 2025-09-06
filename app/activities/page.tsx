@@ -64,8 +64,12 @@ const getActivityIcon = (action: string) => {
       return <FaEdit className="w-5 h-5 text-gray-600" />;
     case 'resource_deleted':
       return <FaTrash className="w-5 h-5 text-red-600" />;
+    case 'deadline_deleted':
+      return <FaTrash className="w-5 h-5 text-red-600" />;
     case 'directory_created':
       return <FaUpload className="w-5 h-5 text-brac-gold" />;
+    case 'directory_deleted':
+      return <FaTrash className="w-5 h-5 text-red-600" />;
     default:
       return <FaClock className="w-5 h-5 text-gray-600" />;
   }
@@ -97,8 +101,12 @@ const getActivityColor = (action: string) => {
       return 'bg-gray-50 border-gray-200';
     case 'resource_deleted':
       return 'bg-red-50 border-red-200';
+    case 'deadline_deleted':
+      return 'bg-red-50 border-red-200';
     case 'directory_created':
       return 'bg-brac-gold-light border-brac-gold';
+    case 'directory_deleted':
+      return 'bg-red-50 border-red-200';
     default:
       return 'bg-gray-50 border-gray-200';
   }

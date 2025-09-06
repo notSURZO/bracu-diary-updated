@@ -418,7 +418,7 @@ export default function PrivateFolderGridClient({ items: initialItems }: { reado
                     )}
 
                     {/* Slot 3: Delete / Confirm-Cancel */}
-                    <div className="w-[96px] flex justify-center">
+                    <div className="w-[160px] flex justify-center">
                       {isOwner && confirmingId !== r._id && (
                         <button
                           onClick={() => setConfirmingId(r._id)}
@@ -429,18 +429,18 @@ export default function PrivateFolderGridClient({ items: initialItems }: { reado
                         </button>
                       )}
                       {isOwner && confirmingId === r._id && (
-                        <div className="inline-flex items-center gap-2">
+                        <div className="inline-flex items-center gap-1">
                           <button
                             onClick={() => { if (deletingId !== r._id) { handleDelete(r._id); } }}
                             disabled={deletingId === r._id}
-                            className="inline-flex items-center rounded-md bg-red-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
+                            className="inline-flex items-center rounded-md bg-red-600 px-2.5 py-1.5 text-xs font-medium text-white hover:bg-red-700 disabled:opacity-50"
                           >
                             {deletingId === r._id ? 'Deleting…' : 'Confirm'}
                           </button>
                           <button
                             onClick={() => setConfirmingId(null)}
                             disabled={deletingId === r._id}
-                            className="inline-flex items-center rounded-md border border-gray-200 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                            className="inline-flex items-center rounded-md border border-gray-200 bg-white px-2.5 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
                           >
                             Cancel
                           </button>

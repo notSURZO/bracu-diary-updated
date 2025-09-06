@@ -3,6 +3,7 @@ import { revalidateTag } from 'next/cache';
 import { getAuth } from '@clerk/nextjs/server';
 import { connectToDatabase } from '@/lib/db';
 import CourseResource from '@/lib/models/CourseResource';
+import { logResourceDeleted } from '@/lib/utils/activityLogger';
 import { getSupabaseAdmin } from '@/lib/storage/supabase';
 
 // DELETE /api/public-resources/:id
@@ -52,6 +53,15 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
         console.warn('Supabase delete warning:', e);
       }
     }
+
+    // Log activity before deletion
+    await logResourceDeleted(
+      userId,
+      resource.title,
+      resource.courseCode,
+      id,
+      resource.kind as 'file' | 'youtube'
+    );
 
     await CourseResource.deleteOne({ _id: id });
 

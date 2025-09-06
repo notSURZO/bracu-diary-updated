@@ -3,6 +3,7 @@ import { connectToDatabase } from '@/lib/mongodb';
 import Course from '@/lib/models/Course';
 import User from '@/lib/models/User';
 import { auth } from '@clerk/nextjs/server';
+import { logDeadlineDeleted } from '@/lib/utils/activityLogger';
 
 export async function DELETE(req: Request) {
   try {
@@ -62,6 +63,14 @@ export async function DELETE(req: Request) {
     if (timeSinceCreation > twentyFourHours) {
       return NextResponse.json({ error: 'You can only delete deadlines within 24 hours of posting' }, { status: 400 });
     }
+
+    // Log activity before deletion
+    await logDeadlineDeleted(
+      userId,
+      deadline.title,
+      course.courseCode,
+      deadlineId
+    );
 
     // Remove the deadline from the course's array
     deadlineArray.splice(deadlineIndex, 1);

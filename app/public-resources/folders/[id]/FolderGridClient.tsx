@@ -373,16 +373,16 @@ export default function FolderGridClient({ items: initialItems }: { readonly ite
                     )}
 
                     {/* Slot 3: Delete / Confirm-Cancel */}
-                    <div className="w-[96px] flex justify-center">
+                    <div className="w-[160px] flex justify-center">
                       {userId && r.ownerUserId === userId && confirmingId !== r._id && (
                         <button onClick={() => setConfirmingId(prev => (prev === r._id ? null : r._id))} className="inline-flex items-center gap-1 rounded-md bg-red-50 px-3.5 py-1.5 text-sm font-medium text-red-700 hover:bg-red-100" title="Delete resource">
                           <FiTrash2 className="h-4 w-4" />
                         </button>
                       )}
                       {confirmingId === r._id && (
-                        <div className="inline-flex items-center gap-2">
-                          <button onClick={() => { if (deletingId !== r._id) { setConfirmingId(null); handleDelete(r._id); } }} disabled={deletingId === r._id} className="inline-flex items-center rounded-md bg-red-600 px-3.5 py-1.5 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50">{deletingId === r._id ? 'Deleting…' : 'Confirm'}</button>
-                          <button onClick={() => setConfirmingId(null)} disabled={deletingId === r._id} className="inline-flex items-center rounded-md border border-gray-200 bg-white px-3.5 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50">Cancel</button>
+                        <div className="inline-flex items-center gap-1">
+                          <button onClick={() => { if (deletingId !== r._id) { setConfirmingId(null); handleDelete(r._id); } }} disabled={deletingId === r._id} className="inline-flex items-center rounded-md bg-red-600 px-2.5 py-1.5 text-xs font-medium text-white hover:bg-red-700 disabled:opacity-50">{deletingId === r._id ? 'Deleting…' : 'Confirm'}</button>
+                          <button onClick={() => setConfirmingId(null)} disabled={deletingId === r._id} className="inline-flex items-center rounded-md border border-gray-200 bg-white px-2.5 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50">Cancel</button>
                         </div>
                       )}
                     </div>

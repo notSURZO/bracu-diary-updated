@@ -16,9 +16,11 @@ export const ACTIVITY_TYPES = {
   STUDY_SESSION_JOINED: 'study_session_joined',
   PROFILE_UPDATED: 'profile_updated',
   RESOURCE_DELETED: 'resource_deleted',
+  DEADLINE_DELETED: 'deadline_deleted',
   DEADLINE_UPDATED: 'deadline_updated',
   EVENT_CANCELLED: 'event_cancelled',
-  DIRECTORY_CREATED: 'directory_created'
+  DIRECTORY_CREATED: 'directory_created',
+  DIRECTORY_DELETED: 'directory_deleted'
 } as const;
 
 export type ActivityType = typeof ACTIVITY_TYPES[keyof typeof ACTIVITY_TYPES];
@@ -237,5 +239,83 @@ export const logDirectoryCreated = async (
     },
     RESOURCE_TYPES.RESOURCE,
     directoryId
+  );
+};
+
+export const logResourceDeleted = async (
+  userId: string,
+  resourceTitle: string,
+  courseCode: string,
+  resourceId: string,
+  resourceType: 'file' | 'youtube' = 'file'
+) => {
+  await logActivity(
+    userId,
+    ACTIVITY_TYPES.RESOURCE_DELETED,
+    {
+      title: `Deleted resource: ${resourceTitle}`,
+      description: `${courseCode} - ${resourceType} resource`,
+      metadata: { courseCode, resourceTitle, resourceType }
+    },
+    RESOURCE_TYPES.RESOURCE,
+    resourceId
+  );
+};
+
+export const logDeadlineDeleted = async (
+  userId: string,
+  deadlineTitle: string,
+  courseCode: string,
+  deadlineId: string
+) => {
+  await logActivity(
+    userId,
+    ACTIVITY_TYPES.DEADLINE_DELETED,
+    {
+      title: `Deleted deadline: ${deadlineTitle}`,
+      description: `${courseCode} - Assignment/Quiz deadline`,
+      metadata: { courseCode, deadlineTitle }
+    },
+    RESOURCE_TYPES.COURSE,
+    deadlineId
+  );
+};
+
+export const logDirectoryDeleted = async (
+  userId: string,
+  directoryTitle: string,
+  courseCode: string,
+  directoryId: string,
+  visibility: 'private' | 'connections' = 'private'
+) => {
+  await logActivity(
+    userId,
+    ACTIVITY_TYPES.DIRECTORY_DELETED,
+    {
+      title: `Deleted directory: ${directoryTitle}`,
+      description: `${courseCode} - ${visibility} directory`,
+      metadata: { courseCode, directoryTitle, visibility }
+    },
+    RESOURCE_TYPES.RESOURCE,
+    directoryId
+  );
+};
+
+export const logDeadlineCompleted = async (
+  userId: string,
+  deadlineTitle: string,
+  courseCode: string,
+  deadlineId: string
+) => {
+  await logActivity(
+    userId,
+    ACTIVITY_TYPES.DEADLINE_COMPLETED,
+    {
+      title: `Completed deadline: ${deadlineTitle}`,
+      description: `${courseCode} - Assignment/Quiz completed`,
+      metadata: { courseCode, deadlineTitle }
+    },
+    RESOURCE_TYPES.COURSE,
+    deadlineId
   );
 };

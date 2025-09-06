@@ -7,7 +7,7 @@ import User from '@/lib/models/User';
 import type { PipelineStage } from 'mongoose';
 import { Types } from 'mongoose';
 import { getSupabaseAdmin } from '@/lib/storage/supabase';
-import { logResourceUpload } from '@/lib/utils/activityLogger';
+import { logResourceUpload, logResourceDeleted } from '@/lib/utils/activityLogger';
 
 // GET ?q=&page=&limit= -> distinct courses (code, name, resourceCount) for visibility: 'private' and current user
 export async function GET(req: NextRequest) {
@@ -187,6 +187,15 @@ export async function DELETE(req: NextRequest) {
         console.warn('Supabase delete warning (collection DELETE):', e);
       }
     }
+
+    // Log activity before deletion
+    await logResourceDeleted(
+      userId,
+      resource.title,
+      resource.courseCode,
+      id,
+      resource.kind as 'file' | 'youtube'
+    );
 
     await CourseResource.deleteOne({ _id: id });
     revalidateTag('private-resources');
