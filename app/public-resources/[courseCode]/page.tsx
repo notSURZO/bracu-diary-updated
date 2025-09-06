@@ -18,7 +18,12 @@ async function getResources(courseCode: string, params: { q?: string; page?: str
   const host = hdrs.get("x-forwarded-host") || hdrs.get("host") || "localhost:3000";
   const proto = hdrs.get("x-forwarded-proto") || (host.includes("localhost") ? "http" : "https");
   const url = `${proto}://${host}/api/public-resources/by-course/${encodeURIComponent(courseCode)}${query ? `?${query}` : ''}`;
-  const res = await fetch(url, { next: { tags: ["public-resources", `public-resources:${courseCode}`], revalidate: 60 } });
+  const res = await fetch(url, { 
+    next: { 
+      tags: ["public-resources", `public-resources:${courseCode}`], 
+      revalidate: 0 
+    } 
+  });
   if (!res.ok) {
     return { items: [], page: 1, limit: 12, total: 0 } as any;
   }

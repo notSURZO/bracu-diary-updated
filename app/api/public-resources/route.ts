@@ -180,6 +180,9 @@ export async function POST(req: NextRequest) {
     if (resource.directoryId) {
       revalidateTag(`public-resources:dir:${String(resource.directoryId)}`);
     }
+    
+    // Also revalidate the main public resources page
+    revalidateTag('public-resources:directories');
 
     return NextResponse.json({ ok: true, id: (resource as any)._id.toString() }, { status: 201 });
   } catch (error) {

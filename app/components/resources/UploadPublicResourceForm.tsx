@@ -1,7 +1,7 @@
 "use client";
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useAuth } from "@clerk/nextjs";
+import { useAuth, useUser } from "@clerk/nextjs";
 import { toast } from "react-toastify";
 import { getSupabaseClient } from "@/lib/storage/supabaseClient";
 
@@ -16,6 +16,7 @@ interface Props {
 export default function UploadPublicResourceForm({ courseCode, defaultCourseName, directoryId, isPrivate = false, onSuccess }: Readonly<Props>) {
   const router = useRouter();
   const { userId } = useAuth();
+  const { user } = useUser();
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [fileUrl, setFileUrl] = useState("");
@@ -91,6 +92,7 @@ export default function UploadPublicResourceForm({ courseCode, defaultCourseName
 
       // Optimistically broadcast creation so FolderGridClient updates instantly
       try {
+        const displayName = user?.fullName || [user?.firstName, user?.lastName].filter(Boolean).join(' ') || 'You';
         const optimisticItem = source === 'link' && isYouTube
           ? {
               _id: id as string,
@@ -100,6 +102,9 @@ export default function UploadPublicResourceForm({ courseCode, defaultCourseName
               youtube: { url: fileUrl },
               ownerUserId: userId || undefined,
               createdAt: new Date().toISOString(),
+              ownerDisplayName: displayName,
+              upvoters: [],
+              downvoters: [],
             }
           : {
               _id: id as string,
@@ -109,6 +114,9 @@ export default function UploadPublicResourceForm({ courseCode, defaultCourseName
               file: { url: fileUrl, bytes: fileMeta?.bytes, originalName: fileMeta?.originalName },
               ownerUserId: userId || undefined,
               createdAt: new Date().toISOString(),
+              ownerDisplayName: displayName,
+              upvoters: [],
+              downvoters: [],
             };
         window.dispatchEvent(new CustomEvent(`${isPrivate ? 'private-' : ''}resource:created`, { detail: { item: optimisticItem } }));
       } catch {}
