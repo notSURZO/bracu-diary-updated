@@ -115,7 +115,7 @@ body.with-right-sidebar main {
 /* BRAC University Focus states for form elements */
 .focus\:ring-brac-blue:focus {
   --tw-ring-color: #0062FF;
-  ring-color: #0062FF;
+  
 }
 
 .focus\:border-brac-blue:focus {
