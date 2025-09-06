@@ -8,14 +8,15 @@ import { logResourceDeleted } from '@/lib/utils/activityLogger';
 import { getSupabaseAdmin } from '@/lib/storage/supabase';
 
 // DELETE /api/public-resources/:id
-export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     console.log('[public-resources/:id] DELETE called');
     await connectToDatabase();
     const { userId } = getAuth(req);
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const id = String(params.id || '').trim();
+    const { id: paramId } = await params;
+    const id = String(paramId || '').trim();
     if (!id) return NextResponse.json({ error: 'Invalid id' }, { status: 400 });
 
     const resource = await CourseResource.findById(id).lean();
