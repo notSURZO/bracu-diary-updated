@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Sidebar from "@/app/components/Sidebar";
-import { FaStar, FaSortAmountUp, FaSortAmountDown, FaUsers } from "react-icons/fa";
+import { FaStar, FaSortAmountUp, FaSortAmountDown, FaUsers, FaSearch, FaGraduationCap } from "react-icons/fa";
 
 type Course = {
   _id: string;
@@ -70,83 +70,110 @@ export default function CoursesListPage() {
   }
 
   return (
-    <div className="flex flex-col md:flex-row min-h-screen bg-gradient-to-br from-indigo-50 via-blue-50 to-slate-100 text-gray-800 font-sans">
+    <div className="flex flex-col md:flex-row min-h-screen bg-gray-50 text-brac-navy font-sans">
       <Sidebar />
-      <main className="flex-1 w-full">
-        <div className="container mx-auto px-4 sm:px-6 md:px-8 py-6 md:py-8">
-          <div className="bg-white p-4 sm:p-6 md:p-8 rounded-3xl shadow-2xl border border-gray-100">
-          <h1 className="font-bold text-blue-800 text-2xl sm:text-3xl md:text-4xl mb-4 sm:mb-6 flex items-center gap-2">
-            <FaStar className="text-yellow-400" /> Select a Course for Review
-          </h1>
-          <div className="flex flex-col gap-3 sm:gap-4 mb-4 sm:mb-6">
-            <input
-              type="text"
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              placeholder="Search courses by code or name..."
-              className="w-full px-3 py-2 sm:px-4 sm:py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400"
-            />
-            <div className="overflow-x-auto -mx-1 sm:mx-0">
-              <div className="flex flex-nowrap gap-2 items-center px-1">
+      <main className="flex-1 w-full p-4 md:p-6">
+        <div className="max-w-6xl mx-auto">
+          {/* Header */}
+          <div className="bg-white rounded-lg shadow-sm p-6 mb-6 border border-gray-200">
+            <div className="flex items-center gap-3 mb-2">
+              <FaGraduationCap className="text-brac-blue text-2xl" />
+              <h1 className="text-2xl font-bold text-brac-navy">Course Catalog</h1>
+            </div>
+            <p className="text-brac-blue">Browse and review courses offered at BRAC University</p>
+          </div>
+
+          {/* Search and Filter Section */}
+          <div className="bg-white rounded-lg shadow-sm p-6 mb-6 border border-gray-200">
+            <div className="flex flex-col gap-4">
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <FaSearch className="text-gray-400" />
+                </div>
+                <input
+                  type="text"
+                  value={search}
+                  onChange={e => setSearch(e.target.value)}
+                  placeholder="Search courses by code or name..."
+                  className="pl-10 w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-brac-blue focus:border-brac-blue"
+                />
+              </div>
+              
+              <div className="flex flex-wrap gap-2">
+                <span className="text-sm font-medium text-brac-navy self-center">Sort by:</span>
                 <button
-                  className={`px-3 py-2 sm:px-3 sm:py-2 text-sm sm:text-base rounded-lg font-bold shadow-md border flex items-center gap-1 ${filter === "highest" ? "bg-indigo-600 text-white" : "bg-gray-100 text-blue-800"}`}
+                  className={`px-3 py-2 text-sm rounded-md font-medium flex items-center gap-1 ${filter === "highest" ? "bg-brac-blue text-white" : "bg-gray-100 text-brac-navy hover:bg-gray-200"}`}
                   onClick={() => setFilter(filter === "highest" ? "" : "highest")}
                   title="Highest Rated"
                 >
-                  <FaSortAmountUp /> <span className="hidden sm:inline">Highest Rated</span><span className="sm:hidden">Top</span>
+                  <FaSortAmountUp /> <span>Highest Rated</span>
                 </button>
                 <button
-                  className={`px-3 py-2 sm:px-3 sm:py-2 text-sm sm:text-base rounded-lg font-bold shadow-md border flex items-center gap-1 ${filter === "lowest" ? "bg-indigo-600 text-white" : "bg-gray-100 text-blue-800"}`}
+                  className={`px-3 py-2 text-sm rounded-md font-medium flex items-center gap-1 ${filter === "lowest" ? "bg-brac-blue text-white" : "bg-gray-100 text-brac-navy hover:bg-gray-200"}`}
                   onClick={() => setFilter(filter === "lowest" ? "" : "lowest")}
                   title="Lowest Rated"
                 >
-                  <FaSortAmountDown /> <span className="hidden sm:inline">Lowest Rated</span><span className="sm:hidden">Low</span>
+                  <FaSortAmountDown /> <span>Lowest Rated</span>
                 </button>
                 <button
-                  className={`px-3 py-2 sm:px-3 sm:py-2 text-sm sm:text-base rounded-lg font-bold shadow-md border flex items-center gap-1 ${filter === "most" ? "bg-indigo-600 text-white" : "bg-gray-100 text-blue-800"}`}
+                  className={`px-3 py-2 text-sm rounded-md font-medium flex items-center gap-1 ${filter === "most" ? "bg-brac-blue text-white" : "bg-gray-100 text-brac-navy hover:bg-gray-200"}`}
                   onClick={() => setFilter(filter === "most" ? "" : "most")}
                   title="Most Reviewed"
                 >
-                  <FaUsers /> <span className="hidden sm:inline">Most Reviewed</span><span className="sm:hidden">Most</span>
+                  <FaUsers /> <span>Most Reviews</span>
                 </button>
                 <button
-                  className={`px-3 py-2 sm:px-3 sm:py-2 text-sm sm:text-base rounded-lg font-bold shadow-md border flex items-center gap-1 ${filter === "least" ? "bg-indigo-600 text-white" : "bg-gray-100 text-blue-800"}`}
+                  className={`px-3 py-2 text-sm rounded-md font-medium flex items-center gap-1 ${filter === "least" ? "bg-brac-blue text-white" : "bg-gray-100 text-brac-navy hover:bg-gray-200"}`}
                   onClick={() => setFilter(filter === "least" ? "" : "least")}
                   title="Least Reviewed"
                 >
-                  <FaUsers /> <span className="hidden sm:inline">Least Reviewed</span><span className="sm:hidden">Least</span>
+                  <FaUsers /> <span>Least Reviews</span>
                 </button>
               </div>
             </div>
           </div>
+
+          {/* Courses List */}
           {loading ? (
-            <div className="text-blue-500 font-semibold">Loading courses...</div>
+            <div className="flex justify-center items-center p-12 bg-white rounded-lg shadow-sm border border-gray-200">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brac-blue"></div>
+              <span className="ml-3 text-brac-navy">Loading courses...</span>
+            </div>
           ) : filteredCourses.length === 0 ? (
-            <div className="text-gray-500 font-semibold">No courses found.</div>
+            <div className="text-center p-12 bg-white rounded-lg shadow-sm border border-gray-200">
+              <p className="text-brac-navy font-medium">No courses found.</p>
+              {search && <p className="text-brac-blue mt-2">Try adjusting your search terms</p>}
+            </div>
           ) : (
-            <ul className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {filteredCourses.map(course => (
-                <li key={course._id} className="bg-blue-50 p-4 sm:p-6 rounded-2xl shadow-inner border border-blue-200 flex flex-col">
-                  <span className="font-bold text-lg sm:text-xl text-blue-800 mb-2">{course.courseCode}: {course.courseName}</span>
-                  <div className="flex items-center gap-3 sm:gap-4 mb-2 text-sm sm:text-base">
-                    <span className="flex items-center gap-1 text-yellow-600 font-semibold">
-                      <FaStar /> {course.averageRating?.toFixed(2) ?? "N/A"}
-                    </span>
-                    <span className="flex items-center gap-1 text-blue-700 font-semibold">
-                      <FaUsers /> {course.reviewCount ?? 0} reviews
-                    </span>
+                <div key={course._id} className="bg-white p-5 rounded-lg shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
+                  <div className="flex flex-col h-full">
+                    <h3 className="font-bold text-lg text-brac-navy mb-2">{course.courseCode}</h3>
+                    <p className="text-brac-navy/80 mb-4 flex-grow">{course.courseName}</p>
+                    
+                    <div className="flex items-center gap-4 mb-4 text-sm">
+                      <div className="flex items-center gap-1 text-brac-gold font-medium">
+                        <FaStar /> 
+                        <span>{course.averageRating?.toFixed(1) || "N/A"}</span>
+                      </div>
+                      <div className="flex items-center gap-1 text-brac-blue font-medium">
+                        <FaUsers /> 
+                        <span>{course.reviewCount || 0} reviews</span>
+                      </div>
+                    </div>
+                    
+                    <button
+                      onClick={() => router.push(`/courses/${course._id}/reviews`)}
+                      className="w-full py-2 bg-brac-blue text-white rounded-md font-medium hover:bg-brac-blue-dark transition-colors"
+                    >
+                      View Reviews
+                    </button>
                   </div>
-                  <button
-                    onClick={() => router.push(`/courses/${course._id}/reviews`)}
-                    className="mt-3 sm:mt-4 px-4 py-2 bg-indigo-600 text-white rounded-lg font-bold shadow-md hover:bg-indigo-700 transition-all duration-300"
-                  >
-                    View Reviews
-                  </button>
-                </li>
+                </div>
               ))}
-            </ul>
+            </div>
           )}
-        </div>
         </div>
       </main>
     </div>

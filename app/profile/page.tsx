@@ -155,7 +155,7 @@ export default function ProfilePage() {
   
   if (initialLoading) {
     return (
-      <div className="flex w-full h-screen items-center justify-center bg-brac-blue-light bg-gradient-to-br from-brac-blue to-brac-blue-dark">
+      <div className="flex w-full h-screen items-center justify-center ">
         <div className="flex flex-col items-center">
           <Loader2 className="h-12 w-12 animate-spin text-brac-blue" />
           <p className="mt-4 text-brac-navy">Loading your profile...</p>
