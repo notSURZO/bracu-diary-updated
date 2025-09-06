@@ -400,35 +400,38 @@ export default function ConditionalHeader() {
   const handleDisconnect = (friendEmail: string, friendName: string) => {
     if (!user) return;
 
-    const toastId = toast(
-      <DisconnectConfirmationToast
-        friendName={friendName}
-        onConfirm={async () => {
-          try {
-            const response = await fetch('/api/disconnect', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ userId: user.id, friendEmail }),
-            });
-            const data = await response.json();
-            if (response.ok) {
-              toast.success(data.message);
-              fetchConnections();
-            } else {
-              console.error('Error disconnecting:', data.error);
-              toast.error(data.error || 'Failed to disconnect');
-            }
-          } catch (error) {
-            console.error('Error disconnecting:', error);
-            toast.error('Failed to disconnect');
-          } finally {
-            toast.dismiss(toastId);
-          }
-        }}
-        onCancel={() => toast.dismiss(toastId)}
-      />,
-      { autoClose: false, closeOnClick: false, draggable: false }
-    );
+    console.log('handleDisconnect called with:', { friendEmail, friendName });
+
+    // Simple confirmation dialog for testing
+    const confirmed = window.confirm(`Are you sure you want to disconnect from ${friendName}?`);
+    if (!confirmed) return;
+
+    // Direct API call for testing
+    const disconnectUser = async () => {
+      try {
+        console.log('Attempting to disconnect from:', friendEmail);
+        const response = await fetch('/api/disconnect', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ friendEmail }),
+        });
+        console.log('Disconnect response status:', response.status);
+        const data = await response.json();
+        console.log('Disconnect response data:', data);
+        if (response.ok) {
+          toast.success(data.message);
+          fetchConnections();
+        } else {
+          console.error('Error disconnecting:', data.error);
+          toast.error(data.error || 'Failed to disconnect');
+        }
+      } catch (error) {
+        console.error('Error disconnecting:', error);
+        toast.error('Failed to disconnect');
+      }
+    };
+
+    disconnectUser();
   };
 
   const formatDateTime = (dateString: string) => {
@@ -743,7 +746,10 @@ export default function ConditionalHeader() {
                           </div>
                         </Link>
                         <button
-                          onClick={() => handleDisconnect(connection.email, connection.name)}
+                          onClick={() => {
+                            console.log('Disconnect button clicked for:', connection.email, connection.name);
+                            handleDisconnect(connection.email, connection.name);
+                          }}
                           className="px-3 py-1 bg-red-200 text-red-700 rounded-md text-sm hover:bg-red-300 transition-colors"
                         >
                           Disconnect

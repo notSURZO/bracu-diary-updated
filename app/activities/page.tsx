@@ -70,6 +70,24 @@ const getActivityIcon = (action: string) => {
       return <FaUpload className="w-5 h-5 text-brac-gold" />;
     case 'directory_deleted':
       return <FaTrash className="w-5 h-5 text-red-600" />;
+    case 'event_deleted':
+      return <FaTrash className="w-5 h-5 text-red-600" />;
+    case 'connection_requested':
+      return <FaUserPlus className="w-5 h-5 text-brac-blue" />;
+    case 'connection_rejected':
+      return <FaTimes className="w-5 h-5 text-red-600" />;
+    case 'connection_removed':
+      return <FaTimes className="w-5 h-5 text-red-600" />;
+    case 'profile_viewed':
+      return <FaEdit className="w-5 h-5 text-gray-600" />;
+    case 'study_session_created':
+      return <FaCalendarPlus className="w-5 h-5 text-brac-blue" />;
+    case 'study_session_left':
+      return <FaTimes className="w-5 h-5 text-gray-600" />;
+    case 'interests_updated':
+      return <FaEdit className="w-5 h-5 text-brac-gold" />;
+    case 'deadline_voted':
+      return <FaStar className="w-5 h-5 text-brac-gold" />;
     default:
       return <FaClock className="w-5 h-5 text-gray-600" />;
   }
@@ -107,6 +125,24 @@ const getActivityColor = (action: string) => {
       return 'bg-brac-gold-light border-brac-gold';
     case 'directory_deleted':
       return 'bg-red-50 border-red-200';
+    case 'event_deleted':
+      return 'bg-red-50 border-red-200';
+    case 'connection_requested':
+      return 'bg-brac-blue-light border-brac-blue';
+    case 'connection_rejected':
+      return 'bg-red-50 border-red-200';
+    case 'connection_removed':
+      return 'bg-red-50 border-red-200';
+    case 'profile_viewed':
+      return 'bg-gray-50 border-gray-200';
+    case 'study_session_created':
+      return 'bg-brac-blue-light border-brac-blue';
+    case 'study_session_left':
+      return 'bg-gray-50 border-gray-200';
+    case 'interests_updated':
+      return 'bg-brac-gold-light border-brac-gold';
+    case 'deadline_voted':
+      return 'bg-brac-gold-light border-brac-gold';
     default:
       return 'bg-gray-50 border-gray-200';
   }
@@ -383,6 +419,45 @@ export default function ActivitiesPage() {
                           <p className="text-gray-600 mb-3 text-lg">
                             {activity.details.description}
                           </p>
+                        )}
+                        {activity.details.metadata && (
+                          <div className="mb-3">
+                            {activity.details.metadata.location && (
+                              <span className="inline-block bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full mr-2 mb-1">
+                                📁 {activity.details.metadata.location}
+                              </span>
+                            )}
+                            {activity.details.metadata.rating && (
+                              <span className="inline-block bg-yellow-100 text-yellow-800 text-xs px-2 py-1 rounded-full mr-2 mb-1">
+                                ⭐ {activity.details.metadata.rating}/5
+                              </span>
+                            )}
+                            {activity.details.metadata.eventType && (
+                              <span className="inline-block bg-purple-100 text-purple-800 text-xs px-2 py-1 rounded-full mr-2 mb-1">
+                                🎉 {activity.details.metadata.eventType}
+                              </span>
+                            )}
+                            {activity.details.metadata.eventDate && (
+                              <span className="inline-block bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full mr-2 mb-1">
+                                📅 {new Date(activity.details.metadata.eventDate).toLocaleDateString()}
+                              </span>
+                            )}
+                            {activity.details.metadata.voteType && (
+                              <span className="inline-block bg-purple-100 text-purple-800 text-xs px-2 py-1 rounded-full mr-2 mb-1">
+                                {activity.details.metadata.voteType === 'agree' ? '👍' : '👎'} {activity.details.metadata.voteType}
+                              </span>
+                            )}
+                            {activity.details.metadata.interests && (
+                              <span className="inline-block bg-yellow-100 text-yellow-800 text-xs px-2 py-1 rounded-full mr-2 mb-1">
+                                🏷️ {activity.details.metadata.interests.slice(0, 3).join(', ')}{activity.details.metadata.interests.length > 3 ? '...' : ''}
+                              </span>
+                            )}
+                            {activity.details.metadata.updatedFields && (
+                              <span className="inline-block bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full mr-2 mb-1">
+                                ✏️ {activity.details.metadata.updatedFields.length} fields updated
+                              </span>
+                            )}
+                          </div>
                         )}
                         <div className="flex items-center justify-between">
                           <div className="flex items-center space-x-4 text-sm text-gray-500">

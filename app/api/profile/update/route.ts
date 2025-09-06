@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/mongodb';
 import User from '@/lib/models/User';
 import _ from 'lodash';
+import { logActivity, ACTIVITY_TYPES, RESOURCE_TYPES } from '@/lib/utils/activityLogger';
 
 export async function POST(req: NextRequest) {
   await connectToDatabase();
@@ -29,6 +30,23 @@ export async function POST(req: NextRequest) {
     }
 
     await updatedUser.save();
+
+    // Log profile update activity
+    await logActivity(
+      updatedUser.clerkId,
+      ACTIVITY_TYPES.PROFILE_UPDATED,
+      {
+        title: 'Updated profile',
+        description: 'Modified profile information',
+        metadata: { 
+          updatedFields: Object.keys(updateData),
+          hasProfilePicture: !!updateData.picture_url,
+          hasBio: !!updateData.bio
+        }
+      },
+      RESOURCE_TYPES.USER,
+      updatedUser.clerkId
+    );
     
     return NextResponse.json({ success: true, user: updatedUser.toObject() });
   } catch (error) {

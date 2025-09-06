@@ -1,7 +1,4 @@
-import ResourceCard from "@/app/components/resources/ResourceCard";
-import SearchInput from "@/app/components/resources/SearchInput";
-import UploadPublicResourceForm from "@/app/components/resources/UploadPublicResourceForm";
-import { SignedIn } from "@clerk/nextjs";
+import CourseResourceClient from "./CourseResourceClient";
 import { clerkClient as getClerkClient } from "@clerk/nextjs/server";
 import { headers } from "next/headers";
 
@@ -36,17 +33,7 @@ export default async function CoursePublicResourcesPage({ params, searchParams }
   const sp = await searchParams;
   const courseCode = decodeURIComponent(raw).toUpperCase();
   const data = await getResources(courseCode, sp);
-  const items: Array<{ _id: string; title: string; description?: string; file: any; ownerUserId: string }> = data.items || [];
-
-  // Client-side prefix filter for instant updates
-  const q = (sp.q || "").trim().toLowerCase();
-  const filtered = q
-    ? items.filter((it) => {
-        const t = (it.title || "").toLowerCase();
-        const d = (it.description || "").toLowerCase();
-        return t.startsWith(q) || d.startsWith(q);
-      })
-    : items;
+  const items: Array<{ _id: string; title: string; description?: string; file: any; ownerUserId: string; kind?: 'file' | 'youtube'; youtube?: { url: string; videoId: string }; createdAt?: string; upvoters?: string[]; downvoters?: string[]; ownerDisplayName?: string }> = data.items || [];
 
   // Fetch uploader avatars (best-effort)
   const avatars = await Promise.all(
@@ -62,26 +49,10 @@ export default async function CoursePublicResourcesPage({ params, searchParams }
   );
 
   return (
-    <div className="px-4 py-6 max-w-7xl mx-auto">
-      <div className="mb-6 flex items-center justify-between gap-4">
-        <h1 className="text-2xl font-bold text-gray-900">{courseCode} Public Resources</h1>
-        <SearchInput placeholder="Search title or description" />
-      </div>
-
-      {filtered.length === 0 ? (
-        <div className="rounded-lg border border-dashed border-gray-300 p-8 text-center text-sm text-gray-600">
-          No resources found.
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {filtered.map((r, idx) => (
-            <ResourceCard key={r._id} title={r.title} description={r.description} file={r.file} ownerAvatarUrl={avatars[idx]} />
-          ))}
-        </div>
-      )}
-      <SignedIn>
-        <UploadPublicResourceForm courseCode={courseCode} />
-      </SignedIn>
-    </div>
+    <CourseResourceClient 
+      initialItems={items} 
+      courseCode={courseCode} 
+      initialAvatars={avatars}
+    />
   );
 }

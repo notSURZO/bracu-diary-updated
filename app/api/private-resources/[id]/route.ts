@@ -3,6 +3,7 @@ import { revalidateTag } from 'next/cache';
 import { getAuth } from '@clerk/nextjs/server';
 import { connectToDatabase } from '@/lib/db';
 import CourseResource from '@/lib/models/CourseResource';
+import CourseResourceDirectory from '@/lib/models/CourseResourceDirectory';
 import { getSupabaseAdmin } from '@/lib/storage/supabase';
 import { logResourceDeleted } from '@/lib/utils/activityLogger';
 
@@ -38,13 +39,24 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
       }
     }
 
+    // Get directory information for logging
+    let directoryName = undefined;
+    if (resource.directoryId) {
+      try {
+        const dirDoc = await CourseResourceDirectory.findById(String(resource.directoryId)).lean();
+        directoryName = dirDoc?.title;
+      } catch {}
+    }
+
     // Log activity before deletion
     await logResourceDeleted(
       userId,
       resource.title,
       resource.courseCode,
       id,
-      resource.kind as 'file' | 'youtube'
+      resource.kind,
+      'private',
+      directoryName
     );
 
     await CourseResource.deleteOne({ _id: id });
