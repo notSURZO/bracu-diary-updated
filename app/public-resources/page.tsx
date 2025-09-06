@@ -10,7 +10,8 @@ async function getDirectories(params: { q?: string; page?: string; limit?: strin
   const qs = new URLSearchParams();
   if (params.q) qs.set("q", params.q);
   if (params.page) qs.set("page", params.page);
-  if (params.limit) qs.set("limit", params.limit);
+  // Set default limit to 50 to show more courses
+  qs.set("limit", params.limit || "50");
   if (params.sort) qs.set("sort", params.sort);
 
   const query = qs.toString();
@@ -41,6 +42,13 @@ export default async function PublicResourcesPage({ searchParams }: { readonly s
     updatedAt: String(d.updatedAt || d.createdAt || new Date().toISOString()),
   }));
 
+  const pagination = data.page && data.limit && data.total ? {
+    page: data.page,
+    limit: data.limit,
+    total: data.total,
+    totalPages: Math.ceil(data.total / data.limit)
+  } : undefined;
+
   return (
     <div className="px-4 py-6 max-w-screen-2xl mx-auto">
       <div className="mb-6">
@@ -50,7 +58,10 @@ export default async function PublicResourcesPage({ searchParams }: { readonly s
             <div className="w-full sm:min-w-[280px] sm:w-[560px] max-w-full">
               <SearchInput placeholder="Search course code or folder title" />
             </div>
-            <CreateDirectoryModal />
+            {/* Public directories are now automatically generated from Course database */}
+            <div className="text-sm text-gray-600 bg-blue-50 border border-blue-200 rounded-md px-3 py-2">
+              📚 All course directories are automatically available
+            </div>
           </div>
           <div className="flex items-center">
             <SortSelect />
@@ -63,7 +74,7 @@ export default async function PublicResourcesPage({ searchParams }: { readonly s
           {(data as any).error}
         </div>
       ) : (
-        <PublicDirectoriesClient items={items} />
+        <PublicDirectoriesClient items={items} pagination={pagination} />
       )}
     </div>
   );

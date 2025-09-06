@@ -11,7 +11,20 @@ export type PublicDirectory = {
   updatedAt: string; // or Date
 };
 
-export default function PublicDirectoriesClient({ items }: { readonly items: PublicDirectory[] }) {
+export type PaginationData = {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+};
+
+export default function PublicDirectoriesClient({ 
+  items, 
+  pagination 
+}: { 
+  readonly items: PublicDirectory[];
+  readonly pagination?: PaginationData;
+}) {
   const searchParams = useSearchParams();
   const [query, setQuery] = useState<string>(() => searchParams.get("q") || "");
   const [list, setList] = useState<PublicDirectory[]>(() => items.map(i => ({ ...i })));
@@ -77,16 +90,26 @@ export default function PublicDirectoriesClient({ items }: { readonly items: Pub
   }
 
   return (
-    <div className="grid gap-5 sm:gap-6 justify-start justify-items-center [grid-template-columns:repeat(auto-fill,minmax(240px,1fr))] sm:[grid-template-columns:repeat(auto-fill,minmax(280px,1fr))]">
-      {visible.map((d) => (
-        <FolderTile
-          key={d._id}
-          _id={d._id}
-          courseCode={d.courseCode}
-          title={d.title}
-          updatedAt={d.updatedAt}
-          variant="public"
-        />)
+    <div>
+      <div className="grid gap-5 sm:gap-6 justify-start justify-items-center [grid-template-columns:repeat(auto-fill,minmax(240px,1fr))] sm:[grid-template-columns:repeat(auto-fill,minmax(280px,1fr))]">
+        {visible.map((d) => (
+          <FolderTile
+            key={d._id}
+            _id={d._id}
+            courseCode={d.courseCode}
+            title={d.title}
+            updatedAt={d.updatedAt}
+            variant="public"
+          />)
+        )}
+      </div>
+      
+      {pagination && pagination.totalPages > 1 && (
+        <div className="mt-8 flex items-center justify-center gap-2">
+          <span className="text-sm text-gray-600">
+            Showing {((pagination.page - 1) * pagination.limit) + 1} to {Math.min(pagination.page * pagination.limit, pagination.total)} of {pagination.total} courses
+          </span>
+        </div>
       )}
     </div>
   );
