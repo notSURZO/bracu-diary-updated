@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/mongodb';
 import User from '@/lib/models/User';
-import { notFound } from 'next/navigation';
+import { auth } from '@clerk/nextjs/server';
 
 export async function GET(
   request: Request,
@@ -9,17 +9,18 @@ export async function GET(
 ) {
   try {
     await connectToDatabase();
-    const { username } = params;
+    const { username } = await params;
+    const { userId } = await auth();
 
     // Find user by username
-    const userDoc = await User.findOne({ username });
+    const userDoc: any = await User.findOne({ username });
 
     // If user not found, return 404
     if (!userDoc) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
-    const profileData = {
+    const profileData: any = {
       _id: userDoc._id.toString(),
       name: userDoc.name || "Unknown",
       username: userDoc.username || "Not set",
@@ -35,8 +36,17 @@ export async function GET(
       socialMedia: userDoc.socialMedia || {},
       education: userDoc.education || {},
       connections: userDoc.connections || [],
-      theme_color: userDoc.theme_color || "blue",
+      theme_color: userDoc.theme_color || "brac-blue",
     };
+
+    // If authenticated, add connection status
+    if (userId) {
+      const currentUser = await User.findOne({ clerkId: userId });
+      if (currentUser) {
+        profileData.isConnected = currentUser.connections?.includes(userDoc.email) || false;
+        profileData.hasSentRequest = userDoc.connectionRequests?.includes(currentUser.email) || false;
+      }
+    }
 
     return NextResponse.json(profileData);
   } catch (error) {

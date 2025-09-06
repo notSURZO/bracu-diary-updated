@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import mongoose from 'mongoose';
-import User, { IUser } from '../../../lib/models/User';
+import User from '../../../lib/models/User';
 import { connectToDatabase } from '../../../lib/mongodb';
 import { auth } from '@clerk/nextjs/server';
 
@@ -12,7 +12,7 @@ export async function POST(request: Request) {
   try {
     await ensureDbConnected();
     const { userId } = await auth();
-    
+
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -51,40 +51,26 @@ export async function POST(request: Request) {
       );
     }
 
-    // Initialize arrays if they don't exist
-    if (!targetUser.connectionRequests) {
-      targetUser.connectionRequests = [];
-    }
-    if (!targetUser.connections) {
-      targetUser.connections = [];
-    }
-
-    // Check if already connected
-    if (targetUser.connections.includes(currentUser.email)) {
+    // Check if connection request exists
+    if (!targetUser.connectionRequests?.includes(currentUser.email)) {
       return NextResponse.json(
-        { message: 'Already connected with this user' },
+        { message: 'No connection request found to cancel' },
         { status: 409 }
       );
     }
 
-    // Check if connection request already exists
-    if (targetUser.connectionRequests.includes(currentUser.email)) {
-      return NextResponse.json(
-        { message: 'Connect request already sent' },
-        { status: 409 }
-      );
-    }
-
-    // Add connection request
-    targetUser.connectionRequests.push(currentUser.email);
+    // Remove connection request
+    targetUser.connectionRequests = targetUser.connectionRequests.filter(
+      (email: string) => email !== currentUser.email
+    );
     await targetUser.save();
 
     return NextResponse.json(
-      { message: 'Connect request sent successfully' },
+      { message: 'Connection request canceled successfully' },
       { status: 200 }
     );
   } catch (error) {
-    console.error('Error in connect endpoint:', error);
+    console.error('Error in cancel-connect endpoint:', error);
     return NextResponse.json(
       {
         error: 'Internal server error',

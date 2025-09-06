@@ -19,6 +19,10 @@ export async function POST(req: Request) {
 
     const deadlines = currentUser.deadlines
       ?.filter((d: any) => new Date(d.lastDate) >= new Date())
+      // Remove duplicates by id
+      .filter((d: any, index: number, self: any[]) =>
+        index === self.findIndex((t) => t.id === d.id)
+      )
       .map((d: any) => ({
         id: d.id,
         title: d.title,

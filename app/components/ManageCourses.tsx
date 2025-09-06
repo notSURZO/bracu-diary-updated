@@ -1,6 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import debounce from 'lodash/debounce';
+import { toast } from 'react-toastify';
 import { useUser } from '@clerk/nextjs';
 import { FaEye, FaPlus, FaExternalLinkAlt, FaTrash } from 'react-icons/fa';
 
@@ -65,7 +67,7 @@ export default function ManageCourses() {
   const [searchTerm, setSearchTerm] = useState("");
   const [sectionSearchTerm, setSectionSearchTerm] = useState("");
   
-  const [success, setSuccess] = useState(false);
+  // Using toast for success/error feedback instead of local banner
   const [loading, setLoading] = useState(true);
   
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -211,25 +213,46 @@ export default function ManageCourses() {
 
   const handleSave = async () => {
     if (!userEmail) return;
-    
-    const res = await fetch(`/api/user-courses?email=${encodeURIComponent(userEmail)}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email: userEmail, selectedCourses: selected }), // 'selected' now contains originalCourseId
-    });
-
-    if (!res.ok) {
-      await fetch("/api/user-courses", {
-        method: "POST",
+    try {
+      const res = await fetch(`/api/user-courses?email=${encodeURIComponent(userEmail)}`, {
+        method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: userEmail, selectedCourses: selected }), // 'selected' now contains originalCourseId
+        body: JSON.stringify({ email: userEmail, selectedCourses: selected }),
       });
-    }
 
-    await fetchAndSyncCourses();
-    setSuccess(true);
-    setTimeout(() => setSuccess(false), 2000);
+      if (!res.ok) {
+        const postRes = await fetch("/api/user-courses", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: userEmail, selectedCourses: selected }),
+        });
+        if (!postRes.ok) throw new Error('Failed to create user courses');
+      }
+
+      await fetchAndSyncCourses();
+      toast.success('Courses saved successfully!');
+    } catch (err) {
+      console.error('Failed to save courses:', err);
+      toast.error('Failed to save courses. Please try again.');
+    }
   };
+
+  // Debounce the save action to prevent rapid duplicate clicks
+  const handleSaveRef = useRef(handleSave);
+  useEffect(() => {
+    handleSaveRef.current = handleSave;
+  }, [handleSave]);
+
+  const debouncedSave = useMemo(
+    () => debounce(() => handleSaveRef.current(), 1000, { leading: true, trailing: false }),
+    []
+  );
+
+  useEffect(() => {
+    return () => {
+      debouncedSave.cancel();
+    };
+  }, [debouncedSave]);
   
   const filteredCourses = courses.filter((c: DisplayCourse) =>
     (c.courseCode.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -413,18 +436,12 @@ export default function ManageCourses() {
             <div className="w-full flex justify-center mt-auto pt-6">
               <button
                 className="px-8 py-4 bg-blue-600 text-white rounded-lg font-bold shadow-lg hover:bg-blue-700 transition-all duration-300 text-lg tracking-wide w-full sm:w-auto"
-                onClick={handleSave}
+                onClick={() => debouncedSave()}
                 disabled={!userEmail}
               >
                 💾 Save My Courses
               </button>
             </div>
-
-            {success && (
-              <div className="mt-4 px-6 py-3 bg-green-100 border-l-4 border-green-500 text-green-700 rounded-lg text-center font-semibold shadow-md">
-                Courses saved successfully!
-              </div>
-            )}
         </div>
 
       </div>

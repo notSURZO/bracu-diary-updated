@@ -28,7 +28,7 @@ export async function GET(req: NextRequest) {
       phone: '',
       dateOfBirth: null,
       bloodGroup: '',
-      theme_color: 'blue', // Default theme
+      theme_color: 'brac-blue', // Default theme
       socialMedia: { 
           linkedin: '', github: '', facebook: '', 
           instagram: '', snapchat: '', twitter: '', 

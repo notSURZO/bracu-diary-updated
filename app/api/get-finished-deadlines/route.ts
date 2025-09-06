@@ -57,17 +57,18 @@ export async function GET(req: NextRequest) {
     }
 
     const now = new Date();
+    const oneMonthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
     const userCompletedDeadlineIds = (dbUser.deadlines || [])
       .filter((d: any) => d.completed)
       .map((d: any) => d.id);
 
     // Safely access deadlines with fallback to empty arrays
     const theoryDeadlines = (sectionData.theory?.deadlines || []).filter(
-      (d: any) => new Date(d.lastDate) < now || userCompletedDeadlineIds.includes(d.id)
+      (d: any) => (new Date(d.lastDate) < now || userCompletedDeadlineIds.includes(d.id)) && new Date(d.lastDate) >= oneMonthAgo
     );
 
     const labDeadlines = (sectionData.lab?.deadlines || []).filter(
-      (d: any) => new Date(d.lastDate) < now || userCompletedDeadlineIds.includes(d.id)
+      (d: any) => (new Date(d.lastDate) < now || userCompletedDeadlineIds.includes(d.id)) && new Date(d.lastDate) >= oneMonthAgo
     );
 
     return NextResponse.json({ deadlines: { theory: theoryDeadlines, lab: labDeadlines } }, { status: 200 });
