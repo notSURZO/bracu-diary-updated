@@ -7,6 +7,7 @@ import CourseResourceDirectory from '@/lib/models/CourseResourceDirectory';
 import type { PipelineStage } from 'mongoose';
 import { Types } from 'mongoose';
 import { getSupabaseAdmin } from '@/lib/storage/supabase';
+import { logResourceUpload } from '@/lib/utils/activityLogger';
 
 // GET ?q=&page=&limit= -> distinct courses (code, name, resourceCount) for visibility: 'public'
 export async function GET(req: NextRequest) {
@@ -163,6 +164,15 @@ export async function POST(req: NextRequest) {
       ownerUserId: userId,
       visibility: 'public',
     });
+
+    // Log activity
+    await logResourceUpload(
+      userId,
+      titleTrimmed,
+      courseCodeTrimmed,
+      (resource as any)._id.toString(),
+      kindVal === 'file' ? fileBlock?.mime : 'youtube'
+    );
 
     // Revalidate public listings
     revalidateTag('public-resources');

@@ -3,9 +3,11 @@ import { revalidateTag } from 'next/cache';
 import { getAuth } from '@clerk/nextjs/server';
 import { connectToDatabase } from '@/lib/db';
 import CourseResource from '@/lib/models/CourseResource';
+import User from '@/lib/models/User';
 import type { PipelineStage } from 'mongoose';
 import { Types } from 'mongoose';
 import { getSupabaseAdmin } from '@/lib/storage/supabase';
+import { logResourceUpload } from '@/lib/utils/activityLogger';
 
 // GET ?q=&page=&limit= -> distinct courses (code, name, resourceCount) for visibility: 'private' and current user
 export async function GET(req: NextRequest) {
@@ -116,6 +118,22 @@ export async function POST(req: NextRequest) {
       ownerUserId: userId,
       visibility: 'private',
     });
+
+    // Get user's clerkId for activity logging
+    const user = await User.findOne({ clerkId: userId });
+    const clerkId = user?.clerkId || userId;
+    
+    // Log activity
+    const resourceKind = String(kind || 'file');
+    const fileType = resourceKind === 'youtube' ? 'youtube' : fileBlock?.type;
+    
+    await logResourceUpload(
+      clerkId,
+      titleTrimmed,
+      courseCodeTrimmed,
+      (resource as any)._id.toString(),
+      fileType
+    );
 
     // Revalidate private listings
     revalidateTag('private-resources');
