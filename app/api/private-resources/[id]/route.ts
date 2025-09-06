@@ -4,6 +4,7 @@ import { getAuth } from '@clerk/nextjs/server';
 import { connectToDatabase } from '@/lib/db';
 import CourseResource from '@/lib/models/CourseResource';
 import { getSupabaseAdmin } from '@/lib/storage/supabase';
+import { logResourceDeleted } from '@/lib/utils/activityLogger';
 
 export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
   console.log('DELETE /api/private-resources/[id] called with id:', params.id);
@@ -36,6 +37,15 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
         console.warn('Supabase delete warning (dynamic DELETE):', e);
       }
     }
+
+    // Log activity before deletion
+    await logResourceDeleted(
+      userId,
+      resource.title,
+      resource.courseCode,
+      id,
+      resource.kind as 'file' | 'youtube'
+    );
 
     await CourseResource.deleteOne({ _id: id });
     revalidateTag('private-resources');

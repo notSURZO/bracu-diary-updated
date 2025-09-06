@@ -3,6 +3,7 @@ import { connectToDatabase } from '@/lib/mongodb';
 import Course from '@/lib/models/Course';
 import User from '@/lib/models/User';
 import { auth } from '@clerk/nextjs/server';
+import { logDeadlineCreated } from '@/lib/utils/activityLogger';
 
 export async function POST(req: Request) {
   try {
@@ -91,6 +92,15 @@ export async function POST(req: Request) {
     }
 
     await course.save();
+
+    // Log activity for the creator
+    await logDeadlineCreated(
+      userId,
+      title,
+      course.courseCode,
+      section,
+      deadline.id
+    );
 
     // Find all users enrolled in this course section
     const users = await User.find({

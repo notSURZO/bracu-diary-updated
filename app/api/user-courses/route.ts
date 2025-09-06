@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { connectToDatabase } from "@/lib/mongodb";
 import User from "@/lib/models/User";
 import Course from "@/lib/models/Course";
+import { logCourseEnrollment, logCourseDropped } from "@/lib/utils/activityLogger";
 
 export async function POST(req: Request) {
   await connectToDatabase();
@@ -70,7 +71,7 @@ export async function POST(req: Request) {
   }
 
   // Update the user's enrolledCourses and append deadlines
-  await User.findOneAndUpdate(
+  const updatedUser = await User.findOneAndUpdate(
     { email },
     {
       $set: { enrolledCourses: selectedCourses },
@@ -78,6 +79,18 @@ export async function POST(req: Request) {
     },
     { new: true }
   );
+
+  // Log activities for each enrolled course
+  if (updatedUser) {
+    for (const course of selectedCourses) {
+      await logCourseEnrollment(
+        updatedUser.clerkId,
+        course.courseCode,
+        course.courseName,
+        course.section
+      );
+    }
+  }
 
   return NextResponse.json({ success: true });
 }
@@ -96,6 +109,21 @@ export async function PUT(req: Request) {
   const currentCourseIds = user.enrolledCourses.map((course: any) => course.originalCourseId);
   const newCourseIds = selectedCourses.map((course: any) => course.originalCourseId);
   const coursesToRemove = currentCourseIds.filter((id: string) => !newCourseIds.includes(id));
+
+  // Log activities for dropped courses
+  if (coursesToRemove.length > 0) {
+    for (const courseId of coursesToRemove) {
+      const droppedCourse = user.enrolledCourses.find((course: any) => course.originalCourseId === courseId);
+      if (droppedCourse) {
+        await logCourseDropped(
+          user.clerkId,
+          droppedCourse.courseCode,
+          droppedCourse.courseName,
+          droppedCourse.section
+        );
+      }
+    }
+  }
 
   // Remove deadlines associated with removed courses
   if (coursesToRemove.length > 0) {
@@ -130,7 +158,7 @@ export async function PUT(req: Request) {
     if (!isLab && sectionData.theory?.deadlines) {
       for (const deadline of sectionData.theory.deadlines) {
         // Check if deadline already exists to avoid duplicates
-        if (!user.deadlines.some((d: any) => d.id === deadline.id && d.courseId === course._id)) {
+        if (!user.deadlines?.some((d: any) => d.id === deadline.id && d.courseId === course._id)) {
           deadlinesToAdd.push({
             id: deadline.id,
             title: deadline.title,
@@ -157,7 +185,7 @@ export async function PUT(req: Request) {
       for (const deadline of sectionData.lab.deadlines) {
         // Check if deadline already exists to avoid duplicates
         const labCourseId = isLab ? course._id : `${course._id}-lab`;
-        if (!user.deadlines.some((d: any) => d.id === deadline.id && d.courseId === labCourseId)) {
+        if (!user.deadlines?.some((d: any) => d.id === deadline.id && d.courseId === labCourseId)) {
           deadlinesToAdd.push({
             id: deadline.id,
             title: deadline.title,
@@ -182,7 +210,7 @@ export async function PUT(req: Request) {
   }
 
   // Update the user's enrolledCourses and append deadlines
-  await User.findOneAndUpdate(
+  const updatedUser = await User.findOneAndUpdate(
     { email },
     {
       $set: { enrolledCourses: selectedCourses },
@@ -190,6 +218,18 @@ export async function PUT(req: Request) {
     },
     { new: true }
   );
+
+  // Log activities for each enrolled course
+  if (updatedUser) {
+    for (const course of selectedCourses) {
+      await logCourseEnrollment(
+        updatedUser.clerkId,
+        course.courseCode,
+        course.courseName,
+        course.section
+      );
+    }
+  }
 
   return NextResponse.json({ success: true });
 }
@@ -219,13 +259,13 @@ export async function GET(req: Request) {
   const enrolledCourses = [];
 
   for (const courseId of enrolledCourseIds) {
-    if (courseId.includes("-lab")) {
+    if (typeof courseId === 'string' && courseId.includes("-lab")) {
       // Handle lab courses
       const baseCourseId = courseId.replace("-lab", "");
       const baseCourse = await Course.findById(baseCourseId);
       if (baseCourse) {
         const section = baseCourse.sections.find((s: any) => s.section === courseId.replace("-lab", ""));
-        if (section && section.lab) {
+        if (section?.lab) {
           enrolledCourses.push({
             _id: courseId,
             courseCode: baseCourse.courseCode + "L",

@@ -52,10 +52,21 @@ export function createSortObject(sortParam: string): Record<string, 1 | -1> {
   }
 }
 
-// Common search filter creation
+// Common search filter creation - optimized for text search
 export function createSearchFilter(q: string, baseFilter: any = {}): any {
   if (!q) return baseFilter;
   
+  // Use text search if available, fallback to regex
+  if (q.length > 2) {
+    return {
+      $and: [
+        baseFilter,
+        { $text: { $search: q } }
+      ],
+    };
+  }
+  
+  // For short queries, use anchored regex for better performance
   const safe = q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   const anchored = `^${safe}`;
   
@@ -187,3 +198,4 @@ export function formatBytes(bytes?: number): string | undefined {
   }
   return `${n.toFixed(n >= 100 ? 0 : n >= 10 ? 1 : 2)} ${units[i]}`;
 }
+

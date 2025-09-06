@@ -4,6 +4,7 @@ import { connectToDatabase } from '@/lib/mongodb';
 import User from '@/lib/models/User';
 import Event from '@/lib/models/Event';
 import EventRegistration from '@/lib/models/EventRegistration';
+import { logEventRegistration } from '@/lib/utils/activityLogger';
 
 // POST - Register current user for the event
 export async function POST(
@@ -48,6 +49,13 @@ export async function POST(
         user: user._id,
         status: 'registered',
       });
+
+      // Log activity
+      await logEventRegistration(
+        userId,
+        event.title,
+        event._id.toString()
+      );
 
       return NextResponse.json({
         success: true,

@@ -6,6 +6,7 @@ import CourseResource from '@/lib/models/CourseResource';
 import { Types } from 'mongoose';
 import { revalidatePath, revalidateTag } from 'next/cache';
 import { getConnectionIds } from '@/lib/connections';
+import { logDirectoryDeleted } from '@/lib/utils/activityLogger';
 
 // GET /api/private-resource-directories/[id]
 export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
@@ -68,6 +69,15 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
     if (!dir) {
       return NextResponse.json({ error: 'Not found or forbidden' }, { status: 404 });
     }
+
+    // Log activity before deletion
+    await logDirectoryDeleted(
+      userId,
+      dir.title,
+      dir.courseCode,
+      id,
+      dir.visibility as 'private' | 'connections'
+    );
 
     // Find subdirectory IDs first
     const subdirs = await CourseResourceDirectory.find({

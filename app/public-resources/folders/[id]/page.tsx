@@ -31,7 +31,13 @@ async function getResources(id: string) {
   const host = hdrs.get("x-forwarded-host") || hdrs.get("host") || "localhost:3000";
   const proto = hdrs.get("x-forwarded-proto") || (host.includes("localhost") ? "http" : "https");
   const url = `${proto}://${host}/api/public-resources/by-directory/${encodeURIComponent(id)}`;
-  const res = await fetch(url, { cache: 'no-store' });
+  const res = await fetch(url, { 
+    cache: 'no-store',
+    next: { 
+      tags: [`public-resources:dir:${id}`],
+      revalidate: 0 
+    }
+  });
   if (!res.ok) return { items: [] };
   return res.json();
 }

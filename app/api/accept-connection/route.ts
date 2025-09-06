@@ -2,6 +2,7 @@
 import { NextResponse } from 'next/server';
 import User from '../../../lib/models/User';
 import { connectToDatabase } from '../../../lib/mongodb';
+import { logConnectionAccepted } from '../../../lib/utils/activityLogger';
 
 async function ensureDbConnected() {
   await connectToDatabase();
@@ -58,6 +59,13 @@ export async function POST(request: Request) {
     );
 
     await Promise.all([currentUser.save(), requester.save()]);
+
+    // Log activity for the person who accepted the connection
+    await logConnectionAccepted(
+      currentUser.clerkId,
+      requester.name || requester.email,
+      requester.email
+    );
 
     return NextResponse.json(
       { message: 'Connection accepted successfully' },

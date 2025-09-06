@@ -3,6 +3,7 @@ import { connectToDatabase } from '@/lib/mongodb';
 import { auth } from '@clerk/nextjs/server';
 import User from '@/lib/models/User';
 import Event from '@/lib/models/Event';
+import { logActivity, ACTIVITY_TYPES, RESOURCE_TYPES } from '@/lib/utils/activityLogger';
 
 export async function POST(req: NextRequest) {
   try {
@@ -70,6 +71,19 @@ export async function POST(req: NextRequest) {
     });
 
     await newEvent.save();
+
+    // Log activity
+    await logActivity(
+      userId,
+      ACTIVITY_TYPES.EVENT_CREATED,
+      {
+        title: `Created event: ${title.trim()}`,
+        description: `New event at ${location.trim()}`,
+        metadata: { eventId: newEvent._id.toString(), location: location.trim() }
+      },
+      RESOURCE_TYPES.EVENT,
+      newEvent._id.toString()
+    );
 
     return NextResponse.json({ 
       success: true, 

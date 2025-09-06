@@ -4,6 +4,7 @@ import { revalidateTag } from 'next/cache';
 import { getAuth } from '@clerk/nextjs/server';
 import { connectToDatabase } from '@/lib/db';
 import CourseResourceDirectory from '@/lib/models/CourseResourceDirectory';
+import { logDirectoryCreated } from '@/lib/utils/activityLogger';
 
 export async function GET(req: NextRequest) {
   try {
@@ -152,7 +153,7 @@ export async function POST(req: NextRequest) {
           title: `${titleTrimmed} - Theory`,
           visibility: newVisibility,
           ownerUserId: userId,
-          parentDirectoryId: (directory as any)._id,
+          parentDirectoryId: directory._id,
           isSubdirectory: true,
           subdirectoryType: 'theory',
         });
@@ -161,7 +162,7 @@ export async function POST(req: NextRequest) {
           title: `${titleTrimmed} - Lab`,
           visibility: newVisibility,
           ownerUserId: userId,
-          parentDirectoryId: (directory as any)._id,
+          parentDirectoryId: directory._id,
           isSubdirectory: true,
           subdirectoryType: 'lab',
         });
@@ -171,6 +172,15 @@ export async function POST(req: NextRequest) {
         console.warn('Failed creating private subdirectories:', e);
       }
     }
+
+    // Log activity for directory creation
+    await logDirectoryCreated(
+      userId,
+      directory.title,
+      directory.courseCode,
+      directory._id.toString(),
+      directory.visibility
+    );
 
     // Revalidate private resources listing cache so the new folder appears immediately
     try {

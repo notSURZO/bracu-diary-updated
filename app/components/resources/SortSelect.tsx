@@ -4,8 +4,7 @@ import { useCallback } from "react";
 import { Select, SelectItem } from "@nextui-org/react";
 
 const options: Array<{ value: string; label: string }> = [
-  // Empty value is the default; we want Course Code A–Z by default
-  { value: "", label: "Course Code A–Z" },
+  { value: "code_asc", label: "Course Code A–Z" },
   { value: "code_desc", label: "Course Code Z–A" },
   { value: "title_asc", label: "Title A–Z" },
   { value: "title_desc", label: "Title Z–A" },
@@ -30,7 +29,7 @@ export default function SortSelect() {
     [router, pathname, searchParams]
   );
 
-  const current = searchParams.get("sort") || "";
+  const current = searchParams.get("sort") || "code_asc";
 
   return (
     <div className="min-w-[200px]">
@@ -46,11 +45,11 @@ export default function SortSelect() {
         popoverProps={{ className: "z-[70]" }}
         classNames={{
           trigger:
-            "h-10 pr-12 rounded-xl border border-gray-200 bg-white/80 backdrop-blur supports-[backdrop-filter]:bg-white/60 shadow-sm hover:shadow transition-colors hover:border-gray-300 data-[focus-visible=true]:ring-2 data-[focus-visible=true]:ring-blue-500",
-          value: "truncate text-[0.95rem] text-gray-900",
+            "h-11 pr-12 rounded-lg border border-gray-200 bg-white shadow-sm hover:shadow-md transition-all duration-200 hover:border-gray-300 data-[focus-visible=true]:ring-2 data-[focus-visible=true]:ring-blue-500 data-[focus-visible=true]:ring-offset-1",
+          value: "truncate text-[0.95rem] text-gray-900 font-medium",
           selectorIcon: "right-3 text-gray-600",
           popoverContent:
-            "rounded-xl bg-white border border-gray-200 shadow-xl",
+            "rounded-lg bg-white border border-gray-200 shadow-xl",
           listbox: "bg-white",
         }}
       >
