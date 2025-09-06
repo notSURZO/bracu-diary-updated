@@ -160,6 +160,21 @@ export const logCourseEnrollment = async (
   courseName: string,
   section: string
 ) => {
+  // Check for recent duplicate course enrollment activities (within last 5 minutes)
+  const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
+  const existingActivity = await Activity.findOne({
+    userId,
+    action: ACTIVITY_TYPES.COURSE_ENROLLED,
+    'details.title': `Enrolled in: ${courseCode}`,
+    'details.description': `${courseName} - Section ${section}`,
+    timestamp: { $gte: fiveMinutesAgo }
+  });
+
+  if (existingActivity) {
+    console.log(`Skipping duplicate course enrollment activity for ${courseCode}`);
+    return;
+  }
+
   await logActivity(
     userId,
     ACTIVITY_TYPES.COURSE_ENROLLED,
@@ -212,6 +227,21 @@ export const logCourseDropped = async (
   courseName: string,
   section: string
 ) => {
+  // Check for recent duplicate course drop activities (within last 5 minutes)
+  const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
+  const existingActivity = await Activity.findOne({
+    userId,
+    action: ACTIVITY_TYPES.COURSE_DROPPED,
+    'details.title': `Dropped course: ${courseCode}`,
+    'details.description': `${courseName} - Section ${section}`,
+    timestamp: { $gte: fiveMinutesAgo }
+  });
+
+  if (existingActivity) {
+    console.log(`Skipping duplicate course drop activity for ${courseCode}`);
+    return;
+  }
+
   await logActivity(
     userId,
     ACTIVITY_TYPES.COURSE_DROPPED,
