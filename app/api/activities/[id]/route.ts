@@ -6,7 +6,7 @@ import { auth } from '@clerk/nextjs/server';
 // DELETE - Delete a specific activity
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { userId } = await auth();
@@ -16,9 +16,11 @@ export async function DELETE(
 
     await connectToDatabase();
 
+    const { id } = await params;
+
     // Find the activity and verify ownership
     const activity = await Activity.findOne({ 
-      _id: params.id, 
+      _id: id, 
       userId 
     });
 
@@ -30,7 +32,7 @@ export async function DELETE(
     }
 
     // Delete the activity
-    await Activity.deleteOne({ _id: params.id });
+    await Activity.deleteOne({ _id: id });
 
     return NextResponse.json({
       success: true,

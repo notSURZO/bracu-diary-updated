@@ -209,13 +209,7 @@ export default async function FolderPage({ params, searchParams }: Readonly<{ pa
       )}
 
       {subdirectories.length === 0 ? (
-        filtered.length === 0 ? (
-          <div className="mb-6 rounded-lg border border-dashed border-gray-300 p-8 text-center text-sm text-gray-600">
-            <>No resources yet. Be the first to upload!</>
-          </div>
-        ) : (
-          <FolderGridClient items={enriched as any} />
-        )
+        <FolderGridClient items={enriched as any} directoryId={id} />
       ) : (
         <div className="mt-6 text-xs text-gray-600">
           Resources for this course are organized under the subfolders above.

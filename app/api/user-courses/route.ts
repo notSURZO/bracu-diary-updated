@@ -8,6 +8,14 @@ export async function POST(req: Request) {
   await connectToDatabase();
   const { email, selectedCourses } = await req.json();
 
+  // Get the user's current enrolled courses to compare
+  const currentUser = await User.findOne({ email });
+  if (!currentUser) {
+    return NextResponse.json({ success: false, error: "User not found" }, { status: 404 });
+  }
+  
+  const currentCourseIds = currentUser.enrolledCourses?.map((course: any) => course.originalCourseId) || [];
+
   // Fetch deadlines for the selected courses
   const deadlinesToAdd = [];
   for (const course of selectedCourses) {
@@ -80,15 +88,18 @@ export async function POST(req: Request) {
     { new: true }
   );
 
-  // Log activities for each enrolled course
+  // Log activities for each enrolled course (only new enrollments)
   if (updatedUser) {
     for (const course of selectedCourses) {
-      await logCourseEnrollment(
-        updatedUser.clerkId,
-        course.courseCode,
-        course.courseName,
-        course.section
-      );
+      // Only log enrollment if this course wasn't previously enrolled
+      if (!currentCourseIds.includes(course.originalCourseId)) {
+        await logCourseEnrollment(
+          updatedUser.clerkId,
+          course.courseCode,
+          course.courseName,
+          course.section
+        );
+      }
     }
   }
 
@@ -105,10 +116,11 @@ export async function PUT(req: Request) {
     return NextResponse.json({ success: false, error: "User not found" }, { status: 404 });
   }
 
-  // Determine which courses are being removed
+  // Determine which courses are being removed and which are newly added
   const currentCourseIds = user.enrolledCourses.map((course: any) => course.originalCourseId);
   const newCourseIds = selectedCourses.map((course: any) => course.originalCourseId);
   const coursesToRemove = currentCourseIds.filter((id: string) => !newCourseIds.includes(id));
+  const coursesToAdd = newCourseIds.filter((id: string) => !currentCourseIds.includes(id));
 
   // Log activities for dropped courses
   if (coursesToRemove.length > 0) {
@@ -219,15 +231,18 @@ export async function PUT(req: Request) {
     { new: true }
   );
 
-  // Log activities for each enrolled course
-  if (updatedUser) {
-    for (const course of selectedCourses) {
-      await logCourseEnrollment(
-        updatedUser.clerkId,
-        course.courseCode,
-        course.courseName,
-        course.section
-      );
+  // Log activities for newly enrolled courses only
+  if (updatedUser && coursesToAdd.length > 0) {
+    for (const courseId of coursesToAdd) {
+      const newCourse = selectedCourses.find((course: any) => course.originalCourseId === courseId);
+      if (newCourse) {
+        await logCourseEnrollment(
+          updatedUser.clerkId,
+          newCourse.courseCode,
+          newCourse.courseName,
+          newCourse.section
+        );
+      }
     }
   }
 

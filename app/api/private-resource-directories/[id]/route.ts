@@ -9,14 +9,15 @@ import { getConnectionIds } from '@/lib/connections';
 import { logDirectoryDeleted } from '@/lib/utils/activityLogger';
 
 // GET /api/private-resource-directories/[id]
-export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
+export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { userId } = getAuth(req);
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    if (!Types.ObjectId.isValid(params.id)) {
+    const { id } = await params;
+    if (!Types.ObjectId.isValid(id)) {
       return NextResponse.json({ error: 'Invalid ID' }, { status: 400 });
     }
 
@@ -28,7 +29,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     await connectToDatabase();
 
     const updatedDirectory = await CourseResourceDirectory.findOneAndUpdate(
-      { _id: params.id, ownerUserId: userId }, // Ensure only the owner can update
+      { _id: id, ownerUserId: userId }, // Ensure only the owner can update
       { $set: { visibility } },
       { new: true }
     ).lean();
@@ -39,7 +40,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
 
     // Revalidate caches to reflect the change immediately
     revalidateTag('private-resources');
-    revalidatePath(`/private-resources/folders/${params.id}`);
+    revalidatePath(`/private-resources/folders/${id}`);
 
     return NextResponse.json(updatedDirectory);
   } catch (error) {
@@ -50,14 +51,14 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
 
 // DELETE /api/private-resource-directories/[id]
 // Owner-only. Deletes the main private/connections directory and any subdirectories under it.
-export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { userId } = getAuth(req);
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { id } = params;
+    const { id } = await params;
     if (!Types.ObjectId.isValid(id)) {
       return NextResponse.json({ error: 'Invalid ID' }, { status: 400 });
     }
@@ -125,21 +126,22 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
   }
 }
 
-export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { userId } = getAuth(req);
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    if (!Types.ObjectId.isValid(params.id)) {
+    const { id } = await params;
+    if (!Types.ObjectId.isValid(id)) {
       return NextResponse.json({ error: 'Invalid ID' }, { status: 400 });
     }
 
     await connectToDatabase();
 
     const directory = (await CourseResourceDirectory.findById(
-      params.id
+      id
     ).lean()) as unknown as ICourseResourceDirectory;
 
     if (!directory) {

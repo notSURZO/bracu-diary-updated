@@ -89,6 +89,7 @@ export async function POST(request: Request) {
           user.clerkId,
           course.courseCode,
           rating,
+          reviewText,
           newReview._id.toString()
         );
       }

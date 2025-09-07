@@ -8,10 +8,10 @@ import CourseResource from '@/lib/models/CourseResource';
 import CourseResourceDirectory from '@/lib/models/CourseResourceDirectory';
 import { Types } from 'mongoose';
 
-export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     await connectToDatabase();
-    const { id } = params;
+    const { id } = await params;
     const page = 1;
     const limit = 50;
     const { searchParams } = new URL(req.url);

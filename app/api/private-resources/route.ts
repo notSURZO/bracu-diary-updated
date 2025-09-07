@@ -123,6 +123,15 @@ export async function POST(req: NextRequest) {
     const user = await User.findOne({ clerkId: userId });
     const clerkId = user?.clerkId || userId;
     
+    // Get directory information for logging
+    let directoryName = undefined;
+    if (directoryId) {
+      try {
+        const dirDoc = await CourseResourceDirectory.findById(String(directoryId)).lean();
+        directoryName = dirDoc?.title;
+      } catch {}
+    }
+
     // Log activity
     const resourceKind = String(kind || 'file');
     const fileType = resourceKind === 'youtube' ? 'youtube' : fileBlock?.type;
@@ -132,7 +141,9 @@ export async function POST(req: NextRequest) {
       titleTrimmed,
       courseCodeTrimmed,
       (resource as any)._id.toString(),
-      fileType
+      fileType,
+      'private',
+      directoryName
     );
 
     // Revalidate private listings
@@ -188,13 +199,24 @@ export async function DELETE(req: NextRequest) {
       }
     }
 
+    // Get directory information for logging
+    let directoryName = undefined;
+    if (resource.directoryId) {
+      try {
+        const dirDoc = await CourseResourceDirectory.findById(String(resource.directoryId)).lean();
+        directoryName = dirDoc?.title;
+      } catch {}
+    }
+
     // Log activity before deletion
     await logResourceDeleted(
       userId,
       resource.title,
       resource.courseCode,
       id,
-      resource.kind
+      resource.kind,
+      'private',
+      directoryName
     );
 
     await CourseResource.deleteOne({ _id: id });
