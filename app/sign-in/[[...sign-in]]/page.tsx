@@ -4,12 +4,12 @@ import Image from "next/image";
 
 export default function SignInPage() {
   return (
-    <div className="fixed inset-0 bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
-      <div className="h-full grid lg:grid-cols-2 items-center">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 pb-12">
+      <div className="min-h-screen grid lg:grid-cols-2 items-center">
         {/* Left Content - Centered */}
-        <div className="flex flex-col items-center justify-center px-6 lg:px-16 py-12 lg:py-0 h-full">
+        <div className="flex flex-col items-center justify-center px-6 lg:px-16 py-12 lg:py-0">
           {/* Logo and Title */}
-          <div className="flex items-center mb-8 space-x-4">
+          <div className="flex items-center mt-8 mb-8 space-x-4">
             <Image
               src="/bracu-diary-logo.svg"
               alt="BRACU Diary Logo Text"
@@ -22,8 +22,8 @@ export default function SignInPage() {
           <span className="text-blue-600 font-medium text-lg mb-8">Your Academic Oasis</span>
 
           <h2 className="text-4xl lg:text-5xl xl:text-6xl font-bold text-gray-800 mb-8 leading-tight text-center max-w-3xl">
-            Transform Your{' '}
-            <span className="bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">Academic Journey</span>
+            Transform Your
+            <span className="bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent"> Academic Journey</span>
           </h2>
 
           <p className="text-lg lg:text-xl text-gray-600 mb-16 leading-relaxed text-center max-w-2xl">
@@ -74,7 +74,8 @@ export default function SignInPage() {
           </div>
         </div>
 
-        <div className="h-full flex items-center justify-center px-6 lg:px-8">
+        {/* Sign-in section with added padding */}
+        <div className="pl-6 lg:pl-12">
           <SignIn 
             forceRedirectUrl="/"
             signUpUrl="/sign-up"
