@@ -96,20 +96,29 @@ export default function StudyRoomsHome() {
       } else {
         setBanner({ type: 'error', text: data.message || 'Failed to start study session' });
       }
-    } catch (e) {
+    } catch {
       setBanner({ type: 'error', text: 'Error starting session' });
     } finally {
       setSendingInvites(false);
     }
   };
 
+  type StudyInvite = { _id: string; roomSlug: string; hostName: string; createdAt: string };
+  type InvitesResponse = { invites?: StudyInvite[] };
+
   const loadInvites = async () => {
     try {
       setLoadingInvites(true);
       const res = await fetch('/api/study-sessions/invites');
-      const data = await res.json();
+      const data = (await res.json()) as InvitesResponse;
       if (res.ok) {
-        setInvites((data.invites || []).map((i: any) => ({ _id: String(i._id), roomSlug: i.roomSlug, hostName: i.hostName, createdAt: i.createdAt })));
+        const list = (data.invites || []).map((i) => ({
+          _id: String(i._id),
+          roomSlug: i.roomSlug,
+          hostName: i.hostName,
+          createdAt: i.createdAt,
+        }));
+        setInvites(list);
       }
     } finally {
       setLoadingInvites(false);
@@ -118,8 +127,8 @@ export default function StudyRoomsHome() {
 
   useEffect(() => {
     loadInvites();
-    const t = setInterval(loadInvites, 15000);
-    return () => clearInterval(t);
+    // Removed periodic polling; fetch occurs on page load and via Refresh button only
+    return () => {};
   }, []);
 
   return (
@@ -165,7 +174,7 @@ export default function StudyRoomsHome() {
               </div>
             </form>
 
-            <div className="mt-6 text-xs text-gray-500">By using this feature, you agree to Jitsi's fair-use policy on the public instance.</div>
+            <div className="mt-6 text-xs text-gray-500">By using this feature, you agree to Jitsi&apos;s fair-use policy on the public instance.</div>
 
             {/* Active Invites from connections */}
             <div className="mt-8">

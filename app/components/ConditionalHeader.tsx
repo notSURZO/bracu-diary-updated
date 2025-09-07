@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useUser } from '@clerk/nextjs';
 import SearchBar from './SearchBar';
 import Image from 'next/image';
@@ -39,6 +39,10 @@ interface Deadline {
   completed: boolean;
 }
 
+type StudyInvite = { _id: string; roomSlug: string; hostName: string; createdAt: string };
+type InvitesResponse = { invites?: StudyInvite[]; error?: string };
+type DeadlinesResponse = { deadlines?: Deadline[]; error?: string };
+
 type MatchType = 'firstWord' | 'secondWord' | 'username';
 
 interface Connection {
@@ -50,33 +54,7 @@ interface Connection {
   matchType?: MatchType;
 }
 
-const DisconnectConfirmationToast = ({
-  friendName,
-  onConfirm,
-  onCancel,
-}: {
-  friendName: string;
-  onConfirm: () => void;
-  onCancel: () => void;
-}) => (
-  <div className="p-3 bg-white border border-gray-200 rounded-lg shadow-md">
-    <p className="text-gray-800 font-medium mb-2">Are you sure you want to disconnect from {friendName}?</p>
-    <div className="flex space-x-2">
-      <button
-        onClick={onConfirm}
-        className="px-3 py-1 bg-blue-600 text-white rounded-md text-sm hover:bg-blue-700 transition-colors"
-      >
-        Confirm
-      </button>
-      <button
-        onClick={onCancel}
-        className="px-3 py-1 bg-gray-200 text-gray-700 rounded-md text-sm hover:bg-gray-300 transition-colors"
-      >
-        Cancel
-      </button>
-    </div>
-  </div>
-);
+// (Removed unused DisconnectConfirmationToast component)
 
 export default function ConditionalHeader() {
   const { isSignedIn, user, isLoaded } = useUser();
@@ -99,9 +77,9 @@ export default function ConditionalHeader() {
   const router = useRouter();
   const pathname = usePathname();
   const isRagbotPage = pathname === '/ragbot';
+  const isStudyRoomsPage = pathname?.startsWith('/study-rooms');
 
-  const isConnectionsIconHighlighted = isConnectionsDropdownOpen;
-  const isNotificationsIconHighlighted = isNotificationsDropdownOpen || (studyInvites.length > 0);
+  // Removed unused highlight flags to satisfy lint
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   // Debounced search handler
@@ -258,10 +236,18 @@ export default function ConditionalHeader() {
         fetch('/api/study-sessions/invites')
       ]);
 
-      const deadlinesData = await deadlinesRes.json();
-      const invitesData = await invitesRes.json();
+      const deadlinesData = (await deadlinesRes.json()) as DeadlinesResponse;
+      const invitesData = (await invitesRes.json()) as InvitesResponse;
       if (deadlinesRes.ok) setDeadlines(deadlinesData.deadlines || []);
-      if (invitesRes.ok) setStudyInvites((invitesData.invites || []).map((i: any) => ({ _id: String(i._id), roomSlug: i.roomSlug, hostName: i.hostName, createdAt: i.createdAt })));
+      if (invitesRes.ok) {
+        const list = (invitesData.invites || []).map((i) => ({
+          _id: String(i._id),
+          roomSlug: i.roomSlug,
+          hostName: i.hostName,
+          createdAt: i.createdAt,
+        }));
+        setStudyInvites(list);
+      }
       if (!deadlinesRes.ok && !invitesRes.ok) {
         const errMsg = deadlinesData.error || invitesData.error || 'Failed to fetch notifications';
         setError(errMsg);
@@ -316,24 +302,30 @@ export default function ConditionalHeader() {
     }
   };
 
-  // Background poll for study invites (lightweight)
+  // Background poll for study invites (skip on Study Rooms page)
   useEffect(() => {
-    let timer: any;
+    let timer: ReturnType<typeof setInterval> | null = null;
     const poll = async () => {
       try {
         const res = await fetch('/api/study-sessions/invites');
         if (res.ok) {
-          const data = await res.json();
-          setStudyInvites((data.invites || []).map((i: any) => ({ _id: String(i._id), roomSlug: i.roomSlug, hostName: i.hostName, createdAt: i.createdAt })));
+          const data = (await res.json()) as InvitesResponse;
+          const list = (data.invites || []).map((i) => ({
+            _id: String(i._id),
+            roomSlug: i.roomSlug,
+            hostName: i.hostName,
+            createdAt: i.createdAt,
+          }));
+          setStudyInvites(list);
         }
       } catch {}
     };
-    if (isSignedIn) {
+    if (isSignedIn && !isStudyRoomsPage) {
       poll();
       timer = setInterval(poll, 15000);
     }
-    return () => timer && clearInterval(timer);
-  }, [isSignedIn]);
+    return () => { if (timer) clearInterval(timer); };
+  }, [isSignedIn, isStudyRoomsPage]);
 
   const handleShowRequests = () => {
     setShowRequests(true);

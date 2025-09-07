@@ -68,6 +68,7 @@ export default function ManageCourses() {
   
   // Using toast for success/error feedback instead of local banner
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalCourse, setModalCourse] = useState<ModalCourseData | null>(null);
@@ -213,26 +214,37 @@ export default function ManageCourses() {
   const handleSave = async () => {
     if (!userEmail) return;
     try {
-      const res = await fetch(`/api/user-courses?email=${encodeURIComponent(userEmail)}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: userEmail, selectedCourses: selected }),
-      });
+      setSaving(true);
+      await toast.promise(
+        (async () => {
+          const res = await fetch(`/api/user-courses?email=${encodeURIComponent(userEmail)}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email: userEmail, selectedCourses: selected }),
+          });
 
-      if (!res.ok) {
-        const postRes = await fetch("/api/user-courses", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email: userEmail, selectedCourses: selected }),
-        });
-        if (!postRes.ok) throw new Error('Failed to create user courses');
-      }
-
-      await fetchAndSyncCourses();
-      toast.success('Courses saved successfully!');
+          if (!res.ok) {
+            const postRes = await fetch("/api/user-courses", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ email: userEmail, selectedCourses: selected }),
+            });
+            if (!postRes.ok) throw new Error('Failed to create user courses');
+          }
+        })(),
+        {
+          pending: 'Saving courses... ',
+          success: 'Courses saved successfully!',
+          error: 'Failed to save courses. Please try again.',
+        }
+      );
+      // Refresh in background; do not delay success toast
+      fetchAndSyncCourses().catch(() => {});
     } catch (err) {
       console.error('Failed to save courses:', err);
-      toast.error('Failed to save courses. Please try again.');
+      // Error toast already shown by toast.promise
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -243,7 +255,7 @@ export default function ManageCourses() {
   }, [handleSave]);
 
   const debouncedSave = useMemo(
-    () => debounce(() => handleSaveRef.current(), 1000, { leading: true, trailing: false }),
+    () => debounce(() => handleSaveRef.current(), 300, { leading: true, trailing: false }),
     []
   );
 
@@ -457,10 +469,22 @@ export default function ManageCourses() {
             <button
               className="flex items-center gap-2 px-4 py-2 bg-brac-blue text-white rounded-md font-medium hover:bg-brac-blue-dark transition-colors disabled:opacity-50"
               onClick={() => debouncedSave()}
-              disabled={!userEmail || selected.length === 0}
+              disabled={!userEmail || selected.length === 0 || saving}
             >
-              <FaSave className="h-4 w-4" />
-              Save My Courses
+              {saving ? (
+                <>
+                  <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+                  </svg>
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <FaSave className="h-4 w-4" />
+                  Save My Courses
+                </>
+              )}
             </button>
           </div>
         </div>
