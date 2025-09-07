@@ -24,8 +24,8 @@ CLERK_SECRET_KEY=sk_test_your_secret_key_here
 # Clerk URLs (optional - these are the defaults)
 NEXT_PUBLIC_CLERK_SIGN_IN_URL=/sign-in
 NEXT_PUBLIC_CLERK_SIGN_UP_URL=/sign-up
-NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL=/dashboard
-NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL=/dashboard
+NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL=/
+NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL=/
 
 # MongoDB Connection (if you have one)
 MONGODB_URI=your_mongodb_connection_string_here

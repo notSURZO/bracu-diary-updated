@@ -1,10 +1,10 @@
-// app/components/SearchBar.tsx
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useUser } from '@clerk/nextjs';
+import { toast } from 'react-toastify';
 
 interface User {
   id: string;
@@ -13,6 +13,8 @@ interface User {
   email: string;
   student_ID: string;
   picture_url: string;
+  connectionRequests: string[];
+  connections: string[];
 }
 
 export default function SearchBar() {
@@ -20,14 +22,14 @@ export default function SearchBar() {
   const [results, setResults] = useState<User[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isConnecting, setIsConnecting] = useState<string | null>(null);
+  const searchContainerRef = useRef<HTMLDivElement>(null);
 
-  // Get current user from Clerk
   const { user, isLoaded } = useUser();
-  const currentUserEmail = user?.emailAddresses[0]?.emailAddress || ''; // Use email address
-
+  const currentUserEmail = user?.emailAddresses?.[0]?.emailAddress?.toLowerCase() || '';
 
   useEffect(() => {
-    console.log('Clerk user:', user); // Debug: Inspect user object
+    console.log('Clerk user:', user);
     if (!query || !isLoaded || !currentUserEmail) {
       setResults([]);
       setError(null);
@@ -38,24 +40,29 @@ export default function SearchBar() {
       setIsLoading(true);
       setError(null);
       try {
-        const response = await fetch(`/api/search?q=${query}&excludeEmail=${currentUserEmail}`);
+        const response = await fetch(
+          `/api/search?q=${encodeURIComponent(query)}&excludeEmail=${encodeURIComponent(currentUserEmail)}`
+        );
         const data = await response.json();
 
-   
         if (response.ok) {
           const formattedData = data.map((user: any) => ({
             ...user,
             id: user.id,
+            connectionRequests: user.connectionRequests || [],
+            connections: user.connections || [],
           }));
-
+          console.log('Search results:', formattedData);
           setResults(formattedData);
         } else {
           console.error('Search error:', data.error);
           setError(data.error || 'Failed to fetch search results');
+          toast.error(data.error || 'Failed to fetch search results');
         }
       } catch (error) {
         console.error('Fetch error:', error);
         setError('An error occurred while searching');
+        toast.error('An error occurred while searching');
       } finally {
         setIsLoading(false);
       }
@@ -65,50 +72,122 @@ export default function SearchBar() {
     return () => clearTimeout(debounce);
   }, [query, currentUserEmail, isLoaded]);
 
+  // Handle clicks outside the search container
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (searchContainerRef.current && !searchContainerRef.current.contains(event.target as Node)) {
+        clearSearch(); // Call clearSearch to reset query, results, and error
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
   const handleConnect = async (targetUserId: string) => {
+    setIsConnecting(targetUserId);
     try {
       const response = await fetch('/api/connect', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ targetUserId, currentUserEmail }), // Use email
+        body: JSON.stringify({ targetUserId, currentUserEmail }),
       });
 
       const data = await response.json();
       if (response.ok) {
-        alert(data.message); // Replace with toast notification
+        toast.success(data.message);
+        setResults((prevResults) =>
+          prevResults.map((user) =>
+            user.id === targetUserId
+              ? { ...user, connectionRequests: [...user.connectionRequests, currentUserEmail] }
+              : user
+          )
+        );
+      } else if (response.status === 409) {
+        toast.info(data.message);
       } else {
-        alert(data.error);
+        toast.error(data.error);
       }
     } catch (error) {
       console.error('Error sending connect request:', error);
-      alert('Failed to send connect request');
+      toast.error('Failed to send connect request');
+    } finally {
+      setIsConnecting(null);
     }
+  };
+
+  const clearSearch = () => {
+    setQuery('');
+    setResults([]);
+    setError(null);
   };
 
   if (!isLoaded) {
     return <div>Loading...</div>;
   }
 
+  const renderConnectButton = (user: User) => {
+    if (user.connections.includes(currentUserEmail)) {
+      return (
+        <span className="ml-4 p-1 text-gray-500 text-sm">
+          Connected
+        </span>
+      );
+    }
+    if (user.connectionRequests.includes(currentUserEmail)) {
+      return (
+        <span className="ml-4 p-1 text-blue-500 text-sm">
+          Request Sent
+        </span>
+      );
+    }
+    return (
+      <button
+        onClick={() => handleConnect(user.id)}
+        className="ml-4 p-1 bg-green-500 text-white rounded text-sm hover:bg-green-600 disabled:bg-gray-400"
+        disabled={user.email.toLowerCase() === currentUserEmail || isConnecting === user.id}
+      >
+        {isConnecting === user.id ? 'Connecting...' : 'Connect'}
+      </button>
+    );
+  };
+
   return (
-    <div className="search-container relative">
-      <input
-        type="text"
-        value={query}
-        onChange={(e) => setQuery(e.target.value)}
-        placeholder="Search for people..."
-        className="focus:outline-none focus:ring-2 focus:ring-blue-500 w-full p-2 border rounded"
-      />
-      {isLoading && <div className="search-results p-2 text-gray-500">Loading...</div>}
-      {error && <div className="search-results p-2 text-red-500">{error}</div>}
+    <div className="search-container relative max-w-lg" ref={searchContainerRef}>
+      <div className="relative">
+        <input
+          type="text"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="🔍 Search for people..."
+          className="focus:outline-none focus:ring-2 focus:ring-blue-500 w-full p-2 pr-8 border rounded"
+        />
+        {query && (
+          <button
+            onClick={clearSearch}
+            className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
+            aria-label="Clear search"
+          >
+            ✕
+          </button>
+        )}
+      </div>
+      {isLoading && <div className="search-results p-2 text-gray-500 max-w-lg">Loading...</div>}
+      {error && <div className="search-results p-2 text-red-500 max-w-lg">{error}</div>}
       {results.length === 0 && query && !isLoading && !error && (
-        <div className="search-results p-2 text-gray-500">No results found</div>
+        <div className="search-results p-2 text-gray-500 max-w-lg">No results found</div>
       )}
       {results.length > 0 && !isLoading && (
-        <ul className="search-results absolute w-full bg-white border rounded shadow-lg mt-1 z-10">
-          {
-          results.map((user) => (
+        <ul className="search-results absolute w-full max-w-lg bg-white border rounded shadow-lg mt-1 z-10">
+          {results.map((user) => (
             <li key={user.id} className="p-3 hover:bg-gray-100 flex justify-between items-center">
-              <Link href={`/profile/${user.username || user.email}`} className="flex items-center">
+              <Link
+                href={`/profile/${user.username || user.email}`}
+                className="flex items-center"
+                onClick={clearSearch}
+              >
                 {user.picture_url ? (
                   <Image
                     src={user.picture_url}
@@ -119,7 +198,7 @@ export default function SearchBar() {
                   />
                 ) : (
                   <div className="w-10 h-10 rounded-full bg-gray-200 mr-3 flex items-center justify-center">
-                    <span className="text-gray-500">{user.name[0]}</span>
+                    <span className="text-gray-500">{user.name?.[0] || '?'}</span>
                   </div>
                 )}
                 <div>
@@ -128,13 +207,7 @@ export default function SearchBar() {
                   <p className="text-sm text-gray-500">ID: {user.student_ID}</p>
                 </div>
               </Link>
-              <button
-                onClick={() => handleConnect(user.id)}
-                className="ml-4 p-1 bg-green-500 text-white rounded text-sm hover:bg-green-600 disabled:bg-gray-400"
-                disabled={user.email === currentUserEmail}
-              >
-                Connect
-              </button>
+              {renderConnectButton(user)}
             </li>
           ))}
         </ul>
