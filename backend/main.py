@@ -10,14 +10,14 @@ app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "https://your-deployed-frontend.com"],
+    allow_origins=["http://localhost:3000", "https://your-app-name.vercel.app"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-os.environ['GEMINI_API_KEY'] = 'AIzaSyAGmDm5i5tZClM28ilkfByLqxpIf0l5h70'  # Replace with your Gemini API key
-genai.configure(api_key=os.environ['GEMINI_API_KEY'])
+genai.configure(api_key=os.getenv('GEMINI_API_KEY')) # Replace with your Gemini API key
+
 
 client = chromadb.PersistentClient(path="./chroma_db")
 embedding_function = DefaultEmbeddingFunction()
