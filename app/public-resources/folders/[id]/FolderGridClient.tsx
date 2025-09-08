@@ -25,6 +25,7 @@ export type ResourceItem = {
   ownerDisplayName?: string;
   upCount?: number;
   downCount?: number;
+  directoryId?: string;
 };
 
 // Using library icon for Google Drive
@@ -41,7 +42,7 @@ function getFileType(u: string): "PDF" | "DOCX" | "VIDEO" | "TEXT" | "LINK" | "D
 }
 // Using official brand icons
 
-export default function FolderGridClient({ items: initialItems }: { readonly items: ResourceItem[] }) {
+export default function FolderGridClient({ items: initialItems, directoryId }: { readonly items: ResourceItem[]; readonly directoryId: string }) {
   const searchParams = useSearchParams();
   const { userId } = useAuth();
   const { user } = useUser();
@@ -83,6 +84,10 @@ export default function FolderGridClient({ items: initialItems }: { readonly ite
     function onCreated(e: Event) {
       const detail = (e as CustomEvent).detail as { item: ResourceItem } | undefined;
       if (!detail?.item) return;
+      
+      // Check if this resource belongs to the current directory
+      if (detail.item.directoryId !== directoryId) return;
+      
       setItems(prev => {
         if (prev.some(it => it._id === detail.item._id)) return prev; // dedupe
         if (deletedIdsRef.current.has(detail.item._id)) return prev; // ignore if recently deleted
@@ -99,6 +104,7 @@ export default function FolderGridClient({ items: initialItems }: { readonly ite
     }
     window.addEventListener('resource:created', onCreated as EventListener);
     window.addEventListener('resource:deleted', onDeleted);
+    
     return () => {
       window.removeEventListener('resource:created', onCreated);
       window.removeEventListener('resource:deleted', onDeleted);
@@ -247,6 +253,15 @@ export default function FolderGridClient({ items: initialItems }: { readonly ite
   // Stable date formatting (UTC YYYY-MM-DD)
   const toUTC = (d?: string) => (d ? new Date(d).toISOString().slice(0, 10) : "");
 
+  // Show empty state if no resources at all (not just filtered out)
+  if (items.length === 0) {
+    return (
+      <div className="mb-6 rounded-lg border border-dashed border-gray-300 p-8 text-center text-sm text-gray-600">
+        No resources yet. Be the first to upload!
+      </div>
+    );
+  }
+
   return (
     <div className="overflow-x-auto rounded-lg border border-gray-200 bg-white shadow-sm">
       <div className="px-4 pt-4 overflow-x-auto">
@@ -280,7 +295,17 @@ export default function FolderGridClient({ items: initialItems }: { readonly ite
           </tr>
         </thead>
         <tbody className="divide-y divide-gray-100">
-          {visible.map((r) => {
+          {visible.length === 0 ? (
+            <tr>
+              <td colSpan={5} className="px-4 py-8 text-center text-sm text-gray-500">
+                {typeFilter === 'ALL' 
+                  ? 'No resources found' 
+                  : `No ${typeFilter === 'DOCS' ? 'documents' : typeFilter === 'TEXT' ? 'text files' : typeFilter === 'VIDEO' ? 'videos' : typeFilter === 'DRIVE' ? 'drive links' : typeFilter === 'PDF' ? 'PDFs' : 'items'} found`
+                }
+              </td>
+            </tr>
+          ) : (
+            visible.map((r) => {
             const urlForType = r.kind === 'youtube' ? (r.youtube?.url || '') : (r.file?.url || '');
             const type = r.kind === 'youtube' ? 'VIDEO' : getFileType(urlForType);
             const dateStr = toUTC(r.createdAt);
@@ -390,7 +415,7 @@ export default function FolderGridClient({ items: initialItems }: { readonly ite
                 </td>
               </tr>
             );
-          })}
+          }))}
         </tbody>
       </table>
     </div>

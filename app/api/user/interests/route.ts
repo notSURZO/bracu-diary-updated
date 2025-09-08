@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { connectToDatabase } from '@/lib/mongodb';
 import User from '@/lib/models/User';
+import { logInterestsUpdated } from '@/lib/utils/activityLogger';
 
 // POST - Update current user's interests
 export async function POST(req: NextRequest) {
@@ -35,6 +36,9 @@ export async function POST(req: NextRequest) {
     if (!user) {
       return NextResponse.json({ message: 'User not found' }, { status: 404 });
     }
+
+    // Log interests update activity
+    await logInterestsUpdated(userId, normalized);
 
     return NextResponse.json({ success: true, interests: user.interests || [] });
   } catch (error) {

@@ -1,5 +1,5 @@
 "use client";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth, useUser } from "@clerk/nextjs";
 import { toast } from "react-toastify";
@@ -27,15 +27,6 @@ export default function UploadPublicResourceForm({ courseCode, defaultCourseName
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
 
-  const detectedType = useMemo(() => {
-    const u = fileUrl.trim().toLowerCase();
-    if (!u) return "";
-    if (u.endsWith(".pdf")) return "PDF";
-    if (u.endsWith(".doc") || u.endsWith(".docx")) return "DOC/DOCX";
-    if (u.endsWith(".txt")) return "TEXT";
-    if (u.endsWith(".mp4") || u.endsWith(".mov") || u.includes("youtube.com") || u.includes("youtu.be")) return "VIDEO";
-    return "LINK";
-  }, [fileUrl]);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -105,6 +96,8 @@ export default function UploadPublicResourceForm({ courseCode, defaultCourseName
               ownerDisplayName: displayName,
               upvoters: [],
               downvoters: [],
+              courseCode: courseCode,
+              directoryId: directoryId,
             }
           : {
               _id: id as string,
@@ -117,8 +110,14 @@ export default function UploadPublicResourceForm({ courseCode, defaultCourseName
               ownerDisplayName: displayName,
               upvoters: [],
               downvoters: [],
+              courseCode: courseCode,
+              directoryId: directoryId,
             };
-        window.dispatchEvent(new CustomEvent(`${isPrivate ? 'private-' : ''}resource:created`, { detail: { item: optimisticItem } }));
+        const eventName = `${isPrivate ? 'private-' : ''}resource:created`;
+        // Add a small delay to ensure components are ready
+        setTimeout(() => {
+          window.dispatchEvent(new CustomEvent(eventName, { detail: { item: optimisticItem } }));
+        }, 100);
       } catch {}
 
       toast.success("Resource uploaded");
@@ -128,7 +127,9 @@ export default function UploadPublicResourceForm({ courseCode, defaultCourseName
       setFileMeta(undefined);
       // notify parent (modal) and also refresh route so non-listener pages update instantly
       try { onSuccess?.(); } catch {}
-      try { router.refresh(); } catch {}
+      try { 
+        router.refresh(); 
+      } catch {}
     } catch (err: any) {
       toast.error(err.message || "Something went wrong");
     } finally {

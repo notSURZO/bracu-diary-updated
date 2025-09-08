@@ -2,6 +2,7 @@
 import { NextResponse } from 'next/server';
 import User from '../../../lib/models/User';
 import { connectToDatabase } from '../../../lib/mongodb';
+import { logConnectionRejected } from '@/lib/utils/activityLogger';
 
 async function ensureDbConnected() {
   await connectToDatabase();
@@ -30,12 +31,24 @@ export async function POST(request: Request) {
       );
     }
 
+    // Find requester user for logging
+    const requesterUser = await User.findOne({ email: requesterEmail });
+
     // Remove the connection request
     currentUser.connectionRequests = currentUser.connectionRequests.filter(
       (email: string) => email !== requesterEmail
     );
 
     await currentUser.save();
+
+    // Log connection rejection activity
+    if (requesterUser) {
+      await logConnectionRejected(
+        userId,
+        requesterUser.clerkId,
+        requesterUser.name
+      );
+    }
 
     return NextResponse.json(
       { message: 'Connection request rejected successfully' },

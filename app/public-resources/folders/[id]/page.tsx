@@ -162,10 +162,7 @@ export default async function FolderPage({ params, searchParams }: Readonly<{ pa
     return `${n.toFixed(n >= 100 ? 0 : n >= 10 ? 1 : 2)} ${units[i]}`;
   };
 
-  // removed unused Cloudinary toDownloadUrl helper
-
-  // For viewing, use the original Cloudinary URL exactly as returned by the API.
-
+  
   return (
     <div className="px-4 py-6 max-w-7xl mx-auto">
       <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:flex-nowrap">
@@ -209,13 +206,7 @@ export default async function FolderPage({ params, searchParams }: Readonly<{ pa
       )}
 
       {subdirectories.length === 0 ? (
-        filtered.length === 0 ? (
-          <div className="mb-6 rounded-lg border border-dashed border-gray-300 p-8 text-center text-sm text-gray-600">
-            <>No resources yet. Be the first to upload!</>
-          </div>
-        ) : (
-          <FolderGridClient items={enriched as any} />
-        )
+        <FolderGridClient items={enriched as any} directoryId={id} />
       ) : (
         <div className="mt-6 text-xs text-gray-600">
           Resources for this course are organized under the subfolders above.

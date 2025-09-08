@@ -165,13 +165,24 @@ export async function POST(req: NextRequest) {
       visibility: 'public',
     });
 
+    // Get directory information for logging
+    let directoryName = undefined;
+    if (directoryId) {
+      try {
+        const dirDoc = await CourseResourceDirectory.findById(String(directoryId)).lean();
+        directoryName = dirDoc?.title;
+      } catch {}
+    }
+
     // Log activity
     await logResourceUpload(
       userId,
       titleTrimmed,
       courseCodeTrimmed,
       (resource as any)._id.toString(),
-      kindVal === 'file' ? fileBlock?.mime : 'youtube'
+      kindVal === 'file' ? fileBlock?.mime : 'youtube',
+      'public',
+      directoryName
     );
 
     // Revalidate public listings
@@ -219,7 +230,7 @@ export async function DELETE(req: NextRequest) {
       );
     }
 
-    const bucket = process.env.SUPABASE_BUCKET as string | undefined;
+    const bucket = process.env.SUPABASE_BUCKET;
     if (resource.kind === 'file' && resource.file?.url && bucket) {
       try {
         const urlStr = String(resource.file.url);
@@ -237,13 +248,24 @@ export async function DELETE(req: NextRequest) {
       }
     }
 
+    // Get directory information for logging
+    let directoryName = undefined;
+    if (resource.directoryId) {
+      try {
+        const dirDoc = await CourseResourceDirectory.findById(String(resource.directoryId)).lean();
+        directoryName = dirDoc?.title;
+      } catch {}
+    }
+
     // Log activity before deletion
     await logResourceDeleted(
       userId,
       resource.title,
       resource.courseCode,
       id,
-      resource.kind as 'file' | 'youtube'
+      resource.kind,
+      'public',
+      directoryName
     );
 
     await CourseResource.deleteOne({ _id: id });

@@ -11,7 +11,7 @@ export interface IActivity extends Document {
     metadata?: Record<string, any>;
   };
   timestamp: Date;
-  visibility: 'private' | 'public'; // For future social features
+  visibility: 'private' | 'public'; 
 }
 
 const ActivitySchema: Schema = new Schema({

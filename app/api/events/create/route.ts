@@ -3,7 +3,7 @@ import { connectToDatabase } from '@/lib/mongodb';
 import { auth } from '@clerk/nextjs/server';
 import User from '@/lib/models/User';
 import Event from '@/lib/models/Event';
-import { logActivity, ACTIVITY_TYPES, RESOURCE_TYPES } from '@/lib/utils/activityLogger';
+import { logEventCreated } from '@/lib/utils/activityLogger';
 
 export async function POST(req: NextRequest) {
   try {
@@ -40,7 +40,7 @@ export async function POST(req: NextRequest) {
       clubId = user.adminClub;
     }
 
-    const { title, description, date, time, location, tags, imageUrl, imagePath, imageBucket } = await req.json();
+    const { title, description, date, time, location, tags, imageUrl, imagePath, imageBucket, eventType } = await req.json();
 
     // Validate required fields
     if (!title || !description || !date || !time || !location) {
@@ -73,16 +73,12 @@ export async function POST(req: NextRequest) {
     await newEvent.save();
 
     // Log activity
-    await logActivity(
+    await logEventCreated(
       userId,
-      ACTIVITY_TYPES.EVENT_CREATED,
-      {
-        title: `Created event: ${title.trim()}`,
-        description: `New event at ${location.trim()}`,
-        metadata: { eventId: newEvent._id.toString(), location: location.trim() }
-      },
-      RESOURCE_TYPES.EVENT,
-      newEvent._id.toString()
+      title.trim(),
+      newEvent._id.toString(),
+      eventType,
+      date
     );
 
     return NextResponse.json({ 

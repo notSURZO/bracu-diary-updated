@@ -3,7 +3,7 @@ import { connectToDatabase } from '@/lib/db';
 import CourseResource from '@/lib/models/CourseResource';
 
 // GET /api/public-resources/by-course/:courseCode?q=&page=&limit=
-export async function GET(req: NextRequest, { params }: { params: { courseCode: string } }) {
+export async function GET(req: NextRequest, { params }: { params: Promise<{ courseCode: string }> }) {
   try {
     await connectToDatabase();
     const { searchParams } = new URL(req.url);
@@ -12,7 +12,8 @@ export async function GET(req: NextRequest, { params }: { params: { courseCode: 
     const limit = Math.min(50, Math.max(1, parseInt(searchParams.get('limit') || '12', 10)));
     const skip = (page - 1) * limit;
 
-    const courseCode = decodeURIComponent(params.courseCode).toUpperCase();
+    const { courseCode: paramCourseCode } = await params;
+    const courseCode = decodeURIComponent(paramCourseCode).toUpperCase();
 
     const match: any = { visibility: 'public', courseCode };
     if (q) {

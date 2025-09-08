@@ -227,6 +227,15 @@ export async function DELETE(
     const imagePath = event.imagePath;
     const imageBucket = event.imageBucket;
 
+    // Log activity before deleting
+    const { logEventDeleted } = await import('@/lib/utils/activityLogger');
+    await logEventDeleted(
+      userId,
+      event.title,
+      eventId,
+      event.tags?.[0] // Use first tag as event type
+    );
+
     // Delete the event from database
     await Event.findByIdAndDelete(params.eventId);
 

@@ -110,3 +110,97 @@ export async function POST(req: NextRequest) {
     );
   }
 }
+
+// Clean up duplicate activities
+export async function DELETE(req: NextRequest) {
+  try {
+    const { userId } = await auth();
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    await connectToDatabase();
+
+    // Find and remove duplicate course enrollment activities
+    const duplicateEnrollments = await Activity.aggregate([
+      {
+        $match: {
+          userId,
+          action: 'course_enrolled'
+        }
+      },
+      {
+        $group: {
+          _id: {
+            title: '$details.title',
+            description: '$details.description'
+          },
+          count: { $sum: 1 },
+          docs: { $push: '$_id' }
+        }
+      },
+      {
+        $match: {
+          count: { $gt: 1 }
+        }
+      }
+    ]);
+
+    let removedCount = 0;
+    for (const duplicate of duplicateEnrollments) {
+      // Keep the most recent one, remove the rest
+      const sortedIds = duplicate.docs.sort((a: any, b: any) => b.getTimestamp() - a.getTimestamp());
+      const toRemove = sortedIds.slice(1); // Remove all but the first (most recent)
+      
+      if (toRemove.length > 0) {
+        await Activity.deleteMany({ _id: { $in: toRemove } });
+        removedCount += toRemove.length;
+      }
+    }
+
+    // Find and remove duplicate course drop activities
+    const duplicateDrops = await Activity.aggregate([
+      {
+        $match: {
+          userId,
+          action: 'course_dropped'
+        }
+      },
+      {
+        $group: {
+          _id: {
+            title: '$details.title',
+            description: '$details.description'
+          },
+          count: { $sum: 1 },
+          docs: { $push: '$_id' }
+        }
+      },
+      {
+        $match: {
+          count: { $gt: 1 }
+        }
+      }
+    ]);
+
+    for (const duplicate of duplicateDrops) {
+      // Keep the most recent one, remove the rest
+      const sortedIds = duplicate.docs.sort((a: any, b: any) => b.getTimestamp() - a.getTimestamp());
+      const toRemove = sortedIds.slice(1); // Remove all but the first (most recent)
+      
+      if (toRemove.length > 0) {
+        await Activity.deleteMany({ _id: { $in: toRemove } });
+        removedCount += toRemove.length;
+      }
+    }
+
+    return NextResponse.json({ 
+      success: true, 
+      message: `Cleaned up ${removedCount} duplicate activities` 
+    });
+
+  } catch (error) {
+    console.error('Error cleaning up activities:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
+}

@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useUser } from '@clerk/nextjs';
 import SearchBar from './SearchBar';
 import Image from 'next/image';
@@ -12,6 +13,7 @@ import { useRouter, usePathname } from 'next/navigation';
 import { debounce } from "lodash";
 import { format } from 'date-fns';
 
+
 interface ConnectionRequest {
   email: string;
   name: string;
@@ -19,6 +21,7 @@ interface ConnectionRequest {
   student_ID: string;
   picture_url: string;
 }
+
 
 interface Deadline {
   id: string;
@@ -39,7 +42,14 @@ interface Deadline {
   completed: boolean;
 }
 
+
+type StudyInvite = { _id: string; roomSlug: string; hostName: string; createdAt: string };
+type InvitesResponse = { invites?: StudyInvite[]; error?: string };
+type DeadlinesResponse = { deadlines?: Deadline[]; error?: string };
+
+
 type MatchType = 'firstWord' | 'secondWord' | 'username';
+
 
 interface Connection {
   id: string;
@@ -50,33 +60,9 @@ interface Connection {
   matchType?: MatchType;
 }
 
-const DisconnectConfirmationToast = ({
-  friendName,
-  onConfirm,
-  onCancel,
-}: {
-  friendName: string;
-  onConfirm: () => void;
-  onCancel: () => void;
-}) => (
-  <div className="p-3 bg-white border border-gray-200 rounded-lg shadow-md">
-    <p className="text-gray-800 font-medium mb-2">Are you sure you want to disconnect from {friendName}?</p>
-    <div className="flex space-x-2">
-      <button
-        onClick={onConfirm}
-        className="px-3 py-1 bg-blue-600 text-white rounded-md text-sm hover:bg-blue-700 transition-colors"
-      >
-        Confirm
-      </button>
-      <button
-        onClick={onCancel}
-        className="px-3 py-1 bg-gray-200 text-gray-700 rounded-md text-sm hover:bg-gray-300 transition-colors"
-      >
-        Cancel
-      </button>
-    </div>
-  </div>
-);
+
+// (Removed unused DisconnectConfirmationToast component)
+
 
 export default function ConditionalHeader() {
   const { isSignedIn, user, isLoaded } = useUser();
@@ -99,15 +85,18 @@ export default function ConditionalHeader() {
   const router = useRouter();
   const pathname = usePathname();
   const isRagbotPage = pathname === '/ragbot';
+  const isStudyRoomsPage = pathname?.startsWith('/study-rooms');
 
-  const isConnectionsIconHighlighted = isConnectionsDropdownOpen;
-  const isNotificationsIconHighlighted = isNotificationsDropdownOpen || (studyInvites.length > 0);
+
+  // Removed unused highlight flags to satisfy lint
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+
 
   // Debounced search handler
   const handleSearchChange = debounce((value: string) => {
     setConnectionSearchQuery(value);
   }, 300);
+
 
   // Click-outside handler for connections dropdown
   useEffect(() => {
@@ -133,6 +122,7 @@ export default function ConditionalHeader() {
     };
   }, [isConnectionsDropdownOpen]);
 
+
   // Click-outside handler for notifications dropdown
   useEffect(() => {
     const handleClickOutsideNotifications = (event: MouseEvent) => {
@@ -154,12 +144,14 @@ export default function ConditionalHeader() {
     };
   }, [isNotificationsDropdownOpen]);
 
+
   // Filter connections
   useEffect(() => {
     if (connectionSearchQuery.trim() === '') {
       setFilteredConnections(connections);
       return;
     }
+
 
     const lowerQuery = connectionSearchQuery.toLowerCase();
     const filtered = connections
@@ -169,6 +161,7 @@ export default function ConditionalHeader() {
         const secondWord = nameWords[1]?.toLowerCase() || '';
         const username = connection.username.toLowerCase();
 
+
         let matchType: MatchType | null = null;
         if (firstWord.startsWith(lowerQuery)) {
           matchType = 'firstWord';
@@ -177,6 +170,7 @@ export default function ConditionalHeader() {
         } else if (username.startsWith(lowerQuery)) {
           matchType = 'username';
         }
+
 
         return matchType ? { ...connection, matchType } : null;
       })
@@ -190,8 +184,10 @@ export default function ConditionalHeader() {
       })
       .slice(0, 10);
 
+
     setFilteredConnections(filtered);
   }, [connectionSearchQuery, connections]);
+
 
   const fetchConnectionRequests = async () => {
     setIsLoading(true);
@@ -219,6 +215,7 @@ export default function ConditionalHeader() {
     }
   };
 
+
   const fetchConnections = async () => {
     setIsLoading(true);
     setError(null);
@@ -245,6 +242,7 @@ export default function ConditionalHeader() {
     }
   };
 
+
   const fetchNotifications = useCallback(async () => {
     setIsLoading(true);
     setError(null);
@@ -258,10 +256,19 @@ export default function ConditionalHeader() {
         fetch('/api/study-sessions/invites')
       ]);
 
-      const deadlinesData = await deadlinesRes.json();
-      const invitesData = await invitesRes.json();
+
+      const deadlinesData = (await deadlinesRes.json()) as DeadlinesResponse;
+      const invitesData = (await invitesRes.json()) as InvitesResponse;
       if (deadlinesRes.ok) setDeadlines(deadlinesData.deadlines || []);
-      if (invitesRes.ok) setStudyInvites((invitesData.invites || []).map((i: any) => ({ _id: String(i._id), roomSlug: i.roomSlug, hostName: i.hostName, createdAt: i.createdAt })));
+      if (invitesRes.ok) {
+        const list = (invitesData.invites || []).map((i) => ({
+          _id: String(i._id),
+          roomSlug: i.roomSlug,
+          hostName: i.hostName,
+          createdAt: i.createdAt,
+        }));
+        setStudyInvites(list);
+      }
       if (!deadlinesRes.ok && !invitesRes.ok) {
         const errMsg = deadlinesData.error || invitesData.error || 'Failed to fetch notifications';
         setError(errMsg);
@@ -276,8 +283,10 @@ export default function ConditionalHeader() {
     }
   }, [user?.id]);
 
+
   // We will fetch notifications before opening the dropdown
   // so users don't see a loading state inside the panel.
+
 
   const handleConnectionsToggleDropdown = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -298,6 +307,7 @@ export default function ConditionalHeader() {
     });
   };
 
+
   const handleNotificationsToggleDropdown = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -316,24 +326,32 @@ export default function ConditionalHeader() {
     }
   };
 
-  // Background poll for study invites (lightweight)
+
+  // Background poll for study invites (skip on Study Rooms page)
   useEffect(() => {
-    let timer: any;
+    let timer: ReturnType<typeof setInterval> | null = null;
     const poll = async () => {
       try {
         const res = await fetch('/api/study-sessions/invites');
         if (res.ok) {
-          const data = await res.json();
-          setStudyInvites((data.invites || []).map((i: any) => ({ _id: String(i._id), roomSlug: i.roomSlug, hostName: i.hostName, createdAt: i.createdAt })));
+          const data = (await res.json()) as InvitesResponse;
+          const list = (data.invites || []).map((i) => ({
+            _id: String(i._id),
+            roomSlug: i.roomSlug,
+            hostName: i.hostName,
+            createdAt: i.createdAt,
+          }));
+          setStudyInvites(list);
         }
       } catch {}
     };
-    if (isSignedIn) {
+    if (isSignedIn && !isStudyRoomsPage) {
       poll();
-      timer = setInterval(poll, 15000);
+      timer = setInterval(poll, 120000);
     }
-    return () => timer && clearInterval(timer);
-  }, [isSignedIn]);
+    return () => { if (timer) clearInterval(timer); };
+  }, [isSignedIn, isStudyRoomsPage]);
+
 
   const handleShowRequests = () => {
     setShowRequests(true);
@@ -344,6 +362,7 @@ export default function ConditionalHeader() {
     }
   };
 
+
   const handleShowConnections = () => {
     setShowConnections(true);
     setShowRequests(false);
@@ -352,6 +371,7 @@ export default function ConditionalHeader() {
       fetchConnections();
     }
   };
+
 
   const handleAcceptRequest = async (email: string) => {
     if (!user) return;
@@ -375,6 +395,7 @@ export default function ConditionalHeader() {
     }
   };
 
+
   const handleRejectRequest = async (email: string) => {
     if (!user) return;
     try {
@@ -397,39 +418,48 @@ export default function ConditionalHeader() {
     }
   };
 
+
   const handleDisconnect = (friendEmail: string, friendName: string) => {
     if (!user) return;
 
-    const toastId = toast(
-      <DisconnectConfirmationToast
-        friendName={friendName}
-        onConfirm={async () => {
-          try {
-            const response = await fetch('/api/disconnect', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ userId: user.id, friendEmail }),
-            });
-            const data = await response.json();
-            if (response.ok) {
-              toast.success(data.message);
-              fetchConnections();
-            } else {
-              console.error('Error disconnecting:', data.error);
-              toast.error(data.error || 'Failed to disconnect');
-            }
-          } catch (error) {
-            console.error('Error disconnecting:', error);
-            toast.error('Failed to disconnect');
-          } finally {
-            toast.dismiss(toastId);
-          }
-        }}
-        onCancel={() => toast.dismiss(toastId)}
-      />,
-      { autoClose: false, closeOnClick: false, draggable: false }
-    );
+
+    console.log('handleDisconnect called with:', { friendEmail, friendName });
+
+
+    // Simple confirmation dialog for testing
+    const confirmed = window.confirm(`Are you sure you want to disconnect from ${friendName}?`);
+    if (!confirmed) return;
+
+
+    // Direct API call for testing
+    const disconnectUser = async () => {
+      try {
+        console.log('Attempting to disconnect from:', friendEmail);
+        const response = await fetch('/api/disconnect', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ friendEmail }),
+        });
+        console.log('Disconnect response status:', response.status);
+        const data = await response.json();
+        console.log('Disconnect response data:', data);
+        if (response.ok) {
+          toast.success(data.message);
+          fetchConnections();
+        } else {
+          console.error('Error disconnecting:', data.error);
+          toast.error(data.error || 'Failed to disconnect');
+        }
+      } catch (error) {
+        console.error('Error disconnecting:', error);
+        toast.error('Failed to disconnect');
+      }
+    };
+
+
+    disconnectUser();
   };
+
 
   const formatDateTime = (dateString: string) => {
     if (!dateString || typeof dateString !== 'string') {
@@ -445,13 +475,16 @@ export default function ConditionalHeader() {
     };
   };
 
+
   if (!isLoaded) {
     return <div className="fixed top-0 left-0 right-0 p-4 bg-white shadow-sm">Loading...</div>;
   }
 
+
   if (!isSignedIn || !user) {
     return null;
   }
+
 
   return (
     <>
@@ -472,6 +505,7 @@ export default function ConditionalHeader() {
             </Link>
           </div>
 
+
           {/* Second row: Menu button and icons */}
           <div className="flex items-center justify-between p-3">
             <button
@@ -483,6 +517,7 @@ export default function ConditionalHeader() {
                 <path d="M3 6h18v2H3V6zm0 5h18v2H3v-2zm0 5h18v2H3v-2z"/>
               </svg>
             </button>
+
 
             <div className="flex items-center space-x-2">
               {/* Bot Icon */}
@@ -505,6 +540,7 @@ export default function ConditionalHeader() {
                 />
               </button>
 
+
               {/* Connection Requests Icon */}
               <button
                 ref={connectionsButtonRef}
@@ -522,6 +558,7 @@ export default function ConditionalHeader() {
                   className="hover:opacity-80 transition"
                 />
               </button>
+
 
               {/* Notifications Icon */}
               <button
@@ -542,14 +579,17 @@ export default function ConditionalHeader() {
               </button>
             </div>
 
+
             <AuthButtons />
           </div>
+
 
           {/* Third row: Search bar */}
           <div className="p-3 border-t border-gray-200">
             <SearchBar />
           </div>
         </div>
+
 
         {/* Desktop Layout */}
         <div className="hidden md:flex items-center justify-between p-3 sm:p-4">
@@ -577,7 +617,7 @@ export default function ConditionalHeader() {
               <SearchBar />
             </div>
           </div>
-          
+         
           <div className="flex items-center space-x-2 sm:space-x-4">
             <div className="relative flex items-center space-x-2">
               {/* Bot Icon */}
@@ -600,6 +640,7 @@ export default function ConditionalHeader() {
                 />
               </button>
 
+
               {/* Connection Requests Icon */}
               <button
                 ref={connectionsButtonRef}
@@ -617,6 +658,7 @@ export default function ConditionalHeader() {
                   className="hover:opacity-80 transition"
                 />
               </button>
+
 
               {/* Notifications Icon */}
               <button
@@ -636,10 +678,11 @@ export default function ConditionalHeader() {
                 />
               </button>
             </div>
-            
+           
             <AuthButtons />
           </div>
         </div>
+
 
         {/* Dropdown menus (same for both mobile and desktop) */}
         {isConnectionsDropdownOpen && (
@@ -743,7 +786,10 @@ export default function ConditionalHeader() {
                           </div>
                         </Link>
                         <button
-                          onClick={() => handleDisconnect(connection.email, connection.name)}
+                          onClick={() => {
+                            console.log('Disconnect button clicked for:', connection.email, connection.name);
+                            handleDisconnect(connection.email, connection.name);
+                          }}
                           className="px-3 py-1 bg-red-200 text-red-700 rounded-md text-sm hover:bg-red-300 transition-colors"
                         >
                           Disconnect
@@ -778,7 +824,7 @@ export default function ConditionalHeader() {
                         key={request.email}
                         className="p-3 hover:bg-gray-50 transition-colors flex items-center justify-between"
                       >
-                      
+                     
                       <Link
                         href={`/profile/${request.username}`}
                         className="flex items-center space-x-3"
@@ -878,8 +924,8 @@ export default function ConditionalHeader() {
                             <button
                               onClick={async () => {
                                 try {
-                                  await fetch('/api/study-sessions/dismiss', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ inviteId: inv._id }) });
-                                  setStudyInvites(prev => prev.filter(i => i._id !== inv._id));
+await fetch('/api/study-sessions/dismiss', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ inviteId: inv._id }) });
+setStudyInvites(prev => prev.filter(i => i._id !== inv._id));
                                 } catch {}
                               }}
                               className="px-3 py-1.5 bg-gray-100 text-gray-700 rounded-md text-sm hover:bg-gray-200"
@@ -892,6 +938,7 @@ export default function ConditionalHeader() {
                     </ul>
                   </div>
                 )}
+
 
                 {deadlines.length > 0 && (
                   <ul className="divide-y divide-gray-100">
@@ -914,8 +961,8 @@ export default function ConditionalHeader() {
                             <div className="flex items-center space-x-2">
                               <p className="font-medium text-gray-800">{deadline.title}</p>
                               <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                                deadline.type === 'theory' 
-                                  ? 'bg-blue-100 text-blue-800' 
+                                deadline.type === 'theory'
+                                  ? 'bg-blue-100 text-blue-800'
                                   : 'bg-green-100 text-green-800'
                               }`}>
                                 {deadline.type === 'theory' ? 'Theory' : 'Lab'}
@@ -938,7 +985,7 @@ export default function ConditionalHeader() {
           </>
         )}
       </header>
-      
+     
       <Sidebar mobileOpen={mobileNavOpen} onClose={() => setMobileNavOpen(false)} />
     </>
   );

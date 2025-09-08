@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { ClerkProvider } from '@clerk/nextjs';
+import { currentUser } from '@clerk/nextjs/server';
 import ConditionalHeader from './components/ConditionalHeader';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
@@ -21,14 +22,17 @@ export const metadata: Metadata = {
   description: "Your personalized university companion for BRAC University",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const user = await currentUser();
+  const isSignedIn = !!user;
+
   return (
     <ClerkProvider
-      afterSignOutUrl = "/sign-in"
+      afterSignOutUrl="/sign-in"
       appearance={{
         cssLayerName: 'clerk',
       }}
@@ -36,8 +40,9 @@ export default function RootLayout({
       <html lang="en" className={`${geistSans.variable} ${geistMono.variable}`} suppressHydrationWarning>
         <body className="flex flex-col min-h-screen" suppressHydrationWarning>
           <ConditionalHeader />
-          {/* Added responsive padding-top to account for mobile header height */}
-          <main className="flex-grow pt-48 md:pt-24 lg:pl-64">{children}</main>
+          <main className={`flex-grow ${isSignedIn ? 'pt-48 md:pt-24 lg:pl-64' : ''}`}>
+            {children}
+          </main>
           <ToastContainer
             position="top-right"
             autoClose={3000}

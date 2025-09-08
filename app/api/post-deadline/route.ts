@@ -58,7 +58,7 @@ export async function POST(req: Request) {
 
     // Create deadline object
     const deadline = {
-      id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}-${userId.substring(0, 8)}`,
+      id: `${Date.now()}-${Math.random().toString(36).substr(2, 11)}-${userId.substr(0, 8)}`,
       title,
       details: details || '',
       submissionLink: submissionLink || '',

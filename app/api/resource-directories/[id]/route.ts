@@ -2,10 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/db';
 import CourseResourceDirectory from '@/lib/models/CourseResourceDirectory';
 
-export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     await connectToDatabase();
-    const { id } = params;
+    const { id } = await params;
     
     // Get the main directory
     const mainDirectory = await CourseResourceDirectory.findById(id).lean();

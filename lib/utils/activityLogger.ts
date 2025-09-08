@@ -19,8 +19,19 @@ export const ACTIVITY_TYPES = {
   DEADLINE_DELETED: 'deadline_deleted',
   DEADLINE_UPDATED: 'deadline_updated',
   EVENT_CANCELLED: 'event_cancelled',
+  EVENT_DELETED: 'event_deleted',
   DIRECTORY_CREATED: 'directory_created',
-  DIRECTORY_DELETED: 'directory_deleted'
+  DIRECTORY_DELETED: 'directory_deleted',
+  CONNECTION_REQUESTED: 'connection_requested',
+  CONNECTION_REJECTED: 'connection_rejected',
+  CONNECTION_REMOVED: 'connection_removed',
+  PROFILE_VIEWED: 'profile_viewed',
+  STUDY_SESSION_CREATED: 'study_session_created',
+  STUDY_SESSION_LEFT: 'study_session_left',
+  INTERESTS_UPDATED: 'interests_updated',
+  DEADLINE_VOTED: 'deadline_voted',
+  RESOURCE_VOTED: 'resource_voted',
+  REVIEW_VOTED: 'review_voted'
 } as const;
 
 export type ActivityType = typeof ACTIVITY_TYPES[keyof typeof ACTIVITY_TYPES];
@@ -34,7 +45,8 @@ export const RESOURCE_TYPES = {
   REVIEW: 'review',
   CONNECTION: 'connection',
   STUDY_SESSION: 'study_session',
-  PROFILE: 'profile'
+  PROFILE: 'profile',
+  USER: 'user'
 } as const;
 
 export type ResourceType = typeof RESOURCE_TYPES[keyof typeof RESOURCE_TYPES];
@@ -81,15 +93,26 @@ export const logResourceUpload = async (
   resourceTitle: string,
   courseCode: string,
   resourceId: string,
-  fileType?: string
+  fileType?: string,
+  directoryType?: 'public' | 'private',
+  directoryName?: string
 ) => {
+  const location = directoryName ? ` in ${directoryName}` : '';
+  const typeText = directoryType === 'public' ? 'public directory' : 'private directory';
+  
   await logActivity(
     userId,
     ACTIVITY_TYPES.RESOURCE_UPLOAD,
     {
       title: `Uploaded: ${resourceTitle}`,
-      description: `Added resource to ${courseCode}`,
-      metadata: { courseCode, fileType }
+      description: `Added resource to ${courseCode} ${typeText}${location}`,
+      metadata: { 
+        courseCode, 
+        fileType, 
+        directoryType, 
+        directoryName,
+        location: `${typeText}${location}`
+      }
     },
     RESOURCE_TYPES.RESOURCE,
     resourceId
@@ -140,6 +163,21 @@ export const logCourseEnrollment = async (
   courseName: string,
   section: string
 ) => {
+  // Check for recent duplicate course enrollment activities (within last 5 minutes)
+  const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
+  const existingActivity = await Activity.findOne({
+    userId,
+    action: ACTIVITY_TYPES.COURSE_ENROLLED,
+    'details.title': `Enrolled in: ${courseCode}`,
+    'details.description': `${courseName} - Section ${section}`,
+    timestamp: { $gte: fiveMinutesAgo }
+  });
+
+  if (existingActivity) {
+    console.log(`Skipping duplicate course enrollment activity for ${courseCode}`);
+    return;
+  }
+
   await logActivity(
     userId,
     ACTIVITY_TYPES.COURSE_ENROLLED,
@@ -152,24 +190,6 @@ export const logCourseEnrollment = async (
   );
 };
 
-export const logReviewPosted = async (
-  userId: string,
-  courseCode: string,
-  rating: number,
-  reviewId: string
-) => {
-  await logActivity(
-    userId,
-    ACTIVITY_TYPES.REVIEW_POSTED,
-    {
-      title: `Posted review for: ${courseCode}`,
-      description: `Rated ${rating}/5 stars`,
-      metadata: { courseCode, rating }
-    },
-    RESOURCE_TYPES.REVIEW,
-    reviewId
-  );
-};
 
 export const logConnectionAccepted = async (
   userId: string,
@@ -210,6 +230,21 @@ export const logCourseDropped = async (
   courseName: string,
   section: string
 ) => {
+  // Check for recent duplicate course drop activities (within last 5 minutes)
+  const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
+  const existingActivity = await Activity.findOne({
+    userId,
+    action: ACTIVITY_TYPES.COURSE_DROPPED,
+    'details.title': `Dropped course: ${courseCode}`,
+    'details.description': `${courseName} - Section ${section}`,
+    timestamp: { $gte: fiveMinutesAgo }
+  });
+
+  if (existingActivity) {
+    console.log(`Skipping duplicate course drop activity for ${courseCode}`);
+    return;
+  }
+
   await logActivity(
     userId,
     ACTIVITY_TYPES.COURSE_DROPPED,
@@ -247,15 +282,27 @@ export const logResourceDeleted = async (
   resourceTitle: string,
   courseCode: string,
   resourceId: string,
-  resourceType: 'file' | 'youtube' = 'file'
+  resourceType: 'file' | 'youtube' = 'file',
+  directoryType?: 'public' | 'private',
+  directoryName?: string
 ) => {
+  const location = directoryName ? ` from ${directoryName}` : '';
+  const typeText = directoryType === 'public' ? 'public directory' : 'private directory';
+  
   await logActivity(
     userId,
     ACTIVITY_TYPES.RESOURCE_DELETED,
     {
       title: `Deleted resource: ${resourceTitle}`,
-      description: `${courseCode} - ${resourceType} resource`,
-      metadata: { courseCode, resourceTitle, resourceType }
+      description: `Removed ${resourceType} resource from ${courseCode} ${typeText}${location}`,
+      metadata: { 
+        courseCode, 
+        resourceTitle, 
+        resourceType, 
+        directoryType, 
+        directoryName,
+        location: `${typeText}${location}`
+      }
     },
     RESOURCE_TYPES.RESOURCE,
     resourceId
@@ -301,6 +348,62 @@ export const logDirectoryDeleted = async (
   );
 };
 
+export const logReviewPosted = async (
+  userId: string,
+  courseCode: string,
+  rating: number,
+  reviewText: string,
+  reviewId: string
+) => {
+  const stars = '★'.repeat(rating) + '☆'.repeat(5 - rating);
+  const truncatedText = reviewText.length > 100 ? reviewText.substring(0, 100) + '...' : reviewText;
+  
+  await logActivity(
+    userId,
+    ACTIVITY_TYPES.REVIEW_POSTED,
+    {
+      title: `Posted review: ${courseCode}`,
+      description: `${stars} - "${truncatedText}"`,
+      metadata: { 
+        courseCode, 
+        rating, 
+        reviewText: truncatedText,
+        fullText: reviewText
+      }
+    },
+    RESOURCE_TYPES.REVIEW,
+    reviewId
+  );
+};
+
+export const logEventCreated = async (
+  userId: string,
+  eventTitle: string,
+  eventId: string,
+  eventType?: string,
+  eventDate?: string
+) => {
+  const typeText = eventType ? ` (${eventType})` : '';
+  const dateText = eventDate ? ` - ${new Date(eventDate).toLocaleDateString()}` : '';
+  
+  await logActivity(
+    userId,
+    ACTIVITY_TYPES.EVENT_CREATED,
+    {
+      title: `Created event: ${eventTitle}`,
+      description: `Club event${typeText}${dateText}`,
+      metadata: { 
+        eventTitle, 
+        eventType, 
+        eventDate,
+        isClubAdmin: true
+      }
+    },
+    RESOURCE_TYPES.EVENT,
+    eventId
+  );
+};
+
 export const logDeadlineCompleted = async (
   userId: string,
   deadlineTitle: string,
@@ -317,5 +420,229 @@ export const logDeadlineCompleted = async (
     },
     RESOURCE_TYPES.COURSE,
     deadlineId
+  );
+};
+
+export const logEventDeleted = async (
+  userId: string,
+  eventTitle: string,
+  eventId: string,
+  eventType?: string
+) => {
+  const typeText = eventType ? ` (${eventType})` : '';
+  
+  await logActivity(
+    userId,
+    ACTIVITY_TYPES.EVENT_DELETED,
+    {
+      title: `Deleted event: ${eventTitle}`,
+      description: `Removed club event${typeText}`,
+      metadata: { 
+        eventTitle, 
+        eventType,
+        isClubAdmin: true
+      }
+    },
+    RESOURCE_TYPES.EVENT,
+    eventId
+  );
+};
+
+export const logConnectionRequested = async (
+  userId: string,
+  targetUserId: string,
+  targetUserName: string
+) => {
+  await logActivity(
+    userId,
+    ACTIVITY_TYPES.CONNECTION_REQUESTED,
+    {
+      title: `Sent connection request`,
+      description: `Requested to connect with ${targetUserName}`,
+      metadata: { targetUserId, targetUserName }
+    },
+    RESOURCE_TYPES.USER,
+    targetUserId
+  );
+};
+
+export const logConnectionRejected = async (
+  userId: string,
+  requesterUserId: string,
+  requesterName: string
+) => {
+  await logActivity(
+    userId,
+    ACTIVITY_TYPES.CONNECTION_REJECTED,
+    {
+      title: `Rejected connection request`,
+      description: `Declined connection from ${requesterName}`,
+      metadata: { requesterUserId, requesterName }
+    },
+    RESOURCE_TYPES.USER,
+    requesterUserId
+  );
+};
+
+export const logConnectionRemoved = async (
+  userId: string,
+  targetUserId: string,
+  targetUserName: string
+) => {
+  await logActivity(
+    userId,
+    ACTIVITY_TYPES.CONNECTION_REMOVED,
+    {
+      title: `Removed connection`,
+      description: `Disconnected from ${targetUserName}`,
+      metadata: { targetUserId, targetUserName }
+    },
+    RESOURCE_TYPES.USER,
+    targetUserId
+  );
+};
+
+export const logProfileViewed = async (
+  userId: string,
+  viewedUserId: string,
+  viewedUserName: string
+) => {
+  await logActivity(
+    userId,
+    ACTIVITY_TYPES.PROFILE_VIEWED,
+    {
+      title: `Viewed profile`,
+      description: `Visited ${viewedUserName}'s profile`,
+      metadata: { viewedUserId, viewedUserName }
+    },
+    RESOURCE_TYPES.USER,
+    viewedUserId
+  );
+};
+
+export const logStudySessionCreated = async (
+  userId: string,
+  roomId: string,
+  roomName: string
+) => {
+  await logActivity(
+    userId,
+    ACTIVITY_TYPES.STUDY_SESSION_CREATED,
+    {
+      title: `Created study room`,
+      description: `Started study session: ${roomName}`,
+      metadata: { roomId, roomName }
+    },
+    RESOURCE_TYPES.STUDY_SESSION,
+    roomId
+  );
+};
+
+export const logStudySessionLeft = async (
+  userId: string,
+  roomId: string,
+  roomName: string
+) => {
+  await logActivity(
+    userId,
+    ACTIVITY_TYPES.STUDY_SESSION_LEFT,
+    {
+      title: `Left study room`,
+      description: `Ended study session: ${roomName}`,
+      metadata: { roomId, roomName }
+    },
+    RESOURCE_TYPES.STUDY_SESSION,
+    roomId
+  );
+};
+
+export const logInterestsUpdated = async (
+  userId: string,
+  interests: string[]
+) => {
+  await logActivity(
+    userId,
+    ACTIVITY_TYPES.INTERESTS_UPDATED,
+    {
+      title: `Updated interests`,
+      description: `Changed interests to: ${interests.join(', ')}`,
+      metadata: { interests }
+    },
+    RESOURCE_TYPES.USER,
+    userId
+  );
+};
+
+export const logDeadlineVoted = async (
+  userId: string,
+  deadlineTitle: string,
+  courseCode: string,
+  voteType: 'agree' | 'disagree',
+  deadlineId: string
+) => {
+  const voteText = voteType === 'agree' ? 'agreed with' : 'disagreed with';
+  
+  await logActivity(
+    userId,
+    ACTIVITY_TYPES.DEADLINE_VOTED,
+    {
+      title: `Voted on deadline`,
+      description: `${voteText} deadline: ${deadlineTitle} in ${courseCode}`,
+      metadata: { courseCode, deadlineTitle, voteType }
+    },
+    RESOURCE_TYPES.DEADLINE,
+    deadlineId
+  );
+};
+
+export const logResourceVoted = async (
+  userId: string,
+  resourceTitle: string,
+  courseCode: string,
+  voteType: 'up' | 'down' | 'clear',
+  resourceId: string
+) => {
+  let voteText = '';
+  if (voteType === 'up') {
+    voteText = 'upvoted';
+  } else if (voteType === 'down') {
+    voteText = 'downvoted';
+  } else {
+    voteText = 'removed vote from';
+  }
+  
+  await logActivity(
+    userId,
+    ACTIVITY_TYPES.RESOURCE_VOTED,
+    {
+      title: `Voted on resource`,
+      description: `${voteText} resource: ${resourceTitle} in ${courseCode}`,
+      metadata: { courseCode, resourceTitle, voteType }
+    },
+    RESOURCE_TYPES.RESOURCE,
+    resourceId
+  );
+};
+
+export const logReviewVoted = async (
+  userId: string,
+  courseCode: string,
+  voteType: 'agree' | 'disagree',
+  reviewId: string,
+  reviewText?: string
+) => {
+  const voteText = voteType === 'agree' ? 'agreed with' : 'disagreed with';
+  const truncatedText = reviewText && reviewText.length > 50 ? reviewText.substring(0, 50) + '...' : reviewText || 'review';
+  
+  await logActivity(
+    userId,
+    ACTIVITY_TYPES.REVIEW_VOTED,
+    {
+      title: `Voted on review`,
+      description: `${voteText} review for ${courseCode}: "${truncatedText}"`,
+      metadata: { courseCode, voteType, reviewText: truncatedText }
+    },
+    RESOURCE_TYPES.REVIEW,
+    reviewId
   );
 };

@@ -299,8 +299,14 @@ export default function CompressModal({ triggerLabel = "Compress", courseCode, d
           ownerDisplayName: displayName,
           upvoters: [],
           downvoters: [],
+          courseCode: courseCode,
+          directoryId: directoryId,
         };
-        window.dispatchEvent(new CustomEvent(`${isPrivate ? 'private-' : ''}resource:created`, { detail: { item } }));
+        const eventName = `${isPrivate ? 'private-' : ''}resource:created`;
+        // Add a small delay to ensure components are ready
+        setTimeout(() => {
+          window.dispatchEvent(new CustomEvent(eventName, { detail: { item } }));
+        }, 100);
       } catch {}
 
       toast.success('Uploaded & published');
@@ -419,7 +425,11 @@ export default function CompressModal({ triggerLabel = "Compress", courseCode, d
           createdAt: new Date().toISOString(),
           ownerDisplayName: displayName,
         };
-        window.dispatchEvent(new CustomEvent(`${isPrivate ? 'private-' : ''}resource:created`, { detail: { item } }));
+        const eventName = `${isPrivate ? 'private-' : ''}resource:created`;
+        // Add a small delay to ensure components are ready
+        setTimeout(() => {
+          window.dispatchEvent(new CustomEvent(eventName, { detail: { item } }));
+        }, 100);
       } catch {}
 
       toast.success('Resource created');
