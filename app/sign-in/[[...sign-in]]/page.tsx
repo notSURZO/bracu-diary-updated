@@ -4,8 +4,8 @@ import Image from "next/image";
 
 export default function SignInPage() {
   return (
-    <div className="fixed inset-0 bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
-      <div className="h-full grid lg:grid-cols-2 items-center">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 overflow-y-auto">
+      <div className="min-h-screen grid lg:grid-cols-2 items-center">
         {/* Left Content - Centered */}
         <div className="flex flex-col items-center justify-center px-6 lg:px-16 py-12 lg:py-0 h-full">
           {/* Logo and Title */}

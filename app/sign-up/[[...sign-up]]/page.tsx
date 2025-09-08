@@ -235,10 +235,10 @@ export default function CustomSignUp() {
   }
 
   return (
-    <div className="fixed inset-0 bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
-      <div className="h-full grid lg:grid-cols-2 items-center">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 overflow-y-auto">
+      <div className="min-h-screen grid lg:grid-cols-2 items-center">
         {/* Left Content - Centered */}
-        <div className="flex flex-col items-center justify-center px-6 lg:px-12 py-12 lg:py-0 h-full">
+        <div className="flex flex-col items-center justify-center px-6 lg:px-12 py-12 lg:py-0 min-h-screen lg:min-h-0">
           {/* Logo and Title */}
           <div className="flex items-center mb-6 space-x-4">
             <Image
@@ -300,8 +300,8 @@ export default function CustomSignUp() {
         </div>
 
         {/* Right Side - Signup Form */}
-        <div className="h-full flex items-center justify-center px-6 lg:px-16 py-12 lg:py-0">
-          <div className="bg-white/95 backdrop-blur-md rounded-2xl shadow-2xl border border-white/30 p-8 w-full max-w-sm max-h-[90vh] overflow-y-auto">
+        <div className="min-h-screen lg:min-h-0 flex items-center justify-center px-6 lg:px-16 py-12 lg:py-0">
+          <div className="bg-white/95 backdrop-blur-md rounded-2xl shadow-2xl border border-white/30 p-8 w-full max-w-sm">
             <div className="mb-8">
               <h2 className="text-2xl font-bold text-gray-800 mb-3">Create Account</h2>
               <p className="text-gray-600 text-sm leading-relaxed">Enter your details to get started</p>

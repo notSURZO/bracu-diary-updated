@@ -162,10 +162,7 @@ export default async function FolderPage({ params, searchParams }: Readonly<{ pa
     return `${n.toFixed(n >= 100 ? 0 : n >= 10 ? 1 : 2)} ${units[i]}`;
   };
 
-  // removed unused Cloudinary toDownloadUrl helper
-
-  // For viewing, use the original Cloudinary URL exactly as returned by the API.
-
+  
   return (
     <div className="px-4 py-6 max-w-7xl mx-auto">
       <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:flex-nowrap">
