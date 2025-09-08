@@ -56,11 +56,11 @@ const DeadlineSchema = new mongoose.Schema({
   },
   createdByName: {
     type: String,
-    required: true
+    default: 'Unknown'
   },
   createdByStudentId: {
     type: String,
-    required: true
+    default: 'Unknown'
   },
   createdAt: {
     type: Date,
@@ -71,13 +71,18 @@ const DeadlineSchema = new mongoose.Schema({
     enum: ['theory', 'lab'],
     required: false
   },
-  agrees: { 
-    type: [String], 
-    default: [] 
+  category: {
+    type: String,
+    enum: ['Quiz', 'Assignment', 'Mid', 'Final'],
+    required: false
   },
-  disagrees: { 
-    type: [String], 
-    default: [] 
+  agrees: {
+    type: [String],
+    default: []
+  },
+  disagrees: {
+    type: [String],
+    default: []
   }
 });
 

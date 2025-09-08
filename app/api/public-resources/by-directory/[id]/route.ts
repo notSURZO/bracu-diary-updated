@@ -8,18 +8,37 @@ import CourseResource from '@/lib/models/CourseResource';
 import CourseResourceDirectory from '@/lib/models/CourseResourceDirectory';
 import { Types } from 'mongoose';
 
-export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     await connectToDatabase();
-    const { id } = params;
+    const { id } = await params;
     const page = 1;
     const limit = 50;
     const { searchParams } = new URL(req.url);
     const q = (searchParams.get('q') || '').trim();
 
+    let baseFilter: any = { visibility: 'public' };
+    
+    // Handle directory ID - now all directories are stored in database
     const dirObjectId = Types.ObjectId.isValid(id) ? new Types.ObjectId(id) : id;
-    const baseFilter: any = { visibility: 'public', directoryId: dirObjectId };
+    
+    // Check if this is a main directory or subdirectory
+    const directory = await CourseResourceDirectory.findById(dirObjectId).lean();
+    
+    if (!directory) {
+      return NextResponse.json({ items: [], page, limit, total: 0 });
+    }
+    
+    if (directory.isSubdirectory) {
+      // This is a subdirectory - get resources directly linked to it
+      baseFilter.directoryId = dirObjectId;
+    } else {
+      // This is a main directory - get resources directly linked to it
+      baseFilter.directoryId = dirObjectId;
+    }
+    
     if (q) baseFilter.$text = { $search: q };
+    
     // Sort by highest upvotes first, then score (up - down), then recency
     const items: any[] = await CourseResource.aggregate([
       { $match: baseFilter },

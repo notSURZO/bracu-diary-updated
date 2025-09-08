@@ -1,10 +1,10 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+
 import { useUser } from '@clerk/nextjs';
 import Link from 'next/link';
-import { FaCalendarPlus, FaArrowLeft, FaEye, FaEdit, FaTrash, FaPlus } from 'react-icons/fa';
+import { FaCalendarPlus, FaArrowLeft, FaEye, FaEdit, FaTrash, FaPlus, FaUsers } from 'react-icons/fa';
 import { toast } from 'react-toastify';
 import { format } from 'date-fns';
 
@@ -17,14 +17,13 @@ interface Event {
   location: string;
   createdAt: string;
   updatedAt: string;
+  registrationCount?: number;
 }
 
 export default function AdminDashboardPage() {
   const [events, setEvents] = useState<Event[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
-  const [clubName, setClubName] = useState('');
-  const router = useRouter();
   const { isSignedIn, user } = useUser();
 
   // Check admin status and fetch events on component mount
@@ -44,12 +43,26 @@ export default function AdminDashboardPage() {
             const eventsResponse = await fetch('/api/events/my-events');
             if (eventsResponse.ok) {
               const eventsData = await eventsResponse.json();
-              setEvents(eventsData.events || []);
+              if (eventsData.success) {
+                setEvents(eventsData.events || []);
+              } else {
+                console.error('Failed to fetch events:', eventsData.message);
+                toast.error(eventsData.message || 'Failed to fetch events');
+              }
+            } else {
+              const errorData = await eventsResponse.json();
+              console.error('Failed to fetch events:', errorData.message);
+              toast.error(errorData.message || 'Failed to fetch events');
             }
           }
+        } else {
+          const errorData = await userResponse.json();
+          console.error('Failed to check admin status:', errorData.message);
+          toast.error(errorData.message || 'Failed to check admin status');
         }
       } catch (error) {
         console.error('Error checking admin status:', error);
+        toast.error('An error occurred while loading the dashboard');
       } finally {
         setIsLoading(false);
       }
@@ -126,6 +139,49 @@ export default function AdminDashboardPage() {
     }
   };
 
+  // Combine event date and time into a single Date for accurate comparison
+  const eventDateTime = (dateString: string, timeString: string) => {
+    const d = new Date(dateString);
+    // Expecting HH:mm from form; default to 00:00 if missing
+    const [hStr = '0', mStr = '0'] = (timeString || '00:00').split(':');
+    const h = Number(hStr) || 0;
+    const m = Number(mStr) || 0;
+    d.setHours(h, m, 0, 0);
+    return d;
+  };
+
+  // Handle event deletion
+  const handleDeleteEvent = async (eventId: string, eventTitle: string) => {
+    const confirmed = window.confirm(
+      `Are you sure you want to delete "${eventTitle}"? This action cannot be undone.`
+    );
+
+    if (!confirmed) return;
+
+    try {
+      const response = await fetch(`/api/events/${eventId}`, {
+        method: 'DELETE',
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        toast.success('Event deleted successfully');
+        // Refresh the events list
+        const eventsResponse = await fetch('/api/events/my-events');
+        if (eventsResponse.ok) {
+          const eventsData = await eventsResponse.json();
+          setEvents(eventsData.events || []);
+        }
+      } else {
+        toast.error(data.message || 'Failed to delete event');
+      }
+    } catch (error) {
+      console.error('Error deleting event:', error);
+      toast.error('Failed to delete event');
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-blue-50 to-slate-100">
       <div className="container mx-auto px-4 py-8">
@@ -174,7 +230,7 @@ export default function AdminDashboardPage() {
                 <div className="ml-4">
                   <p className="text-sm font-medium text-gray-600">Upcoming Events</p>
                   <p className="text-2xl font-bold text-gray-900">
-                    {events.filter(event => new Date(event.date) >= new Date()).length}
+                    {events.filter(event => eventDateTime(event.date, event.time) >= new Date()).length}
                   </p>
                 </div>
               </div>
@@ -188,7 +244,7 @@ export default function AdminDashboardPage() {
                 <div className="ml-4">
                   <p className="text-sm font-medium text-gray-600">Past Events</p>
                   <p className="text-2xl font-bold text-gray-900">
-                    {events.filter(event => new Date(event.date) < new Date()).length}
+                    {events.filter(event => eventDateTime(event.date, event.time) < new Date()).length}
                   </p>
                 </div>
               </div>
@@ -219,7 +275,7 @@ export default function AdminDashboardPage() {
             ) : (
               <div className="divide-y divide-gray-200">
                 {events.map((event) => {
-                  const isUpcoming = new Date(event.date) >= new Date();
+                  const isUpcoming = eventDateTime(event.date, event.time) >= new Date();
                   return (
                     <div key={event._id} className="p-6 hover:bg-gray-50 transition-colors">
                       <div className="flex items-start justify-between">
@@ -241,16 +297,39 @@ export default function AdminDashboardPage() {
                               {formatDate(event.date)} at {formatTime(event.time)}
                             </span>
                             <span>📍 {event.location}</span>
+                            <span className="flex items-center">
+                              <FaUsers className="w-4 h-4 mr-1" />
+                              {event.registrationCount || 0} registered
+                            </span>
                           </div>
                         </div>
                         <div className="flex items-center gap-2 ml-4">
-                          <button className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors">
+                          <Link
+                            href={`/events/view/${event._id}`}
+                            className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors"
+                            title="View Event Details"
+                          >
                             <FaEye className="w-4 h-4" />
-                          </button>
-                          <button className="p-2 text-orange-600 hover:bg-orange-100 rounded-lg transition-colors">
+                          </Link>
+                          <Link
+                            href={`/events/registrations/${event._id}`}
+                            className="p-2 text-green-600 hover:bg-green-100 rounded-lg transition-colors"
+                            title="View Registrations"
+                          >
+                            <FaUsers className="w-4 h-4" />
+                          </Link>
+                          <Link
+                            href={`/events/edit/${event._id}`}
+                            className="p-2 text-orange-600 hover:bg-orange-100 rounded-lg transition-colors"
+                            title="Edit Event"
+                          >
                             <FaEdit className="w-4 h-4" />
-                          </button>
-                          <button className="p-2 text-red-600 hover:bg-red-100 rounded-lg transition-colors">
+                          </Link>
+                          <button 
+                            onClick={() => handleDeleteEvent(event._id, event.title)}
+                            className="p-2 text-red-600 hover:bg-red-100 rounded-lg transition-colors"
+                            title="Delete Event"
+                          >
                             <FaTrash className="w-4 h-4" />
                           </button>
                         </div>

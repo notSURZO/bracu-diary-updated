@@ -6,6 +6,8 @@ import { useUser } from '@clerk/nextjs';
 import Link from 'next/link';
 import { FaCalendarPlus, FaArrowLeft, FaCheckCircle } from 'react-icons/fa';
 import { toast } from 'react-toastify';
+import debounce from 'lodash/debounce';
+import { useMemo } from 'react';
 
 interface FormData {
   title: string;
@@ -13,6 +15,10 @@ interface FormData {
   date: string;
   time: string;
   location: string;
+  tags?: string; // comma-separated in UI
+  imageUrl?: string;
+  imagePath?: string;
+  imageBucket?: string;
 }
 
 export default function CreateEventPage() {
@@ -21,13 +27,25 @@ export default function CreateEventPage() {
     description: '',
     date: '',
     time: '',
-    location: ''
+    location: '',
+    tags: '',
+    imageUrl: '',
+    imagePath: '',
+    imageBucket: ''
   });
   const [isLoading, setIsLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [isCheckingAdmin, setIsCheckingAdmin] = useState(true);
   const [recentlyVerifiedClubId, setRecentlyVerifiedClubId] = useState<string | null>(null);
+  const [imageUploading, setImageUploading] = useState(false);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+
+  // Debounced success toaster to avoid duplicate toasts
+  const toastSuccess = useMemo(
+    () => debounce((msg: string) => toast.success(msg), 300, { leading: true, trailing: false }),
+    []
+  );
   const router = useRouter();
   const searchParams = useSearchParams();
   const { isSignedIn, user } = useUser();
@@ -137,12 +155,51 @@ export default function CreateEventPage() {
     }));
   };
 
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please select an image file');
+      return;
+    }
+    try {
+      setImageUploading(true);
+      setImagePreview(URL.createObjectURL(file));
+      const form = new FormData();
+      form.append('file', file);
+      const res = await fetch('/api/upload/event-image', { method: 'POST', body: form });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data?.message || 'Upload failed');
+      }
+      setFormData(prev => ({ ...prev, imageUrl: data.url, imagePath: data.path, imageBucket: data.bucket }));
+      toastSuccess('Image uploaded');
+    } catch (err: any) {
+      console.error(err);
+      toast.error(err.message || 'Failed to upload image');
+      setImagePreview(null);
+    } finally {
+      setImageUploading(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     // Validate required fields
     if (!formData.title.trim() || !formData.description.trim() || !formData.date || !formData.time || !formData.location.trim()) {
       toast.error('Please fill in all fields');
+      return;
+    }
+
+    if (imageUploading) {
+      toast.warn('Please wait until the image finishes uploading');
+      return;
+    }
+
+    // If a file was selected (preview exists) but no uploaded URL yet
+    if (imagePreview && !formData.imageUrl) {
+      toast.error('Image not uploaded yet. Please re-select or try again.');
       return;
     }
 
@@ -173,14 +230,27 @@ export default function CreateEventPage() {
       const response = await fetch('/api/events/create', {
         method: 'POST',
         headers,
-        body: JSON.stringify(formData),
+        body: JSON.stringify({
+          title: formData.title,
+          description: formData.description,
+          date: formData.date,
+          time: formData.time,
+          location: formData.location,
+          imageUrl: formData.imageUrl,
+          imagePath: formData.imagePath,
+          imageBucket: formData.imageBucket,
+          tags: (formData.tags || '')
+            .split(',')
+            .map((t) => t.trim())
+            .filter(Boolean),
+        }),
       });
 
       const data = await response.json();
 
       if (response.ok) {
         setIsSuccess(true);
-        toast.success('Event created successfully!');
+        toastSuccess('Event created successfully!');
         
         // Redirect to events page after 2 seconds
         setTimeout(() => {
@@ -331,13 +401,49 @@ export default function CreateEventPage() {
                 />
               </div>
 
+              {/* Event Tags */}
+              <div>
+                <label htmlFor="tags" className="block text-sm font-medium text-gray-700 mb-2">
+                  Tags (comma-separated)
+                </label>
+                <input
+                  type="text"
+                  id="tags"
+                  name="tags"
+                  value={formData.tags}
+                  onChange={handleInputChange}
+                  placeholder="e.g., AI, Debate, Hackathon"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
+                  disabled={isLoading}
+                />
+              </div>
+
+              {/* Event Image Upload (Supabase) */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Event Image</label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleFileChange}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors bg-white"
+                  disabled={isLoading || imageUploading}
+                />
+                <p className="text-xs text-gray-500 mt-1">We store this image in Supabase Storage.</p>
+                {(imagePreview || formData.imageUrl) && (
+                  <div className="mt-3 rounded-lg overflow-hidden border w-full max-w-md">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={imagePreview || formData.imageUrl!} alt="Event preview" className="w-full h-48 object-cover" />
+                  </div>
+                )}
+              </div>
+
               {/* Submit Button */}
               <button
                 type="submit"
-                disabled={isLoading}
+                disabled={isLoading || imageUploading}
                 className="w-full bg-blue-600 text-white py-3 px-6 rounded-lg font-semibold hover:bg-blue-700 disabled:bg-blue-400 disabled:cursor-not-allowed transition-colors"
               >
-                {isLoading ? 'Creating Event...' : 'Create Event'}
+                {isLoading || imageUploading ? 'Processing...' : 'Create Event'}
               </button>
             </form>
 

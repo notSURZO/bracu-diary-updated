@@ -8,6 +8,9 @@ const isProtectedRoute = createRouteMatcher([
   '/public-resources(.*)',
   '/private-resources(.*)',
   '/api/private-(.*)',
+  // Do NOT protect sign-in and sign-up catch-all routes
+  // '/sign-in(.*)',
+  // '/sign-up(.*)',
 ])
 
 export default clerkMiddleware(async (auth, req) => {

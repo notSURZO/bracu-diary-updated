@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, memo } from 'react';
 import { notFound } from "next/navigation";
 import Image from 'next/image';
 import { FaLinkedin, FaTwitter, FaGithub, FaGlobe, FaFacebook, FaInstagram, FaSnapchat, FaYoutube } from 'react-icons/fa';
@@ -21,28 +21,35 @@ interface IProfile {
   bloodGroup?: string; socialMedia?: ISocialMedia; education?: IEducation;
   connections?: string[];
   theme_color?: string;
+  isConnected?: boolean;
+  hasSentRequest?: boolean;
 }
 
+// BRAC University color themes
 const themes: { [key: string]: string } = {
-  blue: 'from-blue-500 to-indigo-600',
-  purple: 'from-purple-500 to-violet-600',
-  green: 'from-green-500 to-emerald-600',
-  pink: 'from-pink-500 to-rose-600',
-  orange: 'from-orange-500 to-amber-600',
+  'brac-blue': 'from-brac-blue to-brac-blue-dark',
+  'brac-gold': 'from-brac-gold to-brac-gold-dark',
+  'brac-green': 'from-green-600 to-green-800',
+  'brac-purple': 'from-purple-600 to-purple-800',
+  'brac-red': 'from-red-600 to-red-800',
+  'brac-teal': 'from-teal-600 to-teal-800',
 };
 
 const themeBgs: { [key: string]: string } = {
-  blue: 'bg-blue-50 text-blue-800',
-  purple: 'bg-purple-50 text-purple-800',
-  green: 'bg-green-50 text-green-800',
-  pink: 'bg-pink-50 text-pink-800',
-  orange: 'bg-orange-50 text-orange-800',
+  'brac-blue': 'bg-brac-blue-light text-brac-navy',
+  'brac-gold': 'bg-brac-gold-light text-brac-navy',
+  'brac-green': 'bg-green-100 text-green-800',
+  'brac-purple': 'bg-purple-100 text-purple-800',
+  'brac-red': 'bg-red-100 text-red-800',
+  'brac-teal': 'bg-teal-100 text-teal-800',
 };
 
-export default function UserProfilePage({ params }: { params: Promise<{ username: string }> }) {
+const UserProfilePage = memo(function UserProfilePage({ params }: { params: Promise<{ username: string }> }) {
   const [profile, setProfile] = useState<IProfile | null>(null);
   const [isConnected, setIsConnected] = useState<boolean>(false);
+  const [hasSentRequest, setHasSentRequest] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isActionLoading, setIsActionLoading] = useState<boolean>(false);
   const [showDisconnectDialog, setShowDisconnectDialog] = useState<boolean>(false);
   const { userId } = useAuth();
 
@@ -50,7 +57,7 @@ export default function UserProfilePage({ params }: { params: Promise<{ username
     async function fetchProfileData() {
       try {
         const { username } = await params;
-        
+
         // Fetch profile data from API
         const profileResponse = await fetch(`/api/profile/${username}`);
         if (!profileResponse.ok) {
@@ -59,18 +66,14 @@ export default function UserProfilePage({ params }: { params: Promise<{ username
           }
           throw new Error('Failed to fetch profile data');
         }
-        
+
         const profileData: IProfile = await profileResponse.json();
         setProfile(profileData);
 
-        // Check if current user is connected to this profile
+        // Set connection status from profile data
         if (userId) {
-          const connectionsResponse = await fetch('/api/my-connections');
-          if (connectionsResponse.ok) {
-            const connections = await connectionsResponse.json();
-            const isConnected = connections.some((conn: any) => conn.email === profileData.email);
-            setIsConnected(isConnected);
-          }
+          setIsConnected(profileData.isConnected || false);
+          setHasSentRequest(profileData.hasSentRequest || false);
         }
       } catch (error) {
         console.error('Error fetching profile data:', error);
@@ -82,12 +85,14 @@ export default function UserProfilePage({ params }: { params: Promise<{ username
     fetchProfileData();
   }, [params, userId]);
 
-  const handleConnect = async () => {
+  const handleConnect = useCallback(async () => {
     if (!profile || !userId) return;
 
+    // Optimistic update
+    setHasSentRequest(true);
+    setIsActionLoading(true);
+
     try {
-      setIsLoading(true);
-      
       const response = await fetch('/api/connect', {
         method: 'POST',
         headers: {
@@ -99,26 +104,69 @@ export default function UserProfilePage({ params }: { params: Promise<{ username
       });
 
       if (response.ok) {
-        setIsConnected(true);
-        alert('Connection request sent successfully!');
+        toast.success('Connection request sent successfully!');
       } else {
+        // Revert on failure
+        setHasSentRequest(false);
         const errorData = await response.json();
-        alert(errorData.message || 'Failed to send connection request');
+        toast.error(errorData.message || 'Failed to send connection request');
       }
     } catch (error) {
+      // Revert on failure
+      setHasSentRequest(false);
       console.error('Error sending connection request:', error);
-      alert('Failed to send connection request');
+      toast.error('Failed to send connection request');
     } finally {
-      setIsLoading(false);
+      setIsActionLoading(false);
     }
-  };
+  }, [profile, userId]);
 
-  const handleDisconnect = async () => {
+  const handleCancelRequest = useCallback(async () => {
     if (!profile || !userId) return;
 
+    // Optimistic update
+    setHasSentRequest(false);
+    setIsActionLoading(true);
+
     try {
-      setIsLoading(true);
-      
+      const response = await fetch('/api/cancel-connect', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          targetUserId: profile._id,
+        }),
+      });
+
+      if (response.ok) {
+        toast.success('Connection request canceled!');
+      } else {
+        // Revert on failure
+        setHasSentRequest(true);
+        const errorData = await response.json();
+        toast.error(errorData.message || 'Failed to cancel connection request');
+      }
+    } catch (error) {
+      // Revert on failure
+      setHasSentRequest(true);
+      console.error('Error canceling connection request:', error);
+      toast.error('Failed to cancel connection request');
+    } finally {
+      setIsActionLoading(false);
+    }
+  }, [profile, userId]);
+
+  const handleDisconnect = useCallback(async () => {
+    if (!profile || !userId) return;
+
+    // Optimistic update
+    setIsConnected(false);
+    setHasSentRequest(false);
+    setShowDisconnectDialog(false);
+    setIsLoading(true);
+
+    try {
       const response = await fetch('/api/disconnect', {
         method: 'POST',
         headers: {
@@ -130,25 +178,32 @@ export default function UserProfilePage({ params }: { params: Promise<{ username
       });
 
       if (response.ok) {
-        setIsConnected(false);
-        setShowDisconnectDialog(false);
         toast.success('Disconnected successfully!');
       } else {
+        // Revert on failure
+        setIsConnected(true);
+        setHasSentRequest(false);
         const errorData = await response.json();
-        alert(errorData.error || 'Failed to disconnect');
+        toast.error(errorData.error || 'Failed to disconnect');
       }
     } catch (error) {
+      // Revert on failure
+      setIsConnected(true);
+      setHasSentRequest(false);
       console.error('Error disconnecting:', error);
-      alert('Failed to disconnect');
+      toast.error('Failed to disconnect');
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [profile, userId]);
 
   if (isLoading) {
     return (
-      <div className="w-full min-h-screen bg-slate-100 p-4 sm:p-6 lg:p-8 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-gray-900"></div>
+      <div className="w-full min-h-screen bg-gray-50 p-4 sm:p-6 lg:p-8 flex items-center justify-center">
+        <div className="flex flex-col items-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brac-blue"></div>
+          <p className="mt-4 text-brac-navy">Loading profile...</p>
+        </div>
       </div>
     );
   }
@@ -164,84 +219,203 @@ export default function UserProfilePage({ params }: { params: Promise<{ username
     if (label.toLowerCase() === 'snapchat') finalHref = `https://snapchat.com/add/${href}`;
 
     return (
-      <a href={finalHref} target="_blank" rel="noopener noreferrer" aria-label={label} className="opacity-70 hover:opacity-100 transition-opacity">
-        <Icon size={24} />
+      <a href={finalHref} target="_blank" rel="noopener noreferrer" aria-label={label} className="opacity-80 hover:opacity-100 transition-opacity text-brac-navy hover:text-brac-blue">
+        <Icon size={20} />
       </a>
     );
   };
 
-  const currentThemeClass = themes[profile.theme_color || 'blue'];
-  const currentThemeBgClass = themeBgs[profile.theme_color || 'blue'];
+  const currentThemeClass = themes[profile.theme_color || 'brac-blue'];
+  const currentThemeBgClass = themeBgs[profile.theme_color || 'brac-blue'];
 
   return (
-    <div className="w-full min-h-screen bg-gradient-to-br from-indigo-50 via-blue-50 to-slate-100 p-4 sm:p-6 lg:p-8">
-      <div className="relative bg-white rounded-2xl shadow-lg">
-        <div className={`h-40 bg-gradient-to-r ${currentThemeClass} rounded-t-2xl`}></div>
-
-        <div className="absolute top-40 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10">
-          <div className="relative h-40 w-40 sm:h-48 sm:w-48 rounded-full border-4 border-white shadow-md">
-            <Image
-              src={profile.picture_url}
-              alt="Avatar"
-              fill
-              className="object-cover rounded-full"
-            />
-          </div>
-        </div>
-
-        <div className="flex flex-col md:flex-row items-center justify-between pt-28 pb-8 px-6 sm:px-8">
-          <div className="w-full md:w-1/3 text-center md:text-left">
-            <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">{profile.name}</h1>
-            <p className="font-semibold text-gray-600 mt-1">@{profile.username}</p>
-            <div className="text-base font-semibold text-gray-600 mt-3 space-x-3">
-              <span>{profile.student_ID}</span>
-              <span className="font-light text-gray-400">•</span>
-              <span>{profile.department || 'N/A'}</span>
-            </div>
-          </div>
-
-          <div className="w-full md:w-1/3 text-center md:text-right mt-4 md:mt-0">
-            <div className="flex items-center justify-center md:justify-end gap-4">
-              <div className="flex items-center gap-2 text-gray-600">
-                <Users size={16} />
-                <span>{profile.connections?.length || 0} Connections</span>
-              </div>
+    <div className="w-full min-h-screen bg-gray-50 p-4 sm:p-6 lg:p-8">
+      <div className="max-w-6xl mx-auto">
+        {/* Header Section */}
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden mb-8 relative">
+          <div className={`h-40 bg-gradient-to-r ${currentThemeClass} relative`}>
+            <div className="absolute top-6 right-6 flex gap-2 z-20">
               {userId && (
                 <div className="ml-4">
                   {isConnected ? (
                     <button
                       onClick={() => setShowDisconnectDialog(true)}
                       disabled={isLoading}
-                      className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg font-medium disabled:opacity-50"
+                      className="bg-brac-gold hover:bg-brac-gold-dark text-brac-navy px-4 py-2 rounded-md font-medium disabled:opacity-50"
                     >
                       {isLoading ? 'Loading...' : 'Connected'}
+                    </button>
+                  ) : hasSentRequest ? (
+                    <button
+                      onClick={handleCancelRequest}
+                      disabled={isLoading}
+                      className="bg-gray-500 text-white px-4 py-2 rounded-md font-medium cursor-pointer disabled:opacity-50"
+                    >
+                      {isLoading ? 'Loading...' : 'Request sent'}
                     </button>
                   ) : (
                     <button
                       onClick={handleConnect}
                       disabled={isLoading}
-                      className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg font-medium disabled:opacity-50"
+                      className="bg-brac-blue hover:bg-brac-blue-dark text-white px-4 py-2 rounded-md font-medium disabled:opacity-50"
                     >
-                      {isLoading ? 'Loading...' : 'Send Request'}
+                      {isLoading ? 'Loading...' : 'Connect'}
                     </button>
                   )}
                 </div>
               )}
             </div>
           </div>
-        </div>
-      </div>
-
-      <div className="mt-6">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-1 space-y-6">
-            <div className={`p-6 rounded-2xl shadow-lg ${currentThemeBgClass}`}>
-              <h3 className="font-bold text-lg mb-3">About</h3>
-              <p className="text-sm opacity-80">{profile.bio || "No bio information provided."}</p>
+          
+          {/* Profile Picture Container - Fixed Alignment */}
+          <div className="flex justify-center -mt-20 relative z-10">
+            <div className="relative h-32 w-32 rounded-full border-4 border-white shadow-md bg-white">
+              <Image
+                src={profile.picture_url}
+                alt="Profile Picture"
+                fill
+                className="object-cover rounded-full"
+                priority
+              />
             </div>
-            <div className={`p-6 rounded-2xl shadow-lg ${currentThemeBgClass}`}>
-              <h3 className="font-bold text-lg mb-4">On The Web</h3>
-              <div className="flex flex-wrap gap-5">
+          </div>
+          
+          <div className="pt-20 pb-8 px-6 sm:px-8 text-center">
+            <h1 className="text-2xl sm:text-3xl font-bold text-brac-navy">{profile.name}</h1>
+            <p className="font-medium text-brac-blue mt-1">@{profile.username}</p>
+            <div className="flex flex-wrap justify-center gap-4 mt-4 text-sm text-brac-navy">
+              <div className="flex items-center bg-brac-blue-light px-3 py-1 rounded-full">
+                <UserSquare size={14} className="mr-1" />
+                <span>{profile.student_ID}</span>
+              </div>
+              <div className="flex items-center bg-brac-blue-light px-3 py-1 rounded-full">
+                <Building size={14} className="mr-1" />
+                <span>{profile.department || 'N/A'}</span>
+              </div>
+              <div className="flex items-center bg-brac-blue-light px-3 py-1 rounded-full">
+                <Users size={14} className="mr-1" />
+                <span>{profile.connections?.length || 0} Connections</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Main Content */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Left Column */}
+          <div className="lg:col-span-2 space-y-6">
+            {/* About Card */}
+            <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+              <h3 className="font-semibold text-lg text-brac-navy mb-4 flex items-center">
+                <UserSquare size={20} className="mr-2" />
+                About
+              </h3>
+              <p className="text-brac-navy/80">{profile.bio || "No bio information provided."}</p>
+            </div>
+
+            {/* Details Card */}
+            <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+              <h3 className="font-semibold text-lg text-brac-navy mb-4 flex items-center">
+                <UserSquare size={20} className="mr-2" />
+                Personal Details
+              </h3>
+              <div className="space-y-4">
+                <div className="flex items-center">
+                  <Calendar size={18} className="text-brac-blue mr-3 flex-shrink-0" />
+                  <div>
+                    <p className="text-sm font-medium text-brac-navy/70">Date of Birth</p>
+                    <p className="text-brac-navy">{profile.dateOfBirth ? new Date(profile.dateOfBirth).toLocaleDateString() : 'N/A'}</p>
+                  </div>
+                </div>
+                <div className="flex items-center">
+                  <Droplet size={18} className="text-brac-blue mr-3 flex-shrink-0" />
+                  <div>
+                    <p className="text-sm font-medium text-brac-navy/70">Blood Group</p>
+                    <p className="text-brac-navy">{profile.bloodGroup || 'N/A'}</p>
+                  </div>
+                </div>
+                <div className="flex items-center">
+                  <Phone size={18} className="text-brac-blue mr-3 flex-shrink-0" />
+                  <div>
+                    <p className="text-sm font-medium text-brac-navy/70">Phone</p>
+                    <p className="text-brac-navy">{profile.phone || 'N/A'}</p>
+                  </div>
+                </div>
+                <div className="flex items-center">
+                  <Home size={18} className="text-brac-blue mr-3 flex-shrink-0" />
+                  <div>
+                    <p className="text-sm font-medium text-brac-navy/70">Address</p>
+                    <p className="text-brac-navy">{profile.address || 'N/A'}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Education Card */}
+            <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+              <h3 className="font-semibold text-lg text-brac-navy mb-4 flex items-center">
+                <GraduationCap size={20} className="mr-2" />
+                Education
+              </h3>
+              <div className="space-y-4">
+                <div className="flex items-center">
+                  <School size={18} className="text-brac-blue mr-3 flex-shrink-0" />
+                  <div>
+                    <p className="text-sm font-medium text-brac-navy/70">School</p>
+                    <p className="text-brac-navy">{profile.education?.school || 'N/A'}</p>
+                  </div>
+                </div>
+                <div className="flex items-center">
+                  <GraduationCap size={18} className="text-brac-blue mr-3 flex-shrink-0" />
+                  <div>
+                    <p className="text-sm font-medium text-brac-navy/70">College/University</p>
+                    <p className="text-brac-navy">{profile.education?.college || 'N/A'}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Right Column */}
+          <div className="space-y-6">
+            {/* University Details Card */}
+            <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+              <h3 className="font-semibold text-lg text-brac-navy mb-4 flex items-center">
+                <Building size={20} className="mr-2" />
+                University Details
+              </h3>
+              <div className="space-y-4">
+                <div className="flex items-center">
+                  <Mail size={18} className="text-brac-blue mr-3 flex-shrink-0" />
+                  <div>
+                    <p className="text-sm font-medium text-brac-navy/70">Email</p>
+                    <p className="text-brac-navy">{profile.email}</p>
+                  </div>
+                </div>
+                <div className="flex items-center">
+                  <UserSquare size={18} className="text-brac-blue mr-3 flex-shrink-0" />
+                  <div>
+                    <p className="text-sm font-medium text-brac-navy/70">Student ID</p>
+                    <p className="text-brac-navy">{profile.student_ID}</p>
+                  </div>
+                </div>
+                <div className="flex items-center">
+                  <Building size={18} className="text-brac-blue mr-3 flex-shrink-0" />
+                  <div>
+                    <p className="text-sm font-medium text-brac-navy/70">Department</p>
+                    <p className="text-brac-navy">{profile.department || 'N/A'}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Social Links Card */}
+            <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+              <h3 className="font-semibold text-lg text-brac-navy mb-4 flex items-center">
+                <FaGlobe size={18} className="mr-2" />
+                Social Links
+              </h3>
+              <div className="grid grid-cols-4 gap-4">
                 <SocialLink href={profile.socialMedia?.website} icon={FaGlobe} label="Website" />
                 <SocialLink href={profile.socialMedia?.linkedin} icon={FaLinkedin} label="LinkedIn" />
                 <SocialLink href={profile.socialMedia?.github} icon={FaGithub} label="GitHub" />
@@ -252,32 +426,6 @@ export default function UserProfilePage({ params }: { params: Promise<{ username
                 <SocialLink href={profile.socialMedia?.snapchat} icon={FaSnapchat} label="Snapchat" />
               </div>
             </div>
-            <div className={`p-6 rounded-2xl shadow-lg ${currentThemeBgClass}`}>
-              <h3 className="font-bold text-lg mb-4">University Details</h3>
-              <div className="space-y-4 text-sm sm:text-base">
-                <div className="flex items-center gap-4"><Mail className="flex-shrink-0"/><span className="font-semibold w-24">Email:</span> <span className="opacity-80">{profile.email}</span></div>
-                <div className="flex items-center gap-4"><UserSquare className="flex-shrink-0"/><span className="font-semibold w-24">Student ID:</span> <span className="opacity-80">{profile.student_ID}</span></div>
-                <div className="flex items-center gap-4"><Building className="flex-shrink-0"/><span className="font-semibold w-24">Department:</span> <span className="opacity-80">{profile.department || 'N/A'}</span></div>
-              </div>
-            </div>
-          </div>
-          <div className="lg:col-span-2 flex flex-col gap-6">
-            <div className={`p-6 rounded-2xl shadow-lg flex-1 ${currentThemeBgClass}`}>
-              <h3 className="font-bold text-lg mb-4">Details</h3>
-              <div className="space-y-4 text-sm sm:text-base">
-                <div className="flex items-center gap-4"><Calendar className="flex-shrink-0"/><span className="font-semibold w-24">Born:</span> <span className="opacity-80">{profile.dateOfBirth ? new Date(profile.dateOfBirth).toLocaleDateString() : 'N/A'}</span></div>
-                <div className="flex items-center gap-4"><Droplet className="flex-shrink-0"/><span className="font-semibold w-24">Blood Group:</span> <span className="opacity-80">{profile.bloodGroup || 'N/A'}</span></div>
-                <div className="flex items-center gap-4"><Phone className="flex-shrink-0"/><span className="font-semibold w-24">Phone:</span> <span className="opacity-80">{profile.phone || 'N/A'}</span></div>
-                <div className="flex items-center gap-4"><Home className="flex-shrink-0"/><span className="font-semibold w-24">Address:</span> <span className="opacity-80">{profile.address || 'N/A'}</span></div>
-              </div>
-            </div>
-            <div className={`p-6 rounded-2xl shadow-lg flex-1 ${currentThemeBgClass}`}>
-              <h3 className="font-bold text-lg mb-4">Education</h3>
-              <div className="space-y-4 text-sm sm:text-base">
-                <div className="flex items-center gap-4"><School className="flex-shrink-0"/><span className="font-semibold w-24">School:</span> <span className="opacity-80">{profile.education?.school || 'N/A'}</span></div>
-                <div className="flex items-center gap-4"><GraduationCap className="flex-shrink-0"/><span className="font-semibold w-24">College:</span> <span className="opacity-80">{profile.education?.college || 'N/A'}</span></div>
-              </div>
-            </div>
           </div>
         </div>
       </div>
@@ -286,7 +434,7 @@ export default function UserProfilePage({ params }: { params: Promise<{ username
       {showDisconnectDialog && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white p-6 rounded-lg shadow-xl max-w-md w-full mx-4">
-            <h3 className="text-lg font-semibold mb-4">Confirm Disconnect</h3>
+            <h3 className="text-lg font-semibold text-brac-navy mb-4">Confirm Disconnect</h3>
             <p className="text-gray-600 mb-6">
               Are you sure you want to disconnect from {profile.name}?
             </p>
@@ -310,4 +458,6 @@ export default function UserProfilePage({ params }: { params: Promise<{ username
       )}
     </div>
   );
-}
+});
+
+export default UserProfilePage;

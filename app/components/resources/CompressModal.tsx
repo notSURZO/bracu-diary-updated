@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useAuth } from "@clerk/nextjs";
+import { useAuth, useUser } from "@clerk/nextjs";
 import JSZip from "jszip";
 import { toast } from "react-toastify";
 import { getSupabaseClient } from "@/lib/storage/supabaseClient";
@@ -19,6 +19,7 @@ interface Props {
 export default function CompressModal({ triggerLabel = "Compress", courseCode, defaultCourseName, directoryId, isPrivate = false }: Props) {
   const router = useRouter();
   const { userId } = useAuth();
+  const { user } = useUser();
   const [open, setOpen] = useState(false);
   const triggerRef = useRef<HTMLButtonElement | null>(null);
   const dialogRef = useRef<HTMLDivElement | null>(null);
@@ -286,6 +287,7 @@ export default function CompressModal({ triggerLabel = "Compress", courseCode, d
 
       // Optimistic broadcast so FolderGridClient can insert instantly
       try {
+        const displayName = user?.fullName || [user?.firstName, user?.lastName].filter(Boolean).join(' ') || 'You';
         const item = {
           _id: id as string,
           title: title.trim(),
@@ -294,11 +296,17 @@ export default function CompressModal({ triggerLabel = "Compress", courseCode, d
           file: { url: publicFileUrl as string, bytes: artifactBlob.size, originalName: artifactName },
           ownerUserId: userId || undefined,
           createdAt: new Date().toISOString(),
-          ownerDisplayName: 'You',
+          ownerDisplayName: displayName,
           upvoters: [],
           downvoters: [],
+          courseCode: courseCode,
+          directoryId: directoryId,
         };
-        window.dispatchEvent(new CustomEvent(`${isPrivate ? 'private-' : ''}resource:created`, { detail: { item } }));
+        const eventName = `${isPrivate ? 'private-' : ''}resource:created`;
+        // Add a small delay to ensure components are ready
+        setTimeout(() => {
+          window.dispatchEvent(new CustomEvent(eventName, { detail: { item } }));
+        }, 100);
       } catch {}
 
       toast.success('Uploaded & published');
@@ -406,6 +414,7 @@ export default function CompressModal({ triggerLabel = "Compress", courseCode, d
 
       // Optimistic broadcast so grids update instantly
       try {
+        const displayName = user?.fullName || [user?.firstName, user?.lastName].filter(Boolean).join(' ') || 'You';
         const item = {
           _id: id as string,
           title: (title || 'Compressed file').trim(),
@@ -414,9 +423,13 @@ export default function CompressModal({ triggerLabel = "Compress", courseCode, d
           file: { url: publicUrl, bytes: undefined, originalName: title || undefined },
           ownerUserId: userId || undefined,
           createdAt: new Date().toISOString(),
-          ownerDisplayName: 'You',
+          ownerDisplayName: displayName,
         };
-        window.dispatchEvent(new CustomEvent(`${isPrivate ? 'private-' : ''}resource:created`, { detail: { item } }));
+        const eventName = `${isPrivate ? 'private-' : ''}resource:created`;
+        // Add a small delay to ensure components are ready
+        setTimeout(() => {
+          window.dispatchEvent(new CustomEvent(eventName, { detail: { item } }));
+        }, 100);
       } catch {}
 
       toast.success('Resource created');

@@ -1,7 +1,10 @@
 import { NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/mongodb';
 import Review from '@/lib/models/Review';
+import Course from '@/lib/models/Course';
+import User from '@/lib/models/User';
 import mongoose from 'mongoose';
+import { logReviewPosted } from '@/lib/utils/activityLogger';
 
 // GET all reviews for a specific course
 export async function GET(request: Request) {
@@ -75,6 +78,23 @@ export async function POST(request: Request) {
     });
 
     await newReview.save();
+
+    // Get course information for activity logging
+    const course = await Course.findById(courseId);
+    if (course) {
+      // Find user by email to get clerkId
+      const user = await User.findOne({ email: userEmail });
+      if (user) {
+        await logReviewPosted(
+          user.clerkId,
+          course.courseCode,
+          rating,
+          reviewText,
+          newReview._id.toString()
+        );
+      }
+    }
+
     return NextResponse.json(newReview, { status: 201 });
   } catch (error) {
     console.error(error);

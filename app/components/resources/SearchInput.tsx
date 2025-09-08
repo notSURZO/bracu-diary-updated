@@ -62,8 +62,8 @@ export default function SearchInput({ placeholder }: Props) {
         radius="md"
         size="sm"
         classNames={{
-          inputWrapper: "h-10 shadow-sm border border-gray-200 bg-white data-[focus=true]:border-blue-300",
-          input: "text-[15px]",
+          inputWrapper: "h-11 shadow-sm border border-gray-200 bg-white data-[focus=true]:border-blue-400 data-[focus=true]:shadow-md hover:border-gray-300 transition-all duration-200",
+          input: "text-[15px] placeholder:text-gray-500",
         }}
         placeholder={placeholder || "Search..."}
         startContent={(

@@ -7,7 +7,7 @@ import UploadModal from "@/app/components/resources/UploadModal";
 import CompressModal from "@/app/components/resources/CompressModal";
 import SearchInput from "@/app/components/resources/SearchInput";
 import FolderGridClient from "./FolderGridClient";
-import SubfolderTile from "@/app/components/resources/SubfolderTile";
+import FolderTile from "@/app/components/resources/FolderTile";
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -31,7 +31,13 @@ async function getResources(id: string) {
   const host = hdrs.get("x-forwarded-host") || hdrs.get("host") || "localhost:3000";
   const proto = hdrs.get("x-forwarded-proto") || (host.includes("localhost") ? "http" : "https");
   const url = `${proto}://${host}/api/public-resources/by-directory/${encodeURIComponent(id)}`;
-  const res = await fetch(url, { cache: 'no-store' });
+  const res = await fetch(url, { 
+    cache: 'no-store',
+    next: { 
+      tags: [`public-resources:dir:${id}`],
+      revalidate: 0 
+    }
+  });
   if (!res.ok) return { items: [] };
   return res.json();
 }
@@ -156,10 +162,7 @@ export default async function FolderPage({ params, searchParams }: Readonly<{ pa
     return `${n.toFixed(n >= 100 ? 0 : n >= 10 ? 1 : 2)} ${units[i]}`;
   };
 
-  // removed unused Cloudinary toDownloadUrl helper
-
-  // For viewing, use the original Cloudinary URL exactly as returned by the API.
-
+  
   return (
     <div className="px-4 py-6 max-w-7xl mx-auto">
       <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:flex-nowrap">
@@ -184,16 +187,17 @@ export default async function FolderPage({ params, searchParams }: Readonly<{ pa
       {subdirectories.length > 0 && (
         <div className="mb-6">
           <div className="text-sm font-semibold text-gray-700 mb-2">Subfolders</div>
-          <div className="grid gap-5 justify-center justify-items-center [grid-template-columns:repeat(auto-fit,minmax(320px,1fr))]">
+          <div className="grid gap-5 justify-center justify-items-center [grid-template-columns:repeat(auto-fit,minmax(260px,1fr))] sm:[grid-template-columns:repeat(auto-fit,minmax(300px,1fr))]">
             {(() => {
               const ordered = [...subdirectories].toSorted((a, b) => (a.subdirectoryType || '').localeCompare(b.subdirectoryType || ''));
               return ordered.map((sd) => (
-                <SubfolderTile
+                <FolderTile
                   key={sd._id}
                   _id={sd._id}
                   title={sd.title}
                   subdirectoryType={sd.subdirectoryType}
                   variant="public"
+                  isSubfolder={true}
                 />
               ));
             })()}
@@ -202,13 +206,7 @@ export default async function FolderPage({ params, searchParams }: Readonly<{ pa
       )}
 
       {subdirectories.length === 0 ? (
-        filtered.length === 0 ? (
-          <div className="mb-6 rounded-lg border border-dashed border-gray-300 p-8 text-center text-sm text-gray-600">
-            <>No resources yet. Be the first to upload!</>
-          </div>
-        ) : (
-          <FolderGridClient items={enriched as any} />
-        )
+        <FolderGridClient items={enriched as any} directoryId={id} />
       ) : (
         <div className="mt-6 text-xs text-gray-600">
           Resources for this course are organized under the subfolders above.

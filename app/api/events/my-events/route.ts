@@ -3,6 +3,7 @@ import { connectToDatabase } from '@/lib/mongodb';
 import { auth } from '@clerk/nextjs/server';
 import Event from '@/lib/models/Event';
 import User from '@/lib/models/User';
+import EventRegistration from '@/lib/models/EventRegistration';
 
 // GET - Fetch events created by the authenticated admin
 export async function GET(req: NextRequest) {
@@ -44,6 +45,29 @@ export async function GET(req: NextRequest) {
       adminClub: user.adminClub 
     });
     
+    // Get registration counts for each event
+    const eventIds = events.map(event => event._id);
+    const registrationCounts = await EventRegistration.aggregate([
+      {
+        $match: {
+          event: { $in: eventIds },
+          status: 'registered'
+        }
+      },
+      {
+        $group: {
+          _id: '$event',
+          count: { $sum: 1 }
+        }
+      }
+    ]);
+
+    // Create a map of event ID to registration count
+    const registrationMap = new Map();
+    registrationCounts.forEach(item => {
+      registrationMap.set(item._id.toString(), item.count);
+    });
+
     // Format events for frontend
     const formattedEvents = events.map(event => ({
       _id: event._id,
@@ -53,7 +77,8 @@ export async function GET(req: NextRequest) {
       time: event.time,
       location: event.location,
       createdAt: event.createdAt,
-      updatedAt: event.updatedAt
+      updatedAt: event.updatedAt,
+      registrationCount: registrationMap.get((event._id as any).toString()) || 0
     }));
     
     return NextResponse.json({ 

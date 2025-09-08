@@ -3,16 +3,18 @@ import { revalidateTag } from 'next/cache';
 import { getAuth } from '@clerk/nextjs/server';
 import { connectToDatabase } from '@/lib/db';
 import CourseResource from '@/lib/models/CourseResource';
+import CourseResourceDirectory from '@/lib/models/CourseResourceDirectory';
 import { getSupabaseAdmin } from '@/lib/storage/supabase';
+import { logResourceDeleted } from '@/lib/utils/activityLogger';
 
-export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
-  console.log('DELETE /api/private-resources/[id] called with id:', params.id);
+export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  console.log('DELETE /api/private-resources/[id] called with id:', id);
   try {
     await connectToDatabase();
     const { userId } = getAuth(req);
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const { id } = params;
     if (!id) return NextResponse.json({ error: 'Invalid id', reason: 'missing_id' }, { status: 400 });
 
     const resource = await CourseResource.findById(id);
@@ -36,6 +38,26 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
         console.warn('Supabase delete warning (dynamic DELETE):', e);
       }
     }
+
+    // Get directory information for logging
+    let directoryName = undefined;
+    if (resource.directoryId) {
+      try {
+        const dirDoc = await CourseResourceDirectory.findById(String(resource.directoryId)).lean();
+        directoryName = dirDoc?.title;
+      } catch {}
+    }
+
+    // Log activity before deletion
+    await logResourceDeleted(
+      userId,
+      resource.title,
+      resource.courseCode,
+      id,
+      resource.kind,
+      'private',
+      directoryName
+    );
 
     await CourseResource.deleteOne({ _id: id });
     revalidateTag('private-resources');

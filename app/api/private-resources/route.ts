@@ -3,9 +3,11 @@ import { revalidateTag } from 'next/cache';
 import { getAuth } from '@clerk/nextjs/server';
 import { connectToDatabase } from '@/lib/db';
 import CourseResource from '@/lib/models/CourseResource';
+import User from '@/lib/models/User';
 import type { PipelineStage } from 'mongoose';
 import { Types } from 'mongoose';
 import { getSupabaseAdmin } from '@/lib/storage/supabase';
+import { logResourceUpload, logResourceDeleted } from '@/lib/utils/activityLogger';
 
 // GET ?q=&page=&limit= -> distinct courses (code, name, resourceCount) for visibility: 'private' and current user
 export async function GET(req: NextRequest) {
@@ -117,6 +119,33 @@ export async function POST(req: NextRequest) {
       visibility: 'private',
     });
 
+    // Get user's clerkId for activity logging
+    const user = await User.findOne({ clerkId: userId });
+    const clerkId = user?.clerkId || userId;
+    
+    // Get directory information for logging
+    let directoryName = undefined;
+    if (directoryId) {
+      try {
+        const dirDoc = await CourseResourceDirectory.findById(String(directoryId)).lean();
+        directoryName = dirDoc?.title;
+      } catch {}
+    }
+
+    // Log activity
+    const resourceKind = String(kind || 'file');
+    const fileType = resourceKind === 'youtube' ? 'youtube' : fileBlock?.type;
+    
+    await logResourceUpload(
+      clerkId,
+      titleTrimmed,
+      courseCodeTrimmed,
+      (resource as any)._id.toString(),
+      fileType,
+      'private',
+      directoryName
+    );
+
     // Revalidate private listings
     revalidateTag('private-resources');
     revalidateTag(`private-resources:${resource.courseCode}`);
@@ -170,6 +199,26 @@ export async function DELETE(req: NextRequest) {
       }
     }
 
+    // Get directory information for logging
+    let directoryName = undefined;
+    if (resource.directoryId) {
+      try {
+        const dirDoc = await CourseResourceDirectory.findById(String(resource.directoryId)).lean();
+        directoryName = dirDoc?.title;
+      } catch {}
+    }
+
+    // Log activity before deletion
+    await logResourceDeleted(
+      userId,
+      resource.title,
+      resource.courseCode,
+      id,
+      resource.kind,
+      'private',
+      directoryName
+    );
+
     await CourseResource.deleteOne({ _id: id });
     revalidateTag('private-resources');
     if (resource.courseCode) revalidateTag(`private-resources:${resource.courseCode}`);
@@ -197,7 +246,8 @@ function extractYouTubeId(inputUrl: string): string | null {
       if (u.pathname === '/watch') {
         return u.searchParams.get('v');
       }
-      const m = u.pathname.match(/\/shorts\/([^/]+)/);
+      const regex = /\/shorts\/([^/]+)/;
+      const m = regex.exec(u.pathname);
       if (m) return m[1];
     }
     return null;

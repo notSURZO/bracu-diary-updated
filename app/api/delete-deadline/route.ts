@@ -3,6 +3,7 @@ import { connectToDatabase } from '@/lib/mongodb';
 import Course from '@/lib/models/Course';
 import User from '@/lib/models/User';
 import { auth } from '@clerk/nextjs/server';
+import { logDeadlineDeleted } from '@/lib/utils/activityLogger';
 
 export async function DELETE(req: Request) {
   try {
@@ -46,13 +47,30 @@ export async function DELETE(req: Request) {
     }
 
     // Find the deadline and verify ownership
-    const deadlineIndex = deadlineArray.findIndex((d: any) => 
+    const deadlineIndex = deadlineArray.findIndex((d: any) =>
       (d.id === deadlineId || d._id?.toString() === deadlineId) && d.createdBy === userId
     );
 
     if (deadlineIndex === -1) {
       return NextResponse.json({ error: 'Deadline not found or you are not authorized to delete it' }, { status: 404 });
     }
+
+    const deadline = deadlineArray[deadlineIndex];
+
+    // Check if the deadline was posted more than 24 hours ago
+    const timeSinceCreation = new Date().getTime() - new Date(deadline.createdAt).getTime();
+    const twentyFourHours = 24 * 60 * 60 * 1000;
+    if (timeSinceCreation > twentyFourHours) {
+      return NextResponse.json({ error: 'You can only delete deadlines within 24 hours of posting' }, { status: 400 });
+    }
+
+    // Log activity before deletion
+    await logDeadlineDeleted(
+      userId,
+      deadline.title,
+      course.courseCode,
+      deadlineId
+    );
 
     // Remove the deadline from the course's array
     deadlineArray.splice(deadlineIndex, 1);
@@ -78,9 +96,23 @@ export async function DELETE(req: Request) {
 
     // Remove the deadline from each user's deadlines array
     for (const user of users) {
-      user.deadlines = user.deadlines.filter((d: any) => 
+      user.deadlines = (user.deadlines || []).filter((d: any) =>
         d.id !== deadlineId && d._id?.toString() !== deadlineId
       );
+
+      // Also remove marks associated with this deadline
+      if (user.marks) {
+        user.marks.forEach((courseMark: any) => {
+          if (courseMark.courseId.toString() === courseId) {
+            ['quiz', 'assignment', 'mid', 'final'].forEach(type => {
+              courseMark[type] = courseMark[type].filter((mark: any) =>
+                mark.deadlineId !== deadlineId && mark.deadlineId !== deadline._id?.toString()
+              );
+            });
+          }
+        });
+      }
+
       await user.save();
     }
 

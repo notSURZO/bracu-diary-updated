@@ -25,6 +25,7 @@ export type ResourceItem = {
   ownerDisplayName?: string;
   upCount?: number;
   downCount?: number;
+  directoryId?: string;
 };
 
 // Using library icon for Google Drive
@@ -41,7 +42,7 @@ function getFileType(u: string): "PDF" | "DOCX" | "VIDEO" | "TEXT" | "LINK" | "D
 }
 // Using official brand icons
 
-export default function FolderGridClient({ items: initialItems }: { readonly items: ResourceItem[] }) {
+export default function FolderGridClient({ items: initialItems, directoryId }: { readonly items: ResourceItem[]; readonly directoryId: string }) {
   const searchParams = useSearchParams();
   const { userId } = useAuth();
   const { user } = useUser();
@@ -83,6 +84,10 @@ export default function FolderGridClient({ items: initialItems }: { readonly ite
     function onCreated(e: Event) {
       const detail = (e as CustomEvent).detail as { item: ResourceItem } | undefined;
       if (!detail?.item) return;
+      
+      // Check if this resource belongs to the current directory
+      if (detail.item.directoryId !== directoryId) return;
+      
       setItems(prev => {
         if (prev.some(it => it._id === detail.item._id)) return prev; // dedupe
         if (deletedIdsRef.current.has(detail.item._id)) return prev; // ignore if recently deleted
@@ -99,6 +104,7 @@ export default function FolderGridClient({ items: initialItems }: { readonly ite
     }
     window.addEventListener('resource:created', onCreated as EventListener);
     window.addEventListener('resource:deleted', onDeleted);
+    
     return () => {
       window.removeEventListener('resource:created', onCreated);
       window.removeEventListener('resource:deleted', onDeleted);
@@ -247,10 +253,19 @@ export default function FolderGridClient({ items: initialItems }: { readonly ite
   // Stable date formatting (UTC YYYY-MM-DD)
   const toUTC = (d?: string) => (d ? new Date(d).toISOString().slice(0, 10) : "");
 
+  // Show empty state if no resources at all (not just filtered out)
+  if (items.length === 0) {
+    return (
+      <div className="mb-6 rounded-lg border border-dashed border-gray-300 p-8 text-center text-sm text-gray-600">
+        No resources yet. Be the first to upload!
+      </div>
+    );
+  }
+
   return (
     <div className="overflow-x-auto rounded-lg border border-gray-200 bg-white shadow-sm">
-      <div className="px-4 pt-4">
-        <div className="inline-flex flex-wrap gap-2 rounded-lg bg-gray-50 p-1">
+      <div className="px-4 pt-4 overflow-x-auto">
+        <div className="inline-flex flex-nowrap gap-2 rounded-lg bg-gray-50 p-1">
           {([
             { key: 'ALL', label: 'View all' },
             { key: 'DOCS', label: 'Documents' },
@@ -280,7 +295,17 @@ export default function FolderGridClient({ items: initialItems }: { readonly ite
           </tr>
         </thead>
         <tbody className="divide-y divide-gray-100">
-          {visible.map((r) => {
+          {visible.length === 0 ? (
+            <tr>
+              <td colSpan={5} className="px-4 py-8 text-center text-sm text-gray-500">
+                {typeFilter === 'ALL' 
+                  ? 'No resources found' 
+                  : `No ${typeFilter === 'DOCS' ? 'documents' : typeFilter === 'TEXT' ? 'text files' : typeFilter === 'VIDEO' ? 'videos' : typeFilter === 'DRIVE' ? 'drive links' : typeFilter === 'PDF' ? 'PDFs' : 'items'} found`
+                }
+              </td>
+            </tr>
+          ) : (
+            visible.map((r) => {
             const urlForType = r.kind === 'youtube' ? (r.youtube?.url || '') : (r.file?.url || '');
             const type = r.kind === 'youtube' ? 'VIDEO' : getFileType(urlForType);
             const dateStr = toUTC(r.createdAt);
@@ -373,16 +398,16 @@ export default function FolderGridClient({ items: initialItems }: { readonly ite
                     )}
 
                     {/* Slot 3: Delete / Confirm-Cancel */}
-                    <div className="w-[96px] flex justify-center">
+                    <div className="w-[160px] flex justify-center">
                       {userId && r.ownerUserId === userId && confirmingId !== r._id && (
                         <button onClick={() => setConfirmingId(prev => (prev === r._id ? null : r._id))} className="inline-flex items-center gap-1 rounded-md bg-red-50 px-3.5 py-1.5 text-sm font-medium text-red-700 hover:bg-red-100" title="Delete resource">
                           <FiTrash2 className="h-4 w-4" />
                         </button>
                       )}
                       {confirmingId === r._id && (
-                        <div className="inline-flex items-center gap-2">
-                          <button onClick={() => { if (deletingId !== r._id) { setConfirmingId(null); handleDelete(r._id); } }} disabled={deletingId === r._id} className="inline-flex items-center rounded-md bg-red-600 px-3.5 py-1.5 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50">{deletingId === r._id ? 'Deleting…' : 'Confirm'}</button>
-                          <button onClick={() => setConfirmingId(null)} disabled={deletingId === r._id} className="inline-flex items-center rounded-md border border-gray-200 bg-white px-3.5 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50">Cancel</button>
+                        <div className="inline-flex items-center gap-1">
+                          <button onClick={() => { if (deletingId !== r._id) { setConfirmingId(null); handleDelete(r._id); } }} disabled={deletingId === r._id} className="inline-flex items-center rounded-md bg-red-600 px-2.5 py-1.5 text-xs font-medium text-white hover:bg-red-700 disabled:opacity-50">{deletingId === r._id ? 'Deleting…' : 'Confirm'}</button>
+                          <button onClick={() => setConfirmingId(null)} disabled={deletingId === r._id} className="inline-flex items-center rounded-md border border-gray-200 bg-white px-2.5 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50">Cancel</button>
                         </div>
                       )}
                     </div>
@@ -390,7 +415,7 @@ export default function FolderGridClient({ items: initialItems }: { readonly ite
                 </td>
               </tr>
             );
-          })}
+          }))}
         </tbody>
       </table>
     </div>

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import User from '@/lib/models/User';
 import { connectToDatabase } from '@/lib/mongodb';
+import { logDeadlineCompleted } from '@/lib/utils/activityLogger';
 
 export async function PATCH(req: Request) {
   try {
@@ -20,6 +21,16 @@ export async function PATCH(req: Request) {
     const deadline = user.deadlines.find((d: any) => d.id === deadlineId);
     if (!deadline) {
       return NextResponse.json({ error: 'Deadline not found in user data' }, { status: 404 });
+    }
+
+    // Log activity if deadline is being marked as completed
+    if (completed && !deadline.completed) {
+      await logDeadlineCompleted(
+        userId,
+        deadline.title,
+        deadline.courseCode,
+        deadlineId
+      );
     }
 
     deadline.completed = completed;

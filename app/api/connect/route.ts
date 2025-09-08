@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server';
 import mongoose from 'mongoose';
-import User from '../../../lib/models/User';
+import User, { IUser } from '../../../lib/models/User';
 import { connectToDatabase } from '../../../lib/mongodb';
 import { auth } from '@clerk/nextjs/server';
+import { logConnectionRequested } from '@/lib/utils/activityLogger';
 
 async function ensureDbConnected() {
   await connectToDatabase();
@@ -78,6 +79,13 @@ export async function POST(request: Request) {
     // Add connection request
     targetUser.connectionRequests.push(currentUser.email);
     await targetUser.save();
+
+    // Log connection request activity
+    await logConnectionRequested(
+      userId,
+      targetUserId,
+      targetUser.name
+    );
 
     return NextResponse.json(
       { message: 'Connect request sent successfully' },

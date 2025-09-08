@@ -3,6 +3,7 @@
 import { NextResponse } from 'next/server';
 import { connectToDatabase } from '@/lib/mongodb';
 import Course from '@/lib/models/Course'; // Adjust the import path if necessary
+import { logDeadlineVoted } from '@/lib/utils/activityLogger';
 
 export async function POST(request: Request) {
   await connectToDatabase();
@@ -77,6 +78,15 @@ export async function POST(request: Request) {
     
     // 6. --- Save the Changes and Respond ---
     await course.save();
+    
+    // Log deadline voting activity
+    await logDeadlineVoted(
+      userId,
+      deadline.title,
+      course.courseCode,
+      voteType,
+      deadlineId
+    );
     
     // Find the updated deadline to return it
     const updatedSection = (await Course.findById(originalCourseId)).sections.find((s: any) => s.section === section);

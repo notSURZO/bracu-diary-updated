@@ -52,13 +52,14 @@ export default function ConnectionsDropdown() {
       <DropdownTrigger>
         <button
           type="button"
-          className="inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-blue-700/20 bg-gradient-to-b from-blue-600 to-blue-700 px-3.5 text-sm font-medium text-white shadow-sm hover:from-blue-600 hover:to-blue-800 active:translate-y-px focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/60 focus-visible:ring-offset-1"
+          className="inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-blue-700/20 bg-gradient-to-b from-blue-600 to-blue-700 px-3 sm:px-3.5 text-xs sm:text-sm font-medium text-white shadow-sm hover:from-blue-600 hover:to-blue-800 active:translate-y-px focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/60 focus-visible:ring-offset-1 whitespace-nowrap"
           disabled={loading}
         >
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4 opacity-90">
             <path d="M10 6a3 3 0 1 0 0-6 3 3 0 0 0 0 6Zm-7 9a7 7 0 1 1 14 0v1a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-1Z" />
           </svg>
-          <span>View Connection Resources</span>
+          <span className="hidden sm:inline">View Connection Resources</span>
+          <span className="sm:hidden">Connections</span>
         </button>
       </DropdownTrigger>
       <DropdownMenu

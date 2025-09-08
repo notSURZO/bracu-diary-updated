@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { revalidatePath, revalidateTag } from 'next/cache';
 import { getAuth } from '@clerk/nextjs/server';
 import { connectToDatabase } from '@/lib/db';
 import CourseResourceDirectory from '@/lib/models/CourseResourceDirectory';
+import CourseResource from '@/lib/models/CourseResource';
 import Course from '@/lib/models/Course';
 
 // GET /api/resource-directories?q=&page=&limit=
@@ -13,20 +13,22 @@ export async function GET(req: NextRequest) {
     const q = (searchParams.get('q') || '').trim();
     const sortParam = (searchParams.get('sort') || '').trim();
     const page = Math.max(1, parseInt(searchParams.get('page') || '1', 10));
-    const limit = Math.min(50, Math.max(1, parseInt(searchParams.get('limit') || '12', 10)));
+    const limit = Math.min(100, Math.max(1, parseInt(searchParams.get('limit') || '50', 10)));
     const skip = (page - 1) * limit;
+    
 
-    const match: any = { visibility: 'public', isSubdirectory: { $ne: true } };
+    // Build search filter for courses
+    const courseMatch: any = {};
     if (q) {
       const safe = q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
       const anchored = `^${safe}`;
-      match.$or = [
+      courseMatch.$or = [
         { courseCode: { $regex: anchored, $options: 'i' } },
-        { title: { $regex: anchored, $options: 'i' } },
+        { courseName: { $regex: anchored, $options: 'i' } },
       ];
     }
 
-    // Default: Course Code A–Z when empty
+    // Default: Course Code A–Z
     let sort: Record<string, 1 | -1> = { courseCode: 1, title: 1 };
     switch (sortParam) {
       case 'newest':
@@ -47,13 +49,138 @@ export async function GET(req: NextRequest) {
       case 'title_desc':
         sort = { title: -1 };
         break;
-      // default handled above
+      default:
+        // Default to Course Code A–Z
+        sort = { courseCode: 1, title: 1 };
+        break;
     }
 
-    const [items, total] = await Promise.all([
-      CourseResourceDirectory.find(match).sort(sort).skip(skip).limit(limit).lean(),
-      CourseResourceDirectory.countDocuments(match),
-    ]);
+    // First, ensure all courses have directories created (one-time setup)
+    // This is done efficiently by checking if directories exist for all courses
+    const allCourses = await Course.find(courseMatch).sort(sort).lean();
+    
+    // Batch create missing directories for all courses
+    const existingDirectories = await CourseResourceDirectory.find({
+      courseCode: { $in: allCourses.map(c => c.courseCode) },
+      isSubdirectory: { $ne: true },
+      visibility: 'public'
+    }).select('courseCode').lean();
+    
+    const existingCourseCodes = new Set(existingDirectories.map(d => d.courseCode));
+    const missingCourses = allCourses.filter(c => !existingCourseCodes.has(c.courseCode));
+    
+    // Create missing directories in batches
+    if (missingCourses.length > 0) {
+      const directoriesToCreate = [];
+      const subdirectoriesToCreate = [];
+      
+      for (const course of missingCourses) {
+        const courseData = course as any;
+        
+        // Main directory
+        directoriesToCreate.push({
+          courseCode: courseData.courseCode,
+          title: courseData.courseName,
+          ownerUserId: 'system',
+          visibility: 'public',
+          isSubdirectory: false
+        });
+      }
+      
+      // Create main directories
+      if (directoriesToCreate.length > 0) {
+        await CourseResourceDirectory.insertMany(directoriesToCreate);
+      }
+      
+      // Create subdirectories for courses with labs
+      const createdDirectories = await CourseResourceDirectory.find({
+        courseCode: { $in: missingCourses.map(c => c.courseCode) },
+        isSubdirectory: { $ne: true },
+        visibility: 'public'
+      }).lean();
+      
+      for (const course of missingCourses) {
+        const courseData = course as any;
+        const hasLab = courseData.sections?.some((section: any) => section.lab);
+        
+        if (hasLab) {
+          const mainDir = createdDirectories.find(d => d.courseCode === courseData.courseCode);
+          if (mainDir) {
+            subdirectoriesToCreate.push(
+              {
+                courseCode: courseData.courseCode,
+                title: `${courseData.courseName} - Theory`,
+                ownerUserId: 'system',
+                visibility: 'public',
+                parentDirectoryId: mainDir._id,
+                isSubdirectory: true,
+                subdirectoryType: 'theory'
+              },
+              {
+                courseCode: courseData.courseCode,
+                title: `${courseData.courseName} - Lab`,
+                ownerUserId: 'system',
+                visibility: 'public',
+                parentDirectoryId: mainDir._id,
+                isSubdirectory: true,
+                subdirectoryType: 'lab'
+              }
+            );
+          }
+        }
+      }
+      
+      // Create subdirectories
+      if (subdirectoriesToCreate.length > 0) {
+        await CourseResourceDirectory.insertMany(subdirectoriesToCreate);
+      }
+    }
+    
+    // Build search filter for directories
+    const directoryMatch: any = {
+      isSubdirectory: { $ne: true },
+      visibility: 'public'
+    };
+    
+    if (q) {
+      const safe = q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const anchored = `^${safe}`;
+      directoryMatch.$or = [
+        { courseCode: { $regex: anchored, $options: 'i' } },
+        { title: { $regex: anchored, $options: 'i' } },
+      ];
+    }
+    
+    // Now use proper database pagination for the main query
+    const total = await CourseResourceDirectory.countDocuments(directoryMatch);
+    
+    // Get paginated main directories directly from database
+    const mainDirectories = await CourseResourceDirectory.find(directoryMatch)
+    .sort(sort)
+    .skip(skip)
+    .limit(limit)
+    .lean();
+    
+    // Get resource counts for the paginated directories only
+    const directoriesWithCounts = await Promise.all(
+      mainDirectories.map(async (dir) => {
+        const resourceCount = await CourseResource.countDocuments({
+          courseCode: dir.courseCode,
+          visibility: 'public',
+          $or: [
+            { directoryId: { $exists: false } },
+            { directoryId: null }
+          ]
+        });
+        
+        return {
+          ...dir,
+          resourceCount
+        };
+      })
+    );
+    
+    const items = directoriesWithCounts;
 
     return NextResponse.json({ items, page, limit, total });
   } catch (e) {
@@ -63,104 +190,18 @@ export async function GET(req: NextRequest) {
 }
 
 // POST /api/resource-directories
-// body: { courseCode: string, title: string, createTheoryLab?: boolean }
+// NOTE: Public directories are now automatically generated from Course database
+// This endpoint is kept for backward compatibility but returns an informative message
 export async function POST(req: NextRequest) {
   try {
     const { userId } = getAuth(req);
     if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    await connectToDatabase();
-    const body = await req.json();
-    const courseCode = String(body.courseCode || '').trim().toUpperCase();
-    const title = String(body.title || '').trim();
-    const createTheoryLab = Boolean(body.createTheoryLab);
-
-    if (!courseCode || !title) {
-      return NextResponse.json({ error: 'Missing courseCode or title' }, { status: 400 });
-    }
-
-    // Validate course exists in Course collection
-    const course = await Course.findOne({
-      courseCode: courseCode,
-      courseName: { $regex: new RegExp(`^${title}$`, 'i') }
-    }).lean();
-
-    if (!course) {
-      return NextResponse.json({ 
-        error: 'Course not found in database. Please verify the course code and name.' 
-      }, { status: 400 });
-    }
-
-    // Prevent duplicate: main directory with same courseCode and title
-    const existing = await CourseResourceDirectory.findOne({
-      courseCode,
-      title: { $regex: new RegExp(`^${title}$`, 'i') },
-      isSubdirectory: { $ne: true },
-      visibility: 'public',
-    }).lean();
-    if (existing) {
-      return NextResponse.json({
-        error: 'A folder for this course code and course name already exists.',
-      }, { status: 409 });
-    }
-
-    // Check if course has lab sections
-    const hasLab = (course as any).sections?.some((section: any) => section.lab);
-
-    // Create main course directory
-    const mainDir = await CourseResourceDirectory.create({
-      courseCode,
-      title,
-      ownerUserId: userId,
-      visibility: 'public',
-    });
-
-    const createdDirectories = [mainDir];
-
-    // If course has lab and user wants Theory/Lab folders, create subdirectories
-    if (hasLab && createTheoryLab) {
-      const theoryDir = await CourseResourceDirectory.create({
-        courseCode,
-        title: `${title} - Theory`,
-        ownerUserId: userId,
-        visibility: 'public',
-        parentDirectoryId: (mainDir as any)._id,
-        isSubdirectory: true,
-        subdirectoryType: 'theory'
-      });
-
-      const labDir = await CourseResourceDirectory.create({
-        courseCode,
-        title: `${title} - Lab`,
-        ownerUserId: userId,
-        visibility: 'public',
-        parentDirectoryId: (mainDir as any)._id,
-        isSubdirectory: true,
-        subdirectoryType: 'lab'
-      });
-
-      createdDirectories.push(theoryDir, labDir);
-    }
-
-    // Invalidate caches so the new folder shows up immediately
-    try {
-      revalidateTag('public-resources');
-      revalidatePath('/public-resources');
-    } catch (_) {
-      // best-effort; ignore if revalidation fails
-    }
-
     return NextResponse.json({ 
-      ok: true, 
-      id: (mainDir as any)._id.toString(),
-      hasLab,
-      createdTheoryLab: hasLab && createTheoryLab,
-      directories: createdDirectories.map(d => ({
-        id: (d as any)._id.toString(),
-        title: d.title,
-        type: (d as any).subdirectoryType || 'main'
-      }))
-    }, { status: 201 });
+      message: 'Public course directories are now automatically generated from the course database. No manual creation needed.',
+      info: 'All courses in the database will automatically appear as public resource directories. For courses with lab sections, Theory and Lab subdirectories will be created automatically.',
+      status: 'automatic'
+    }, { status: 200 });
   } catch (e) {
     console.error('directories POST error', e);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

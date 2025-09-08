@@ -23,8 +23,13 @@ export async function connectToDatabase(): Promise<void> {
   if (!cache.promise) {
     try {
       cache.promise = mongoose.connect(MONGODB_URI, {
-        serverSelectionTimeoutMS: 5000,
         dbName: 'bracu-diary',
+        // Connection pool optimization
+        maxPoolSize: 10, // Maintain up to 10 socket connections
+        minPoolSize: 2,  // Maintain at least 2 socket connections
+        maxIdleTimeMS: 30000, // Close connections after 30 seconds of inactivity
+        serverSelectionTimeoutMS: 5000, // How long to try selecting a server
+        socketTimeoutMS: 45000, // How long a send or receive on a socket can take
       });
     } catch (err) {
       cache.promise = null;

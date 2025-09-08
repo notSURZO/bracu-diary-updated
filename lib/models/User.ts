@@ -53,7 +53,17 @@ export interface IUser extends Document {
   education?: IEducation;
   address?: string;
   department?: string;
+  connectionRequests: string[];
   theme_color?: string;
+  interests?: string[];
+  studyInvites?: Array<{
+    _id?: any;
+    roomSlug: string;
+    hostName: string;
+    hostEmail: string;
+    createdAt: Date;
+    active: boolean;
+  }>;
   enrolledCourses: Array<{
     _id: string;
     originalCourseId: string;
@@ -84,6 +94,7 @@ export interface IUser extends Document {
     courseName: string;
     section: string;
     type: 'theory' | 'lab';
+    category?: 'Quiz' | 'Assignment' | 'Mid' | 'Final';
     createdBy: string;
     createdByName: string;
     createdByStudentId: string;
@@ -146,7 +157,15 @@ const UserSchema: Schema = new Schema({
   address: { type: String, default: '' },
   department: { type: String, default: '' },
   connectionRequests: [{ type: String, default: [] }],
-  theme_color: { type: String, default: 'blue' },
+  theme_color: { type: String, default: 'brac-blue' },
+  interests: { type: [String], default: [] },
+  studyInvites: [{
+    roomSlug: { type: String, required: true },
+    hostName: { type: String, required: true },
+    hostEmail: { type: String, required: true },
+    createdAt: { type: Date, default: Date.now },
+    active: { type: Boolean, default: true }
+  }],
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now },
 
@@ -180,9 +199,10 @@ const UserSchema: Schema = new Schema({
     courseName: { type: String, required: true },
     section: { type: String, required: true },
     type: { type: String, enum: ['theory', 'lab'], required: true },
+    category: { type: String, enum: ['Quiz', 'Assignment', 'Mid', 'Final'] },
     createdBy: { type: String, required: true },
-    createdByName: { type: String, required: true },
-    createdByStudentId: { type: String, required: true },
+    createdByName: { type: String, default: 'Unknown' },
+    createdByStudentId: { type: String, default: 'Unknown' },
     createdAt: { type: Date, default: Date.now },
     completed: { type: Boolean, default: false }
   }],
@@ -199,4 +219,8 @@ UserSchema.pre('save', function (next) {
   next();
 });
 
-export default mongoose.models.User || mongoose.model<IUser>('User', UserSchema);
+// Prevent stale schema during hot-reload
+if (mongoose.models.User) {
+  delete mongoose.models.User;
+}
+export default mongoose.model<IUser>('User', UserSchema);

@@ -1,12 +1,18 @@
 @layer theme, base, clerk, components, utilities;
 @import "tailwindcss";
 
-
 :root {
   --background: #ffffff;
   --foreground: #171717;
+  /* BRAC University Color Scheme */
+  --brac-navy: #002147;
+  --brac-blue: #0062FF;
+  --brac-blue-light: #E6F0FF;
+  --brac-blue-dark: #0047B3;
+  --brac-gold: #FFB81C;
+  --brac-gold-light: #FFF6E6;
+  --brac-gold-dark: #E6A619;
 }
-
 
 @media (prefers-color-scheme: dark) {
   :root {
@@ -14,7 +20,6 @@
     --foreground: #ededed;
   }
 }
-
 
 body {
   font-family: 'Inter', sans-serif;
@@ -63,4 +68,150 @@ body.with-right-sidebar main {
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
   max-height: 16rem;
   overflow-y: auto;
+}
+
+/* BRAC University Text colors */
+.text-brac-navy { color: #002147; }
+.text-brac-blue { color: #0062FF; }
+.text-brac-gold { color: #FFB81C; }
+
+/* BRAC University Background colors */
+.bg-brac-navy { background-color: #002147; }
+.bg-brac-blue { background-color: #0062FF; }
+.bg-brac-blue-light { background-color: #E6F0FF; }
+.bg-brac-blue-dark { background-color: #0047B3; }
+.bg-brac-gold { background-color: #FFB81C; }
+.bg-brac-gold-light { background-color: #FFF6E6; }
+.bg-brac-gold-dark { background-color: #E6A619; }
+
+/* BRAC University Border colors */
+.border-brac-navy { border-color: #002147; }
+.border-brac-blue { border-color: #0062FF; }
+.border-brac-gold { border-color: #FFB81C; }
+
+/* BRAC University Gradient backgrounds */
+.from-brac-blue { 
+  --tw-gradient-from: #0062FF;
+  --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to, rgb(0 98 255 / 0));
+}
+.to-brac-blue-dark { 
+  --tw-gradient-to: #0047B3;
+}
+
+.from-brac-gold { 
+  --tw-gradient-from: #FFB81C;
+  --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to, rgb(255 184 28 / 0));
+}
+.to-brac-gold-dark { 
+  --tw-gradient-to: #E6A619;
+}
+
+/* BRAC University Hover states */
+.hover\:bg-brac-blue:hover { background-color: #0062FF; }
+.hover\:bg-brac-blue-dark:hover { background-color: #0047B3; }
+.hover\:bg-brac-gold:hover { background-color: #FFB81C; }
+.hover\:bg-brac-gold-dark:hover { background-color: #E6A619; }
+
+/* BRAC University Focus states for form elements */
+.focus\:ring-brac-blue:focus {
+  --tw-ring-color: #0062FF;
+  ring-color: #0062FF;
+}
+
+.focus\:border-brac-blue:focus {
+  border-color: #0062FF;
+}
+
+/* Additional utility classes for the schedule component */
+.bg-brac-schedule-header {
+  background-color: #002147;
+}
+
+.bg-brac-schedule-cell {
+  background-color: #E6F0FF;
+}
+
+.border-brac-schedule {
+  border-color: #B3D1FF;
+}
+
+/* Loading animation */
+@keyframes brac-pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.animate-brac-pulse {
+  animation: brac-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Custom shadows for depth */
+.shadow-brac {
+  box-shadow: 0 4px 6px -1px rgba(0, 33, 71, 0.1), 0 2px 4px -1px rgba(0, 33, 71, 0.06);
+}
+
+.shadow-brac-lg {
+  box-shadow: 0 10px 15px -3px rgba(0, 33, 71, 0.1), 0 4px 6px -2px rgba(0, 33, 71, 0.05);
+}
+
+/* For the profile picture alignment fix */
+.profile-picture-container {
+  display: flex;
+  justify-content: center;
+  margin-top: -5rem;
+  position: relative;
+  z-index: 10;
+}
+
+.profile-picture {
+  width: 10rem;
+  height: 10rem;
+  border: 4px solid white;
+  border-radius: 9999px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  background-color: white;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .profile-picture-container {
+    margin-top: -4rem;
+  }
+  
+  .profile-picture {
+    width: 8rem;
+    height: 8rem;
+  }
+}
+
+/* BRAC University specific input focus styles */
+input:focus.brac-focus {
+  border-color: #0062FF;
+  box-shadow: 0 0 0 3px rgba(0, 98, 255, 0.2);
+}
+
+/* BRAC University table styles */
+.brac-table {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+.brac-table th {
+  background-color: #002147;
+  color: white;
+  padding: 0.75rem;
+  text-align: left;
+}
+
+.brac-table td {
+  padding: 0.75rem;
+  border-bottom: 1px solid #E6F0FF;
+}
+
+.brac-table tr:hover {
+  background-color: #E6F0FF;
 }
