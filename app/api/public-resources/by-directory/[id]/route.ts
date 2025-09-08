@@ -33,12 +33,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       // This is a subdirectory - get resources directly linked to it
       baseFilter.directoryId = dirObjectId;
     } else {
-      // This is a main directory - get resources not in subdirectories
-      baseFilter.courseCode = directory.courseCode;
-      baseFilter.$or = [
-        { directoryId: { $exists: false } },
-        { directoryId: null }
-      ];
+      // This is a main directory - get resources directly linked to it
+      baseFilter.directoryId = dirObjectId;
     }
     
     if (q) baseFilter.$text = { $search: q };

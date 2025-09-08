@@ -253,8 +253,8 @@ export default function FolderGridClient({ items: initialItems, directoryId }: {
   // Stable date formatting (UTC YYYY-MM-DD)
   const toUTC = (d?: string) => (d ? new Date(d).toISOString().slice(0, 10) : "");
 
-  // Show empty state if no resources
-  if (visible.length === 0) {
+  // Show empty state if no resources at all (not just filtered out)
+  if (items.length === 0) {
     return (
       <div className="mb-6 rounded-lg border border-dashed border-gray-300 p-8 text-center text-sm text-gray-600">
         No resources yet. Be the first to upload!
@@ -295,7 +295,17 @@ export default function FolderGridClient({ items: initialItems, directoryId }: {
           </tr>
         </thead>
         <tbody className="divide-y divide-gray-100">
-          {visible.map((r) => {
+          {visible.length === 0 ? (
+            <tr>
+              <td colSpan={5} className="px-4 py-8 text-center text-sm text-gray-500">
+                {typeFilter === 'ALL' 
+                  ? 'No resources found' 
+                  : `No ${typeFilter === 'DOCS' ? 'documents' : typeFilter === 'TEXT' ? 'text files' : typeFilter === 'VIDEO' ? 'videos' : typeFilter === 'DRIVE' ? 'drive links' : typeFilter === 'PDF' ? 'PDFs' : 'items'} found`
+                }
+              </td>
+            </tr>
+          ) : (
+            visible.map((r) => {
             const urlForType = r.kind === 'youtube' ? (r.youtube?.url || '') : (r.file?.url || '');
             const type = r.kind === 'youtube' ? 'VIDEO' : getFileType(urlForType);
             const dateStr = toUTC(r.createdAt);
@@ -405,7 +415,7 @@ export default function FolderGridClient({ items: initialItems, directoryId }: {
                 </td>
               </tr>
             );
-          })}
+          }))}
         </tbody>
       </table>
     </div>
